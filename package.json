@@ -5,13 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "migrar": "node scripts/migrar.mjs",
+    "test": "node --experimental-strip-types --no-warnings --test pruebas/*.test.mjs",
+    "vercel-build": "node scripts/migrar.mjs --vercel && next build"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "next": "16.4.2",
+    "postgres": "3.4.9",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
