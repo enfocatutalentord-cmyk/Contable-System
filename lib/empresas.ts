@@ -20,6 +20,7 @@ export async function crearEmpresa(
     await t`SELECT set_config('app.empresa_id', ${id}, true)`;
     await t`INSERT INTO miembros (empresa_id, usuario_id, rol) VALUES (${id}, ${datos.usuarioId}, 'dueno')`;
     await cargarCatalogo(t, id);
+    await t`SELECT configurar_cuentas_empresa(${id})`;
     await t`INSERT INTO bitacora (empresa_id, usuario_id, accion) VALUES (${id}, ${datos.usuarioId}, 'empresa_creada')`;
     return id;
   };

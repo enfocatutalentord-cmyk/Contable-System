@@ -1,7 +1,9 @@
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
+import { antiguedad, estadoCuenta, TRAMOS } from "@/lib/cxc";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
 import { deCentavos, verFecha } from "@/lib/montos";
+import { fechaValida } from "@/lib/reportes";
 import { leerPeriodo } from "../../periodo";
 
 // Descarga CSV que Excel abre directo (con BOM para que respete los acentos).
@@ -39,6 +41,31 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       filas.push([c.codigo, c.nombre, deCentavos(c.inicialDeudor), deCentavos(c.inicialAcreedor), deCentavos(c.debe), deCentavos(c.haber), deCentavos(c.saldoDeudor), deCentavos(c.saldoAcreedor)]);
     }
     filas.push(["", "Totales", ...[totales.inicialDeudor, totales.inicialAcreedor, totales.debe, totales.haber, totales.saldoDeudor, totales.saldoAcreedor].map(deCentavos)]);
+  } else if (reporte === "antiguedad") {
+    const corte = fechaValida(sp.corte) ? sp.corte : hasta;
+    nombre = `antiguedad-de-saldos-${corte}`;
+    const { filas: clientes, totales, total } = await conEmpresa(id, (tx) => antiguedad(tx, corte));
+    filas.push([`Antigüedad de saldos al ${verFecha(corte)} (DOP)`], []);
+    filas.push(["Cliente", "NCF", "Vence", "Días vencida", ...TRAMOS, "Total"]);
+    for (const c of clientes) {
+      for (const f of c.facturas) {
+        const t = f.dias <= 0 ? 0 : f.dias <= 30 ? 1 : f.dias <= 60 ? 2 : f.dias <= 90 ? 3 : 4;
+        filas.push([c.cliente, f.ncf, verFecha(f.vence), Math.max(0, f.dias), ...TRAMOS.map((_, i) => (i === t ? deCentavos(f.saldoPesos) : "")), deCentavos(f.saldoPesos)]);
+      }
+    }
+    filas.push(["Total", "", "", "", ...totales.map(deCentavos), deCentavos(total)]);
+  } else if (reporte === "estado-cuenta") {
+    const moneda = sp.moneda === "USD" ? "USD" : "DOP";
+    const datos = await conEmpresa(id, async (tx) => {
+      const [c] = await tx<{ id: string; nombre: string; rnc: string | null }[]>`SELECT id, nombre, rnc FROM clientes WHERE id = ${sp.cliente ?? null}::uuid`;
+      return c ? { c, e: await estadoCuenta(tx, id, c.id, moneda, desde, hasta) } : null;
+    }).catch(() => null);
+    if (!datos) return new Response("Cliente no encontrado", { status: 404 });
+    nombre = "estado-de-cuenta";
+    filas.push([`Estado de cuenta de ${datos.c.nombre}${datos.c.rnc ? ` (RNC ${datos.c.rnc})` : ""} del ${verFecha(desde)} al ${verFecha(hasta)} en ${moneda}`], []);
+    filas.push(["Fecha", "Documento", "Detalle", "Cargos", "Abonos", "Saldo"]);
+    filas.push([verFecha(desde), "", "Saldo anterior", "", "", deCentavos(datos.e.inicial)]);
+    for (const m of datos.e.movimientos) filas.push([verFecha(m.fecha), m.documento, m.detalle, deCentavos(m.cargo), deCentavos(m.abono), deCentavos(m.saldo)]);
   } else {
     return new Response("Reporte no encontrado", { status: 404 });
   }

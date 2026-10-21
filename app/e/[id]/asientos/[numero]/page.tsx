@@ -21,9 +21,12 @@ export default async function VerAsiento({ params, searchParams }: {
     const [a] = await tx<{
       id: string; fecha: string; concepto: string; referencia: string | null; origen: string; anulado: boolean;
       motivo_anulacion: string | null; anulado_en: Date | null; creado: Date; creado_por: string; anulado_por: string | null;
+      documento: string | null;
     }[]>`
       SELECT a.id, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.referencia, a.origen, a.anulado,
-             a.motivo_anulacion, a.anulado_en, a.creado, uc.nombre AS creado_por, ua.nombre AS anulado_por
+             a.motivo_anulacion, a.anulado_en, a.creado, uc.nombre AS creado_por, ua.nombre AS anulado_por,
+             COALESCE((SELECT '/facturas/' || f.id FROM facturas f WHERE f.asiento_id = a.id),
+                      (SELECT '/cobros/' || c.numero FROM cobros c WHERE c.asiento_id = a.id)) AS documento
         FROM asientos a
         LEFT JOIN usuarios uc ON uc.id = a.creado_por
         LEFT JOIN usuarios ua ON ua.id = a.anulado_por
@@ -72,7 +75,12 @@ export default async function VerAsiento({ params, searchParams }: {
           <tfoot><tr><td colSpan={2}>Totales</td><td className="num">{verMonto(total)}</td><td className="num">{verMonto(total)}</td></tr></tfoot>
         </table>
       </div>
-      {!a.anulado && puede(rol, "anular") && (
+      {a.documento && (
+        <p className="sub" style={{ marginTop: 16 }}>
+          Este asiento lo generó un documento. <Link href={`/e/${id}${a.documento}`}>Ver el documento</Link>; si hay que anularlo, se anula desde ahí.
+        </p>
+      )}
+      {!a.anulado && !a.documento && puede(rol, "anular") && (
         enPeriodoCerrado ? (
           <p className="sub" style={{ marginTop: 16 }}>Este asiento está en un período cerrado y no se puede anular.</p>
         ) : (

@@ -10,6 +10,16 @@ Sistema contable para empresas en República Dominicana. Next.js + TypeScript + 
 - Libro diario, libro mayor y balanza de comprobación, con descarga para Excel.
 - Cierres de período con fecha de bloqueo (como las «lock dates» de Xero) e historial.
 
+## Fase 2 (ventas y cuentas por cobrar)
+
+- Clientes (con RNC o cédula y días de crédito) y servicios con precio, ITBIS (18 %, 16 % o exento) y cuenta de ingreso.
+- Rangos de NCF autorizados por la DGII (B01, B02, B14, B15 y B04) con vencimiento; cada factura toma el siguiente.
+- Facturas en pesos o dólares, imprimibles, con asiento automático (cuentas por cobrar contra ingresos e ITBIS).
+- Notas de crédito B04 que rebajan el saldo de la factura, y anulación con los motivos del formato 608.
+- Cobros a una o varias facturas con retención de ITBIS e ISR, diferencia cambiaria y recibo imprimible.
+- Antigüedad de saldos a cualquier fecha y estado de cuenta por cliente, con descarga para Excel.
+- Configuración de las cuentas que usan los asientos automáticos.
+
 ### Seguridad de los datos
 
 - Cada empresa está aislada en la base con Row Level Security: la app trabaja con el rol `contable_app`,

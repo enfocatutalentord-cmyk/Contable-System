@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirPermiso } from "@/lib/acceso";
+import { bitacora, ErrorContable, insertarAsiento } from "@/lib/asientos";
 import { cifrarClave } from "@/lib/auth";
 import { nivelDeCodigo } from "@/lib/catalogo-rd";
 import { conEmpresa, db, mensajeError } from "@/lib/db";
@@ -49,21 +50,12 @@ export async function registrarAsiento(empresaId: string, _: Estado, fd: FormDat
   let numero: number;
   try {
     numero = await conEmpresa(empresaId, async (tx) => {
-      // Bloquea la empresa para que dos personas no tomen el mismo número a la vez.
-      await tx`SELECT 1 FROM empresas WHERE id = ${empresaId} FOR UPDATE`;
-      const [{ siguiente }] = await tx<{ siguiente: number }[]>`
-        SELECT COALESCE(max(numero), 0) + 1 AS siguiente FROM asientos`;
-      const [{ id }] = await tx<{ id: string }[]>`
-        INSERT INTO asientos (empresa_id, numero, fecha, concepto, referencia, creado_por)
-        VALUES (${empresaId}, ${siguiente}, ${fecha}, ${concepto}, ${referencia}, ${usuario.id}) RETURNING id`;
-      for (const [orden, l] of lineas.entries()) {
-        await tx`
-          INSERT INTO lineas_asiento (asiento_id, empresa_id, orden, cuenta_id, descripcion, debe, haber)
-          VALUES (${id}, ${empresaId}, ${orden + 1}, ${l.cuentaId}, ${l.descripcion}, ${l.debe}, ${l.haber})`;
-      }
-      await tx`INSERT INTO bitacora (empresa_id, usuario_id, accion, detalle)
-               VALUES (${empresaId}, ${usuario.id}, 'asiento_registrado', ${tx.json({ numero: siguiente })})`;
-      return siguiente;
+      const asiento = await insertarAsiento(tx, {
+        empresaId, usuarioId: usuario.id, fecha, concepto, referencia, origen: "manual", juntar: false,
+        lineas: lineas.map((l) => ({ cuentaId: l.cuentaId, descripcion: l.descripcion, debe: aCentavos(l.debe), haber: aCentavos(l.haber) })),
+      });
+      await bitacora(tx, empresaId, usuario.id, "asiento_registrado", { numero: asiento.numero });
+      return asiento.numero;
     });
   } catch (e) {
     return { error: mensajeError(e) };
@@ -78,10 +70,12 @@ export async function anularAsiento(empresaId: string, numero: number, _: Estado
   if (!motivo) return { error: "Escribe el motivo de la anulación." };
   try {
     await conEmpresa(empresaId, async (tx) => {
+      const [a] = await tx<{ origen: string }[]>`SELECT origen FROM asientos WHERE numero = ${numero}`;
+      if (a && a.origen !== "manual") throw new ErrorContable("Este asiento lo generó un documento; anúlalo desde la factura o el cobro");
       const r = await tx`
         UPDATE asientos SET anulado = true, anulado_por = ${usuario.id}, anulado_en = now(), motivo_anulacion = ${motivo}
          WHERE numero = ${numero} AND NOT anulado`;
-      if (r.count === 0) throw Object.assign(new Error("El asiento ya estaba anulado"), { code: "P0001" });
+      if (r.count === 0) throw new ErrorContable("El asiento ya estaba anulado");
       await tx`INSERT INTO bitacora (empresa_id, usuario_id, accion, detalle)
                VALUES (${empresaId}, ${usuario.id}, 'asiento_anulado', ${tx.json({ numero, motivo })})`;
     });

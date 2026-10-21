@@ -107,3 +107,19 @@ tr.anulado td { color: var(--suave); text-decoration: line-through; }
 /* Páginas sueltas (entrar, registro, empresas) */
 .centro { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
 .formulario { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Impresión de facturas y recibos */
+.documento { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 28px; }
+.documento .cabecera { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.documento .cabecera h2 { margin: 0; }
+.documento dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; font-size: 0.92rem; }
+.documento dt { color: var(--suave); }
+.documento dd { margin: 0; }
+@media print {
+  :root { --fondo: #fff; --superficie: #fff; --texto: #000; --suave: #444; --borde: #bbb; --fila-alterna: #fff; color-scheme: light; }
+  .menu, .no-imprimir { display: none !important; }
+  .app { display: block; }
+  .contenido { padding: 0; max-width: none; }
+  .documento { border: 0; padding: 0; }
+  a { color: inherit; }
+}
