@@ -1,33 +1,43 @@
 :root {
-  --fondo: #f6f7f9;
+  /* Marca Empire Tax’N Legal: verde institucional, dorado y marfil (manual de identidad 1.0). */
+  --verde: #003d19;
+  --dorado: #b88a40;
+  --marfil: #f6f3ec;
+  --fondo: var(--marfil);
   --superficie: #ffffff;
-  --texto: #18202c;
-  --suave: #5b6676;
-  --borde: #dfe3e9;
-  --primario: #1f5eff;
+  --texto: #1c2420;
+  --suave: #5c665f;
+  --borde: #e3dccd;
+  --primario: var(--verde);
   --primario-texto: #ffffff;
-  --peligro: #c62828;
-  --ok: #1b7f4b;
-  --aviso-fondo: #fff6e0;
-  --aviso-texto: #6b4a00;
-  --fila-alterna: #f9fafb;
+  --titulo: var(--verde);
+  --acento: var(--dorado);
+  --menu-fondo: var(--verde);
+  --peligro: #b3261e;
+  --ok: #1b6b3a;
+  --aviso-fondo: #f8eedb;
+  --aviso-texto: #5e4310;
+  --fila-alterna: #fbf9f4;
   --radio: 10px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --fondo: #0f141b;
-    --superficie: #171e27;
-    --texto: #e7ebf0;
-    --suave: #9aa5b4;
-    --borde: #2a3441;
-    --primario: #6d95ff;
-    --primario-texto: #0b0f15;
-    --peligro: #ff7b7b;
-    --ok: #5fd197;
+    --fondo: #0c1510;
+    --superficie: #132019;
+    --texto: #ece8de;
+    --suave: #a4ada5;
+    --borde: #26382d;
+    --primario: var(--dorado);
+    --primario-texto: #0c1510;
+    --titulo: #ece8de;
+    --acento: var(--dorado);
+    --menu-fondo: #002a11;
+    --peligro: #ff8a80;
+    --ok: #6fcf97;
     --aviso-fondo: #2e2610;
     --aviso-texto: #f2d58b;
-    --fila-alterna: #1b232d;
+    --fila-alterna: #17261d;
     color-scheme: dark;
   }
 }
@@ -35,7 +45,7 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--fondo);
   color: var(--texto);
   font-size: 15px;
@@ -43,24 +53,44 @@ body {
 }
 a { color: var(--primario); text-decoration: none; }
 a:hover { text-decoration: underline; }
-h1 { font-size: 1.45rem; margin: 0 0 4px; }
-h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+h1 { font-size: 1.55rem; margin: 0 0 4px; color: var(--titulo); }
+h2 { font-size: 1.15rem; margin: 24px 0 8px; color: var(--titulo); }
+h3 { color: var(--titulo); }
 .sub { color: var(--suave); margin: 0 0 20px; }
 
 /* Estructura */
 .app { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
-.menu { background: var(--superficie); border-right: 1px solid var(--borde); padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; }
-.menu .marca { font-weight: 700; padding: 0 10px 2px; }
-.menu .empresa { color: var(--suave); font-size: 0.85rem; padding: 0 10px 14px; border-bottom: 1px solid var(--borde); margin-bottom: 8px; }
-.menu a { color: var(--texto); padding: 7px 10px; border-radius: 8px; }
-.menu a:hover { background: var(--fondo); text-decoration: none; }
-.menu a[aria-current="page"] { background: var(--fondo); font-weight: 600; }
-.menu .grupo { color: var(--suave); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 12px 10px 4px; }
-.menu .pie { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--borde); font-size: 0.85rem; color: var(--suave); }
+.menu { background: var(--menu-fondo); color: #fff; padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; }
+.menu .marca { display: flex; align-items: center; gap: 10px; padding: 0 6px 16px; color: #fff; }
+.menu .marca:hover { text-decoration: none; background: none; }
+.menu .empresa { color: rgba(255, 255, 255, 0.75); font-size: 0.85rem; padding: 12px 10px 14px; border-top: 1px solid rgba(184, 138, 64, 0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.15); margin-bottom: 8px; }
+.menu .empresa strong { color: #fff !important; }
+.menu .empresa a { color: var(--dorado); padding: 0; }
+.menu a { color: rgba(255, 255, 255, 0.92); padding: 7px 10px; border-radius: 8px; border-left: 3px solid transparent; }
+.menu a:hover { background: rgba(255, 255, 255, 0.08); text-decoration: none; }
+.menu a[aria-current="page"] { background: rgba(255, 255, 255, 0.12); border-left-color: var(--dorado); font-weight: 600; color: #fff; }
+.menu .grupo { color: var(--dorado); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 10px 4px; }
+.menu .pie { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid rgba(255, 255, 255, 0.15); font-size: 0.85rem; color: rgba(255, 255, 255, 0.75); }
+.menu .pie a { padding: 0; border: 0; color: #fff; }
+.menu .pie button { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+
+/* Nombre de la marca y franjas */
+.nombre-marca { display: flex; flex-direction: column; line-height: 1.1; }
+.nombre-marca .empire { font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; color: #fff; }
+.nombre-marca .taxn { font-size: 0.82rem; letter-spacing: 0.08em; color: var(--dorado); }
+.producto { display: block; font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); margin-top: 4px; }
+.barra-marca { background: var(--menu-fondo); border-bottom: 3px solid var(--dorado); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.barra-marca a { display: flex; align-items: center; gap: 12px; }
+.barra-marca a:hover { text-decoration: none; }
+.barra-marca .producto { margin: 0; font-size: 0.9rem; }
+.logo-completo { display: grid; justify-items: center; gap: 6px; margin: 0 auto 20px; }
+.logo-completo img { width: 230px; height: auto; }
+.logo-completo .producto { color: var(--suave); font-size: 0.95rem; letter-spacing: 0.04em; margin: 0; }
 .contenido { padding: 28px 32px; max-width: 1200px; width: 100%; min-width: 0; }
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; }
-  .menu { border-right: 0; border-bottom: 1px solid var(--borde); flex-direction: row; flex-wrap: wrap; }
+  .menu { border-bottom: 3px solid var(--dorado); flex-direction: row; flex-wrap: wrap; }
+  .menu .marca { width: 100%; padding-bottom: 10px; }
   .menu .grupo, .menu .pie { display: none; }
   .menu .empresa { width: 100%; }
   .contenido { padding: 20px 16px; }
@@ -89,14 +119,16 @@ button, .boton {
   border-radius: 8px; padding: 8px 14px; min-height: 38px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
 }
 button:hover, .boton:hover { text-decoration: none; filter: brightness(0.97); }
-.primario { background: var(--primario); color: var(--primario-texto); border-color: var(--primario); }
+.primario { background: var(--primario); color: var(--primario-texto); border-color: var(--primario); font-weight: 600; }
+.cifra .valor { color: var(--titulo); }
 .peligro { color: var(--peligro); }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .tabla-envoltura { overflow-x: auto; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); }
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
 th, td { padding: 8px 12px; border-bottom: 1px solid var(--borde); text-align: left; vertical-align: top; }
-th { color: var(--suave); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+thead th { border-bottom: 2px solid var(--acento); }
+th { color: var(--titulo); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
 tbody tr:nth-child(even) { background: var(--fila-alterna); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 tfoot td { font-weight: 700; border-top: 2px solid var(--borde); }
@@ -120,8 +152,8 @@ tr.anulado td { color: var(--suave); text-decoration: line-through; }
 .documento dt { color: var(--suave); }
 .documento dd { margin: 0; }
 @media print {
-  :root { --fondo: #fff; --superficie: #fff; --texto: #000; --suave: #444; --borde: #bbb; --fila-alterna: #fff; color-scheme: light; }
-  .menu, .no-imprimir { display: none !important; }
+  :root { --fondo: #fff; --superficie: #fff; --texto: #000; --suave: #444; --borde: #bbb; --fila-alterna: #fff; --titulo: #000; --acento: #999; color-scheme: light; }
+  .menu, .barra-marca, .no-imprimir { display: none !important; }
   .app { display: block; }
   .contenido { padding: 0; max-width: none; }
   .documento { border: 0; padding: 0; }

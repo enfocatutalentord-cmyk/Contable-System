@@ -24,6 +24,15 @@ Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendi
 varios clientes, por fases con aprobación expresa, sin módulos ni cambios no autorizados. Antes de desarrollar se presenta
 la estructura técnica, dependencias y orden (aprobada por Joannie el 22-oct-2026 con el orden de fases de abajo).
 
+## Línea gráfica
+
+Desde el 22-oct-2026 (pedido de Joannie) el sistema lleva la identidad de **Empire Tax’N Legal** según
+`docs/Empire_Brandbook.pdf`: verde institucional `#003D19`, dorado `#B88A40`, marfil `#F6F3EC`; tipografía Source Sans 3
+(la misma de la web de Empire). Logos maestros en `public/marca/` (copiados de `empire-web/public/assets`; `simbolo-inverso.svg`
+es el símbolo con la columna en blanco para el fondo verde). Componentes en `app/marca.tsx`; colores en `app/globals.css`;
+encabezados verdes con línea dorada en Excel y PDF (`lib/exportar.ts`). No redibujar ni recolorear el logo; mínimos: logo
+220 px, símbolo 64 px. Las facturas impresas de los clientes no llevan la marca de Empire (son documentos del cliente).
+
 ## Qué es
 
 Software contable para empresas en República Dominicana, **pensado para venderse** a otras empresas (decisión de Joannie,

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { agregarPersona, guardarAccesos, quitarDeFirma } from "../../acciones";
 import { EncabezadoFirma } from "../../encabezado";
 
-export const metadata = { title: "Equipo · Contable-System" };
+export const metadata = { title: "Equipo · Empire Tax’N Legal" };
 
 export default async function Equipo({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;

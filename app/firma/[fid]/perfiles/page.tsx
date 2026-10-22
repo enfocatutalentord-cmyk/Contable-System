@@ -5,7 +5,7 @@ import { PERMISOS } from "@/lib/permisos";
 import { eliminarPerfil, guardarPerfil } from "../../acciones";
 import { EncabezadoFirma } from "../../encabezado";
 
-export const metadata = { title: "Perfiles y permisos · Contable-System" };
+export const metadata = { title: "Perfiles y permisos · Empire Tax’N Legal" };
 
 export default async function Perfiles({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;

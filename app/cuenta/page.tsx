@@ -3,7 +3,7 @@ import { exigirUsuario } from "@/lib/auth";
 import { cambiarClave } from "../acciones-cuenta";
 import { Formulario } from "../formulario";
 
-export const metadata = { title: "Mi cuenta · Contable-System" };
+export const metadata = { title: "Mi cuenta · Empire Tax’N Legal" };
 
 export default async function MiCuenta() {
   const usuario = await exigirUsuario();

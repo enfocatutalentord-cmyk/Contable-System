@@ -15,20 +15,27 @@ export type Tabla = {
   horizontal?: boolean;
 };
 
+// Colores de la marca Empire Tax’N Legal (manual de identidad 1.0).
+const VERDE = "003D19", DORADO = "B88A40";
+const PRODUCTO = "Empire Tax’N Legal · Sistema contable";
+
 const numero = (v: Celda) => (v === null || v === "" ? null : Number(v));
 
 export async function aXlsx(t: Tabla): Promise<Buffer> {
   const libro = new ExcelJS.Workbook();
-  libro.creator = "Contable-System";
+  libro.creator = PRODUCTO;
   const hoja = libro.addWorksheet(t.titulo.slice(0, 31), { pageSetup: { orientation: t.horizontal ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   hoja.addRow([t.empresa]).font = { bold: true, size: 13 };
-  hoja.addRow([t.titulo]).font = { bold: true, size: 12 };
+  hoja.addRow([t.titulo]).font = { bold: true, size: 12, color: { argb: "FF" + VERDE } };
   hoja.addRow([t.detalle]);
   hoja.addRow([t.generado]).font = { italic: true, color: { argb: "FF666666" } };
   hoja.addRow([]);
   const cab = hoja.addRow(t.columnas.map((c) => c.titulo));
-  cab.font = { bold: true };
-  cab.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF2F6" } }; c.border = { bottom: { style: "thin" } }; });
+  cab.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  cab.eachCell((c) => {
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + VERDE } };
+    c.border = { bottom: { style: "medium", color: { argb: "FF" + DORADO } } };
+  });
   const inicio = hoja.rowCount + 1;
   for (const f of t.filas) hoja.addRow(f.map((v, i) => (t.columnas[i]?.num ? numero(v) : v)));
   if (t.totales) {
@@ -71,7 +78,7 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
     bold: negrita,
   });
   const cuerpo = [
-    t.columnas.map((c) => ({ text: c.titulo, bold: true, fillColor: "#eff2f6", alignment: c.num ? "right" : "left" })),
+    t.columnas.map((c) => ({ text: c.titulo, bold: true, color: "#ffffff", fillColor: `#${VERDE}`, alignment: c.num ? "right" : "left" })),
     ...t.filas.map((f) => f.map((v, i) => celda(v, i))),
     ...(t.totales ? [t.totales.map((v, i) => celda(v, i, true))] : []),
   ];
@@ -80,10 +87,10 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
     pageOrientation: t.horizontal ? "landscape" : "portrait",
     pageMargins: [32, 40, 32, 40],
     defaultStyle: { font: "Helvetica", fontSize: 8 },
-    info: { title: `${t.titulo} · ${t.empresa}`, creator: "Contable-System" },
+    info: { title: `${t.titulo} · ${t.empresa}`, creator: PRODUCTO },
     content: [
       { text: t.empresa, bold: true, fontSize: 12 },
-      { text: t.titulo, bold: true, fontSize: 11, margin: [0, 2, 0, 0] },
+      { text: t.titulo, bold: true, fontSize: 11, color: `#${VERDE}`, margin: [0, 2, 0, 0] },
       { text: t.detalle, margin: [0, 2, 0, 0] },
       { text: t.generado, italics: true, color: "#666666", margin: [0, 2, 0, 10] },
       {
@@ -92,10 +99,13 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
           widths: t.columnas.map((c) => (c.num ? "auto" : "*")),
           body: cuerpo,
         },
-        layout: { hLineWidth: (i: number) => (i === 1 ? 0.8 : 0.3), vLineWidth: () => 0, hLineColor: () => "#cccccc", paddingTop: () => 3, paddingBottom: () => 3 },
+        layout: { hLineWidth: (i: number) => (i === 1 ? 0.8 : 0.3), vLineWidth: () => 0, hLineColor: (i: number) => (i === 1 ? `#${DORADO}` : "#cccccc"), paddingTop: () => 3, paddingBottom: () => 3 },
       },
     ],
-    footer: (actual: number, total: number) => ({ text: `Página ${actual} de ${total}`, alignment: "right", margin: [0, 10, 32, 0], fontSize: 7, color: "#666666" }),
+    footer: (actual: number, total: number) => ({
+      columns: [{ text: PRODUCTO, color: `#${VERDE}` }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }],
+      margin: [32, 10, 32, 0], fontSize: 7,
+    }),
   };
   return pdfmake.createPdf(doc).getBuffer();
 }

@@ -5,7 +5,7 @@ import { nuevaEmpresa } from "../../acciones-cuenta";
 import { CamposFicha } from "../../campos-ficha";
 import { Formulario } from "../../formulario";
 
-export const metadata = { title: "Nuevo cliente · Contable-System" };
+export const metadata = { title: "Nuevo cliente · Empire Tax’N Legal" };
 
 export default async function NuevaEmpresa({ searchParams }: { searchParams: Promise<{ firma?: string }> }) {
   const { firma: fid } = await searchParams;

@@ -6,7 +6,7 @@ import { verFecha } from "@/lib/montos";
 import { REGIMENES } from "@/lib/permisos";
 import { salir } from "../acciones-cuenta";
 
-export const metadata = { title: "Panel de la firma · Contable-System" };
+export const metadata = { title: "Panel de la firma · Empire Tax’N Legal" };
 
 type Cliente = {
   id: string; nombre: string; rnc: string | null; regimen: string; activa: boolean; fecha_bloqueo: string | null; perfil: string | null;
