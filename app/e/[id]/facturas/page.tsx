@@ -1,19 +1,17 @@
-import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 
-type Fila = { id: string; ncf: string; tipo_ncf: string; fecha: string; vence: string; cliente: string; moneda: string; total: string; saldo: string | null; anulada: boolean; origen: string | null };
+type Fila = { id: string; estado: string; ncf: string | null; tipo_ncf: string; fecha: string; vence: string; cliente: string; moneda: string; total: string; saldo: string | null; anulada: boolean; origen: string | null };
 
-const ESTADOS: Record<string, string> = { todas: "Todas", pendientes: "Pendientes", vencidas: "Vencidas", pagadas: "Pagadas", anuladas: "Anuladas", notas: "Notas de crédito" };
+const ESTADOS: Record<string, string> = { todas: "Todas", borradores: "Borradores", pendientes: "Pendientes", vencidas: "Vencidas", pagadas: "Pagadas", anuladas: "Anuladas", notas: "Notas de crédito" };
 
 export default async function Facturas({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ mes?: string; estado?: string; q?: string }>;
+  searchParams: Promise<{ mes?: string; estado?: string; q?: string; descartada?: string }>;
 }) {
-  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
   const { permisos } = await accesoEmpresa(id);
@@ -22,32 +20,35 @@ export default async function Facturas({ params, searchParams }: {
   const estado = ESTADOS[sp.estado ?? ""] ? sp.estado! : "todas";
   const q = (sp.q ?? "").trim();
   const filas = await conEmpresa(id, (tx) => tx<Fila[]>`
-    SELECT f.id, f.ncf, f.tipo_ncf, to_char(f.fecha, 'YYYY-MM-DD') AS fecha, to_char(f.vence, 'YYYY-MM-DD') AS vence,
+    SELECT f.id, f.estado, f.ncf, f.tipo_ncf, to_char(f.fecha, 'YYYY-MM-DD') AS fecha, to_char(f.vence, 'YYYY-MM-DD') AS vence,
            c.nombre AS cliente, f.moneda, f.total::text, s.saldo::text, f.anulada, o.ncf AS origen
       FROM facturas f JOIN clientes c ON c.id = f.cliente_id
       LEFT JOIN saldos_factura s ON s.factura_id = f.id
       LEFT JOIN facturas o ON o.id = f.factura_origen_id
      WHERE (${mes} = '' OR to_char(f.fecha, 'YYYY-MM') = ${mes})
        AND (${q} = '' OR f.ncf ILIKE ${"%" + q + "%"} OR c.nombre ILIKE ${"%" + q + "%"})
+       AND (${estado} = 'todas' OR (${estado} = 'borradores') = (f.estado = 'borrador'))
        AND CASE ${estado}
+             WHEN 'borradores' THEN true
              WHEN 'pendientes' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo > 0
              WHEN 'vencidas' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo > 0 AND f.vence < ${hoy}
              WHEN 'pagadas' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo <= 0
              WHEN 'anuladas' THEN f.anulada
              WHEN 'notas' THEN f.tipo_ncf = 'B04'
              ELSE true END
-     ORDER BY f.fecha DESC, f.ncf DESC`);
-  const vigentes = filas.filter((f) => !f.anulada && f.tipo_ncf !== "B04" && f.moneda === "DOP");
+     ORDER BY f.estado = 'borrador' DESC, f.fecha DESC, f.ncf DESC NULLS FIRST`);
+  const vigentes = filas.filter((f) => f.estado === "emitida" && !f.anulada && f.tipo_ncf !== "B04" && f.moneda === "DOP");
 
   return (
     <>
       <div className="entre">
         <div>
           <h1>Facturas</h1>
-          <p className="sub">Facturas y notas de crédito con su NCF. Cada una genera su asiento automáticamente.</p>
+          <p className="sub">Facturas y notas de crédito. El borrador no tiene NCF; al emitirse toma el NCF y registra su asiento.</p>
         </div>
         {puede(permisos, "registrar") && <Link className="boton primario" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
       </div>
+      {sp.descartada && <p className="exito">Borrador descartado. Queda constancia en el historial de cambios.</p>}
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>
         <label>Estado
@@ -66,15 +67,16 @@ export default async function Facturas({ params, searchParams }: {
             {filas.map((f) => {
               const esNota = f.tipo_ncf === "B04";
               const saldo = Number(f.saldo ?? 0);
-              const estadoTexto = f.anulada ? "Anulada" : esNota ? `Nota a ${f.origen}` : saldo <= 0 ? "Pagada" : f.vence < hoy ? "Vencida" : "Pendiente";
+              const borrador = f.estado === "borrador";
+              const estadoTexto = borrador ? "Borrador" : f.anulada ? "Anulada" : esNota ? `Nota a ${f.origen}` : saldo <= 0 ? "Pagada" : f.vence < hoy ? "Vencida" : "Pendiente";
               return (
-                <tr key={f.id} className={f.anulada ? "anulado" : undefined}>
-                  <td><Link href={`/e/${id}/facturas/${f.id}`}>{f.ncf}</Link></td>
+                <tr key={f.id} className={f.anulada ? "anulado" : borrador ? "borrador" : undefined}>
+                  <td><Link href={`/e/${id}/facturas/${f.id}`}>{f.ncf ?? `Borrador ${f.tipo_ncf}`}</Link></td>
                   <td>{verFecha(f.fecha)}</td>
                   <td>{f.cliente}</td>
                   <td>{esNota ? "" : verFecha(f.vence)}</td>
                   <td className="num">{f.moneda === "USD" && "US$ "}{verMonto(esNota ? -Number(f.total) : f.total)}</td>
-                  <td className="num">{esNota || f.anulada ? "" : verMonto(f.saldo)}</td>
+                  <td className="num">{esNota || f.anulada || borrador ? "" : verMonto(f.saldo)}</td>
                   <td className={estadoTexto === "Vencida" ? "error" : undefined}>{estadoTexto}</td>
                 </tr>
               );

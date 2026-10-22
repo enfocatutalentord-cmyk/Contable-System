@@ -1,4 +1,3 @@
-import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
@@ -7,6 +6,8 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { DocumentosSoporte } from "../../documentos/soporte";
+import { HistorialRegistro } from "../../historial/registro";
 import { anularRecibo } from "../../ventas-acciones";
 
 type Cobro = {
@@ -19,7 +20,6 @@ export default async function VerCobro({ params, searchParams }: {
   params: Promise<{ id: string; numero: string }>;
   searchParams: Promise<{ nuevo?: string; anulado?: string }>;
 }) {
-  exigirModulo("ventas");
   const { id, numero: n } = await params;
   const sp = await searchParams;
   const numero = Number(n);
@@ -37,12 +37,15 @@ export default async function VerCobro({ params, searchParams }: {
     const aplicaciones = await tx<{ id: string; ncf: string; fecha: string; total: string; monto: string }[]>`
       SELECT f.id, f.ncf, to_char(f.fecha, 'YYYY-MM-DD') AS fecha, f.total::text, a.monto::text
         FROM aplicaciones_cobro a JOIN facturas f ON f.id = a.factura_id WHERE a.cobro_id = ${c.id} ORDER BY f.ncf`;
-    return { c, aplicaciones };
+    const retenciones = await tx<{ nombre: string; tasa: string; monto: string }[]>`
+      SELECT r.nombre, rc.tasa::text, rc.monto::text FROM retenciones_cobro rc JOIN retenciones r ON r.id = rc.retencion_id
+       WHERE rc.cobro_id = ${c.id} ORDER BY rc.impuesto DESC, r.nombre`;
+    return { c, aplicaciones, retenciones };
   });
   if (!datos) notFound();
-  const { c, aplicaciones } = datos;
+  const { c, aplicaciones, retenciones } = datos;
   const simbolo = c.moneda === "USD" ? "US$" : "RD$";
-  const total = Number(c.recibido) + Number(c.retencion_itbis) + Number(c.retencion_isr);
+  const total = Number(c.recibido) + retenciones.reduce((s, r) => s + Number(r.monto), 0);
   const fueraDeCierre = !empresa.fecha_bloqueo || c.fecha > empresa.fecha_bloqueo;
 
   return (
@@ -88,8 +91,9 @@ export default async function VerCobro({ params, searchParams }: {
             </tbody>
             <tfoot>
               <tr><td colSpan={3}>Total aplicado {simbolo}</td><td className="num">{verMonto(total)}</td></tr>
-              {Number(c.retencion_itbis) > 0 && <tr><td colSpan={3}>Menos ITBIS retenido</td><td className="num">{verMonto(c.retencion_itbis)}</td></tr>}
-              {Number(c.retencion_isr) > 0 && <tr><td colSpan={3}>Menos ISR retenido</td><td className="num">{verMonto(c.retencion_isr)}</td></tr>}
+              {retenciones.map((r, i) => (
+                <tr key={i}><td colSpan={3}>Menos {r.nombre}</td><td className="num">{verMonto(r.monto)}</td></tr>
+              ))}
               <tr><td colSpan={3}>Recibido {simbolo}</td><td className="num">{verMonto(c.recibido)}</td></tr>
             </tfoot>
           </table>
@@ -106,7 +110,16 @@ export default async function VerCobro({ params, searchParams }: {
           ) : <p className="sub">Este recibo está en un período cerrado y no se puede anular.</p>}
         </div>
       )}
-      <p className="sub no-imprimir" style={{ marginTop: 16 }}>Registrado por {c.creado_por ?? "—"}.</p>
+      <div className="no-imprimir">
+        <DocumentosSoporte empresaId={id} entidad="cobro" entidadId={c.id} retirables={false} puedeAdjuntar={puede(permisos, "adjuntar") && !c.anulado} />
+        <p className="sub" style={{ marginTop: 16 }}>Registrado por {c.creado_por ?? "—"}.</p>
+        {puede(permisos, "auditoria") && (
+          <>
+            <h2>Historial de cambios</h2>
+            <HistorialRegistro empresaId={id} registroId={c.id} />
+          </>
+        )}
+      </div>
     </>
   );
 }

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
-import { MODULOS } from "@/lib/modulos";
 import { puede } from "@/lib/permisos";
 import { salir } from "../../acciones-cuenta";
 import { MarcaMenu } from "../../marca";
@@ -20,7 +19,7 @@ export default async function LayoutEmpresa({ children, params }: { children: Re
           {!empresa.activa && <div className="error" style={{ margin: 0 }}>Cliente inactivo</div>}
           <div><Link href="/empresas">Cambiar de cliente</Link></div>
         </div>
-        <Menu empresaId={id} ventas={MODULOS.ventas} auditoria={puede(permisos, "auditoria")} />
+        <Menu empresaId={id} auditoria={puede(permisos, "auditoria")} />
         <div className="pie">
           <Link href="/cuenta">{usuario.nombre}</Link> · {perfil}
           <form action={salir}><button style={{ marginTop: 8 }}>Salir</button></form>

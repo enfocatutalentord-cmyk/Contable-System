@@ -1,6 +1,6 @@
 import type { Tx } from "./db";
-import { aCentavos } from "./montos";
-import { aPesos, tasaDeTexto } from "./ventas";
+import { aCentavos } from "./montos.ts";
+import { aPesos, tasaDeTexto } from "./ventas.ts";
 
 export type FacturaPendiente = {
   id: string; ncf: string; fecha: string; vence: string; moneda: string; tasa: string;
@@ -27,9 +27,9 @@ export async function pendientesAl(tx: Tx, corte: string, clienteId?: string): P
             - COALESCE((SELECT sum(a.monto) FROM aplicaciones_cobro a JOIN cobros co ON co.id = a.cobro_id
                          WHERE a.factura_id = f.id AND NOT co.anulado AND co.fecha <= ${corte}), 0)
             - COALESCE((SELECT sum(n.total) FROM facturas n
-                         WHERE n.factura_origen_id = f.id AND NOT n.anulada AND n.fecha <= ${corte}), 0))::text AS saldo
+                         WHERE n.factura_origen_id = f.id AND n.estado = 'emitida' AND NOT n.anulada AND n.fecha <= ${corte}), 0))::text AS saldo
       FROM facturas f JOIN clientes c ON c.id = f.cliente_id
-     WHERE f.tipo_ncf <> 'B04' AND NOT f.anulada AND f.fecha <= ${corte}
+     WHERE f.tipo_ncf <> 'B04' AND f.estado = 'emitida' AND NOT f.anulada AND f.fecha <= ${corte}
        AND (${clienteId ?? null}::uuid IS NULL OR f.cliente_id = ${clienteId ?? null}::uuid)
      ORDER BY c.nombre, f.vence, f.ncf`;
   return filas
@@ -70,16 +70,16 @@ export type MovimientoCuenta = {
 export async function estadoCuenta(tx: Tx, empresaId: string, clienteId: string, moneda: string, desde: string, hasta: string) {
   const [ini] = await tx<{ saldo: string }[]>`
     SELECT (COALESCE((SELECT sum(total) FROM facturas WHERE cliente_id = ${clienteId} AND moneda = ${moneda}
-                       AND NOT anulada AND tipo_ncf <> 'B04' AND fecha < ${desde}), 0)
+                       AND estado = 'emitida' AND NOT anulada AND tipo_ncf <> 'B04' AND fecha < ${desde}), 0)
           - COALESCE((SELECT sum(total) FROM facturas WHERE cliente_id = ${clienteId} AND moneda = ${moneda}
-                       AND NOT anulada AND tipo_ncf = 'B04' AND fecha < ${desde}), 0)
+                       AND estado = 'emitida' AND NOT anulada AND tipo_ncf = 'B04' AND fecha < ${desde}), 0)
           - COALESCE((SELECT sum(a.monto) FROM aplicaciones_cobro a JOIN cobros c ON c.id = a.cobro_id
                        WHERE c.cliente_id = ${clienteId} AND c.moneda = ${moneda} AND NOT c.anulado AND c.fecha < ${desde}), 0))::text AS saldo`;
   const docs = await tx<{ fecha: string; tipo: "factura" | "nota_credito"; ncf: string; id: string; total: string; origen: string | null; vence: string }[]>`
     SELECT to_char(f.fecha, 'YYYY-MM-DD') AS fecha, CASE WHEN f.tipo_ncf = 'B04' THEN 'nota_credito' ELSE 'factura' END AS tipo,
            f.ncf, f.id, f.total::text, o.ncf AS origen, to_char(f.vence, 'YYYY-MM-DD') AS vence
       FROM facturas f LEFT JOIN facturas o ON o.id = f.factura_origen_id
-     WHERE f.cliente_id = ${clienteId} AND f.moneda = ${moneda} AND NOT f.anulada AND f.fecha BETWEEN ${desde} AND ${hasta}`;
+     WHERE f.cliente_id = ${clienteId} AND f.moneda = ${moneda} AND f.estado = 'emitida' AND NOT f.anulada AND f.fecha BETWEEN ${desde} AND ${hasta}`;
   const cobros = await tx<{ fecha: string; numero: number; total: string; facturas: string; referencia: string | null }[]>`
     SELECT to_char(c.fecha, 'YYYY-MM-DD') AS fecha, c.numero, sum(a.monto)::text AS total,
            string_agg(f.ncf, ', ' ORDER BY f.ncf) AS facturas, c.referencia

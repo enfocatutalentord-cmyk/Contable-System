@@ -1,4 +1,3 @@
-import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -11,7 +10,6 @@ export default async function Cobros({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ mes?: string; q?: string }>;
 }) {
-  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
   const { permisos } = await accesoEmpresa(id);

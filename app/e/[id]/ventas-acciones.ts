@@ -2,25 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPermiso as exigirPermisoBase } from "@/lib/acceso";
-import { exigirModulo } from "@/lib/modulos";
-import type { Permiso } from "@/lib/permisos";
+import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
-import { limpiarRnc, rncValido } from "@/lib/empresas";
+import { limpiarRnc } from "@/lib/empresas";
 import { aCentavos, leerMonto } from "@/lib/montos";
+import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import {
-  anularCobro, anularFactura, emitirFactura, emitirNotaCredito, leerCantidad, leerTasa, MOTIVOS_608,
-  registrarCobro, type LineaVenta, type TipoNcf,
+  anularCobro, anularFactura, CLAVES_CUENTAS, descartarBorradorFactura, emitir, emitirNotaCredito, esTipoFactura, guardarBorradorFactura,
+  leerCantidad, leerTasa, MOTIVOS_608, registrarCobro, type LineaEntrada,
 } from "@/lib/ventas";
 import type { Estado } from "../../acciones-cuenta";
-
-// Todas las acciones de ventas exigen que el módulo esté encendido.
-async function exigirPermiso(empresaId: string, permiso: Permiso) {
-  exigirModulo("ventas");
-  return exigirPermisoBase(empresaId, permiso);
-}
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -31,65 +24,85 @@ function monto(fd: FormData, campo: string): bigint | null {
   return m === null ? null : aCentavos(m);
 }
 
+// ───── Clientes ─────
+
 export async function guardarCliente(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "registrar");
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
-  const rnc = limpiarRnc(texto(fd, "rnc"));
+  const tipoId = texto(fd, "tipo_identificacion");
+  const ident = tipoId === "pasaporte" ? texto(fd, "rnc").toUpperCase() : limpiarRnc(texto(fd, "rnc"));
   const dias = Number(texto(fd, "dias_credito") || "0");
+  const ncf = texto(fd, "ncf_predeterminado");
+  const retenciones = fd.getAll("retenciones").map(String).filter(esUuid);
   if (!nombre) return { error: "Escribe el nombre o razón social." };
-  if (rnc && !rncValido(rnc)) return { error: "El RNC debe tener 9 dígitos (o 11 si es cédula)." };
+  if (ident && tipoId === "rnc" && !/^\d{9}$/.test(ident)) return { error: "El RNC debe tener 9 dígitos." };
+  if (ident && tipoId === "cedula" && !/^\d{11}$/.test(ident)) return { error: "La cédula debe tener 11 dígitos." };
+  if (ident && tipoId === "pasaporte" && !/^[A-Z0-9]{5,20}$/.test(ident)) return { error: "El pasaporte no es válido." };
+  if (ident && !["rnc", "cedula", "pasaporte"].includes(tipoId)) return { error: "Elige el tipo de identificación." };
+  if (ncf && !esTipoFactura(ncf)) return { error: "El comprobante habitual no es válido." };
   if (!Number.isInteger(dias) || dias < 0 || dias > 365) return { error: "Los días de crédito van de 0 a 365." };
   const datos = {
-    nombre, rnc: rnc || null, email: texto(fd, "email") || null, telefono: texto(fd, "telefono") || null,
-    direccion: texto(fd, "direccion") || null, dias, activo: id ? fd.get("activo") === "on" : true,
+    nombre, rnc: ident || null, tipo_identificacion: ident ? tipoId : null, email: texto(fd, "email") || null,
+    telefono: texto(fd, "telefono") || null, direccion: texto(fd, "direccion") || null, dias_credito: dias,
+    ncf_predeterminado: ncf || null, retenciones, activo: id ? fd.get("activo") === "on" : true,
   };
   try {
     await conEmpresa(empresaId, async (tx) => {
+      if (retenciones.length) {
+        const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM retenciones WHERE id = ANY(${retenciones}::uuid[])`;
+        if (n !== retenciones.length) throw new ErrorContable("Una de las retenciones no existe");
+      }
       if (id) {
-        const r = await tx`
-          UPDATE clientes SET nombre = ${datos.nombre}, rnc = ${datos.rnc}, email = ${datos.email}, telefono = ${datos.telefono},
-                 direccion = ${datos.direccion}, dias_credito = ${datos.dias}, activo = ${datos.activo}
-           WHERE id = ${id}`;
+        if (!esUuid(id)) throw new ErrorContable("Cliente no válido");
+        const r = await tx`UPDATE clientes SET ${tx(datos)} WHERE id = ${id}`;
         if (r.count === 0) throw new ErrorContable("El cliente no existe");
       } else {
-        await tx`
-          INSERT INTO clientes (empresa_id, nombre, rnc, email, telefono, direccion, dias_credito)
-          VALUES (${empresaId}, ${datos.nombre}, ${datos.rnc}, ${datos.email}, ${datos.telefono}, ${datos.direccion}, ${datos.dias})`;
+        await tx`INSERT INTO clientes ${tx({ ...datos, empresa_id: empresaId })}`;
       }
       await bitacora(tx, empresaId, usuario.id, id ? "cliente_editado" : "cliente_creado", { nombre });
     });
   } catch (e) {
     const err = e as { code?: string };
-    return { error: err.code === "23505" ? "Ya hay un cliente con ese RNC." : mensajeError(e) };
+    return { error: err.code === "23505" ? "Ya hay un cliente con esa identificación." : mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}/clientes`);
   if (id) redirect(`/e/${empresaId}/clientes`);
   return { ok: `Cliente ${nombre} guardado.` };
 }
 
+// ───── Productos y servicios ─────
+
 export async function guardarServicio(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "registrar");
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
   const precio = leerMonto(texto(fd, "precio"));
-  const tasa = Number(texto(fd, "tasa_itbis"));
+  const impuesto = texto(fd, "impuesto");
+  const adicional = texto(fd, "impuesto_adicional") || null;
   const cuenta = texto(fd, "cuenta_ingreso") || null;
-  if (!nombre) return { error: "Escribe el nombre del servicio." };
+  if (!nombre) return { error: "Escribe el nombre." };
   if (precio === null) return { error: "El precio no es válido." };
-  if (![0, 16, 18].includes(tasa)) return { error: "El ITBIS debe ser 18 %, 16 % o exento." };
+  if (!esUuid(impuesto)) return { error: "Elige el ITBIS (o exento)." };
+  if ((adicional && !esUuid(adicional)) || (cuenta && !esUuid(cuenta))) return { error: "Datos no válidos." };
   try {
     await conEmpresa(empresaId, async (tx) => {
+      const [p] = await tx<{ tipo: string }[]>`SELECT tipo FROM impuestos WHERE id = ${impuesto}`;
+      if (!p || !["itbis", "exento"].includes(p.tipo)) throw new ErrorContable("El impuesto principal debe ser ITBIS o exento");
+      if (adicional) {
+        const [a] = await tx<{ tipo: string }[]>`SELECT tipo FROM impuestos WHERE id = ${adicional}`;
+        if (!a || ["itbis", "exento"].includes(a.tipo)) throw new ErrorContable("El cargo adicional no puede ser otro ITBIS");
+      }
       if (cuenta) {
         const [c] = await tx<{ tipo: string; de_detalle: boolean }[]>`SELECT tipo, de_detalle FROM cuentas WHERE id = ${cuenta}`;
         if (!c || c.tipo !== "ingreso" || !c.de_detalle) throw new ErrorContable("La cuenta de ingreso debe ser una cuenta de detalle de ingresos");
       }
+      const datos = { nombre, precio, impuesto_id: impuesto, impuesto_adicional_id: adicional, cuenta_ingreso_id: cuenta };
       if (id) {
-        await tx`UPDATE servicios SET nombre = ${nombre}, precio = ${precio}, tasa_itbis = ${tasa}, cuenta_ingreso_id = ${cuenta},
-                        activo = ${fd.get("activo") === "on"} WHERE id = ${id}`;
+        if (!esUuid(id)) throw new ErrorContable("Dato no válido");
+        await tx`UPDATE servicios SET ${tx({ ...datos, activo: fd.get("activo") === "on" })} WHERE id = ${id}`;
       } else {
-        await tx`INSERT INTO servicios (empresa_id, nombre, precio, tasa_itbis, cuenta_ingreso_id)
-                 VALUES (${empresaId}, ${nombre}, ${precio}, ${tasa}, ${cuenta})`;
+        await tx`INSERT INTO servicios ${tx({ ...datos, empresa_id: empresaId })}`;
       }
       await bitacora(tx, empresaId, usuario.id, id ? "servicio_editado" : "servicio_creado", { nombre });
     });
@@ -98,90 +111,116 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
   }
   revalidatePath(`/e/${empresaId}/servicios`);
   if (id) redirect(`/e/${empresaId}/servicios`);
-  return { ok: `Servicio ${nombre} guardado.` };
+  return { ok: `${nombre} guardado.` };
 }
 
-type LineaForm = { servicioId: string; descripcion: string; cantidad: string; precio: string; tasa: string };
+// ───── Facturas ─────
 
-export async function crearFactura(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
-  const clienteId = texto(fd, "cliente");
-  const tipo = texto(fd, "tipo") as Exclude<TipoNcf, "B04">;
-  const fecha = texto(fd, "fecha");
-  let vence = texto(fd, "vence");
-  const moneda = texto(fd, "moneda") === "USD" ? "USD" : "DOP";
-  const tasa = moneda === "DOP" ? 10000n : leerTasa(texto(fd, "tasa"));
-  if (!clienteId) return { error: "Elige el cliente." };
-  if (!["B01", "B02", "B14", "B15"].includes(tipo)) return { error: "Elige el tipo de comprobante." };
-  if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
-  if (!fechaValida(vence)) vence = fecha;
-  if (vence < fecha) return { error: "El vencimiento no puede ser antes de la fecha de la factura." };
-  if (tasa === null) return { error: "Escribe la tasa del dólar." };
+type LineaForm = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string };
 
+function leerLineas(fd: FormData): LineaEntrada[] | string {
   let crudas: LineaForm[];
   try {
     crudas = JSON.parse(String(fd.get("lineas") ?? "[]"));
   } catch {
-    return { error: "No se pudieron leer las líneas." };
+    return "No se pudieron leer las líneas.";
   }
-  const lineas: LineaVenta[] = [];
+  const lineas: LineaEntrada[] = [];
   for (const [i, l] of crudas.entries()) {
     if (!l.descripcion.trim() && !l.precio) continue;
     const cantidad = leerCantidad(l.cantidad || "1");
     const precio = leerMonto(l.precio);
-    const tasaItbis = Number(l.tasa);
-    if (!l.descripcion.trim()) return { error: `Línea ${i + 1}: escribe la descripción.` };
-    if (cantidad === null) return { error: `Línea ${i + 1}: la cantidad no es válida.` };
-    if (precio === null) return { error: `Línea ${i + 1}: el precio no es válido.` };
-    if (![0, 16, 18].includes(tasaItbis)) return { error: `Línea ${i + 1}: el ITBIS no es válido.` };
+    if (!l.descripcion.trim()) return `Línea ${i + 1}: escribe la descripción.`;
+    if (cantidad === null) return `Línea ${i + 1}: la cantidad no es válida.`;
+    if (precio === null) return `Línea ${i + 1}: el precio no es válido.`;
+    if (!esUuid(l.impuesto) || (l.adicional && !esUuid(l.adicional)) || (l.servicioId && !esUuid(l.servicioId))) {
+      return `Línea ${i + 1}: elige el impuesto.`;
+    }
     lineas.push({
       servicioId: l.servicioId || null, descripcion: l.descripcion.trim(), cantidad, precio: aCentavos(precio),
-      tasa: tasaItbis, cuentaIngresoId: "", // la cuenta sale del servicio o de la configuración, nunca del navegador
+      impuestoIds: [l.impuesto, ...(l.adicional ? [l.adicional] : [])],
     });
   }
+  return lineas;
+}
+
+// Guarda la factura como borrador o, con accion=emitir, la guarda y la emite (toma NCF y registra el asiento).
+export async function guardarFactura(empresaId: string, facturaId: string | null, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar");
+  const emitirAhora = texto(fd, "accion") === "emitir";
+  if (emitirAhora && !puede(permisos, "contabilizar")) return { error: "Tu perfil no permite emitir; guárdala como borrador." };
+  const clienteId = texto(fd, "cliente");
+  const tipo = texto(fd, "tipo");
+  const fecha = texto(fd, "fecha");
+  let vence = texto(fd, "vence");
+  const moneda = texto(fd, "moneda") === "USD" ? "USD" : "DOP";
+  const tasa = moneda === "DOP" ? 10000n : leerTasa(texto(fd, "tasa"));
+  if (!esUuid(clienteId)) return { error: "Elige el cliente." };
+  if (!esTipoFactura(tipo)) return { error: "Elige el tipo de comprobante." };
+  if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
+  if (!fechaValida(vence)) vence = fecha;
+  if (tasa === null) return { error: "Escribe la tasa del dólar." };
+  const lineas = leerLineas(fd);
+  if (typeof lineas === "string") return { error: lineas };
   let id: string;
+  let ncf: string | null = null;
   try {
-    id = await conEmpresa(empresaId, async (tx) => {
-      // Cada línea usa la cuenta de su servicio, o la de ingresos por servicios de la configuración.
-      const [{ cuenta_id: porDefecto }] = await tx<{ cuenta_id: string }[]>`
-        SELECT cuenta_id FROM cuentas_empresa WHERE clave = 'ingreso_servicios'`;
-      for (const l of lineas) {
-        if (!l.cuentaIngresoId) {
-          const [s] = l.servicioId
-            ? await tx<{ cuenta_ingreso_id: string | null }[]>`SELECT cuenta_ingreso_id FROM servicios WHERE id = ${l.servicioId}`
-            : [];
-          l.cuentaIngresoId = s?.cuenta_ingreso_id ?? porDefecto;
-        }
-      }
-      return emitirFactura(tx, {
-        empresaId, usuarioId: usuario.id, clienteId, tipo, fecha, vence, moneda, tasa, notas: texto(fd, "notas") || null, lineas,
+    ({ id, ncf } = await conEmpresa(empresaId, async (tx) => {
+      const id = await guardarBorradorFactura(tx, {
+        facturaId, empresaId, usuarioId: usuario.id, clienteId, tipo, fecha, vence, moneda, tasa, notas: texto(fd, "notas") || null, lineas,
       });
+      return { id, ncf: emitirAhora ? (await emitir(tx, { empresaId, usuarioId: usuario.id, facturaId: id })).ncf : null };
+    }));
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/facturas/${id}?${ncf ? "emitida" : "guardada"}=1`);
+}
+
+export async function emitirBorrador(empresaId: string, facturaId: string): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar");
+  try {
+    await conEmpresa(empresaId, (tx) => emitir(tx, { empresaId, usuarioId: usuario.id, facturaId }));
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1`);
+}
+
+export async function descartarFactura(empresaId: string, facturaId: string): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  try {
+    await conEmpresa(empresaId, async (tx) => {
+      await descartarBorradorFactura(tx, facturaId);
+      await bitacora(tx, empresaId, usuario.id, "factura_borrador_descartada", { id: facturaId });
     });
   } catch (e) {
     return { error: mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}`, "layout");
-  redirect(`/e/${empresaId}/facturas/${id}?nueva=1`);
+  redirect(`/e/${empresaId}/facturas?descartada=1`);
 }
 
 export async function crearNotaCredito(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "revertir");
   const fecha = texto(fd, "fecha");
   const subtotal = monto(fd, "subtotal");
-  const tasaItbis = Number(texto(fd, "tasa_itbis"));
+  const impuestoId = texto(fd, "impuesto");
   const motivo = texto(fd, "motivo");
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
-  if (subtotal === null || subtotal <= 0n) return { error: "Escribe el monto sin ITBIS." };
-  if (![0, 16, 18].includes(tasaItbis)) return { error: "El ITBIS no es válido." };
+  if (subtotal === null || subtotal <= 0n) return { error: "Escribe el monto sin impuestos." };
+  if (!esUuid(impuestoId)) return { error: "Elige el impuesto." };
   if (!motivo) return { error: "Escribe el motivo." };
   let id: string;
   try {
-    id = await conEmpresa(empresaId, (tx) => emitirNotaCredito(tx, { empresaId, usuarioId: usuario.id, facturaId, fecha, subtotal, tasaItbis, motivo }));
+    id = await conEmpresa(empresaId, (tx) => emitirNotaCredito(tx, { empresaId, usuarioId: usuario.id, facturaId, fecha, subtotal, impuestoId, motivo }));
   } catch (e) {
     return { error: mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}`, "layout");
-  redirect(`/e/${empresaId}/facturas/${id}?nueva=1`);
+  redirect(`/e/${empresaId}/facturas/${id}?emitida=1`);
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
@@ -197,6 +236,8 @@ export async function anularComprobante(empresaId: string, facturaId: string, _:
   redirect(`/e/${empresaId}/facturas/${facturaId}?anulada=1`);
 }
 
+// ───── Cobros ─────
+
 export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "registrar");
   const clienteId = texto(fd, "cliente");
@@ -204,32 +245,30 @@ export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Pr
   const moneda = texto(fd, "moneda") === "USD" ? "USD" : "DOP";
   const tasa = moneda === "DOP" ? 10000n : leerTasa(texto(fd, "tasa"));
   const recibido = monto(fd, "recibido");
-  const retencionItbis = monto(fd, "retencion_itbis");
-  const retencionIsr = monto(fd, "retencion_isr");
   const formaPago = texto(fd, "forma_pago");
-  if (!clienteId) return { error: "Elige el cliente." };
+  if (!esUuid(clienteId)) return { error: "Elige el cliente." };
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
   if (tasa === null) return { error: "Escribe la tasa del dólar del día del cobro." };
-  if (recibido === null || retencionItbis === null || retencionIsr === null) return { error: "Revisa los montos." };
+  if (recibido === null) return { error: "Revisa los montos." };
   if (!["efectivo", "transferencia", "cheque", "tarjeta", "otro"].includes(formaPago)) return { error: "Elige la forma de pago." };
-  let crudas: { facturaId: string; monto: string }[];
+  let aplicaciones: { facturaId: string; monto: bigint }[];
+  let retenciones: { retencionId: string; monto: bigint }[];
   try {
-    crudas = JSON.parse(String(fd.get("aplicaciones") ?? "[]"));
+    const leer = (campo: string, clave: string) => (JSON.parse(String(fd.get(campo) ?? "[]")) as Record<string, string>[]).map((a) => {
+      const m = leerMonto(a.monto);
+      if (m === null || !esUuid(a[clave])) throw new Error("monto");
+      return { id: a[clave], monto: aCentavos(m) };
+    });
+    aplicaciones = leer("aplicaciones", "facturaId").map((a) => ({ facturaId: a.id, monto: a.monto }));
+    retenciones = leer("retenciones", "retencionId").map((r) => ({ retencionId: r.id, monto: r.monto }));
   } catch {
-    return { error: "No se pudieron leer las facturas." };
-  }
-  const aplicaciones: { facturaId: string; monto: bigint }[] = [];
-  for (const a of crudas) {
-    const m = leerMonto(a.monto);
-    if (m === null) return { error: "Uno de los montos aplicados no es válido." };
-    aplicaciones.push({ facturaId: a.facturaId, monto: aCentavos(m) });
+    return { error: "Uno de los montos no es válido." };
   }
   let numero: number;
   try {
     numero = await conEmpresa(empresaId, (tx) => registrarCobro(tx, {
       empresaId, usuarioId: usuario.id, clienteId, fecha, moneda, tasa, cuentaDestinoId: texto(fd, "cuenta_destino"),
-      formaPago, referencia: texto(fd, "referencia") || null, notas: texto(fd, "notas") || null,
-      recibido, retencionItbis, retencionIsr, aplicaciones,
+      formaPago, referencia: texto(fd, "referencia") || null, notas: texto(fd, "notas") || null, recibido, retenciones, aplicaciones,
     }));
   } catch (e) {
     return { error: mensajeError(e) };
@@ -251,16 +290,15 @@ export async function anularRecibo(empresaId: string, numero: number, _: Estado,
   redirect(`/e/${empresaId}/cobros/${numero}?anulado=1`);
 }
 
-const CLAVES = ["cxc", "itbis_por_pagar", "ingreso_servicios", "devoluciones_ventas", "itbis_retenido_terceros",
-  "isr_retenido_terceros", "ganancia_cambiaria", "perdida_cambiaria"];
+// ───── Configuración de ventas ─────
 
 export async function guardarCuentasEmpresa(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "catalogo");
   try {
     await conEmpresa(empresaId, async (tx) => {
-      for (const clave of CLAVES) {
+      for (const clave of CLAVES_CUENTAS) {
         const cuentaId = texto(fd, clave);
-        if (!cuentaId) throw new ErrorContable("Elige todas las cuentas");
+        if (!esUuid(cuentaId)) throw new ErrorContable("Elige todas las cuentas");
         const [c] = await tx<{ de_detalle: boolean }[]>`SELECT de_detalle FROM cuentas WHERE id = ${cuentaId}`;
         if (!c?.de_detalle) throw new ErrorContable("Todas deben ser cuentas de detalle");
         await tx`INSERT INTO cuentas_empresa (empresa_id, clave, cuenta_id) VALUES (${empresaId}, ${clave}, ${cuentaId})
@@ -274,4 +312,3 @@ export async function guardarCuentasEmpresa(empresaId: string, _: Estado, fd: Fo
   revalidatePath(`/e/${empresaId}/configuracion`);
   return { ok: "Configuración guardada." };
 }
-

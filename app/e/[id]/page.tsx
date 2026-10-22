@@ -4,7 +4,6 @@ import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { antiguedad } from "@/lib/cxc";
-import { MODULOS } from "@/lib/modulos";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
 
 export default async function InicioEmpresa({ params, searchParams }: {
@@ -26,7 +25,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
       SELECT a.id, a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.estado,
              (SELECT sum(debe)::text FROM lineas_asiento WHERE asiento_id = a.id) AS total
         FROM asientos a ORDER BY a.creado DESC LIMIT 6`;
-    const cxc = MODULOS.ventas ? await antiguedad(tx, hoy) : null;
+    const cxc = await antiguedad(tx, hoy);
     return { cuentas, delMes: n, recientes, cxc, borradores: b };
   });
 
@@ -80,7 +79,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
         {puede(permisos, "registrar") && (
           <div className="fila">
             <Link className="boton primario" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>
-            {MODULOS.ventas && <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
+            <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>
           </div>
         )}
       </div>

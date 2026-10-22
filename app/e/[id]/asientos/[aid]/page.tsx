@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
-import { TIPOS, verTamano } from "@/lib/documentos";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { adjuntarDocumento, contabilizarBorrador, descartarBorrador, retirarDocumento, revertir } from "../../acciones";
+import { contabilizarBorrador, descartarBorrador, revertir } from "../../acciones";
+import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" }) ?? "";
@@ -53,14 +53,10 @@ export default async function VerAsiento({ params, searchParams }: {
       SELECT c.codigo, c.nombre, l.descripcion, l.debe::text, l.haber::text
         FROM lineas_asiento l JOIN cuentas c ON c.id = l.cuenta_id
        WHERE l.asiento_id = ${aid} ORDER BY l.orden`;
-    const documentos = await tx<{ id: string; nombre: string; tipo: string; tamano: number; descripcion: string | null; subido_en: Date; quien: string | null }[]>`
-      SELECT d.id, d.nombre, d.tipo, d.tamano, d.descripcion, d.subido_en, u.nombre AS quien
-        FROM documentos d LEFT JOIN usuarios u ON u.id = d.subido_por
-       WHERE d.entidad = 'asiento' AND d.entidad_id = ${aid} AND NOT d.eliminado ORDER BY d.subido_en`;
-    return { a, lineas, documentos };
+    return { a, lineas };
   });
   if (!datos) notFound();
-  const { a, lineas, documentos } = datos;
+  const { a, lineas } = datos;
   const totalDebe = lineas.reduce((s, l) => s + Number(l.debe), 0);
   const totalHaber = lineas.reduce((s, l) => s + Number(l.haber), 0);
   const cuadra = Math.round(totalDebe * 100) === Math.round(totalHaber * 100) && totalDebe > 0 && lineas.length >= 2;
@@ -143,35 +139,8 @@ export default async function VerAsiento({ params, searchParams }: {
         </>
       )}
 
-      <h2>Documentos de soporte</h2>
-      {documentos.length > 0 ? (
-        <div className="tabla-envoltura">
-          <table>
-            <tbody>
-              {documentos.map((d) => (
-                <tr key={d.id}>
-                  <td><a href={`/e/${id}/documentos/${d.id}`} target="_blank" rel="noopener">{d.nombre}</a>{d.descripcion && <div className="sub" style={{ margin: 0 }}>{d.descripcion}</div>}</td>
-                  <td>{TIPOS[d.tipo]} · {verTamano(d.tamano)}</td>
-                  <td>{d.quien} · {fechaHora(d.subido_en)}</td>
-                  <td className="num">
-                    {borrador && puede(permisos, "adjuntar") && (
-                      <Formulario accion={retirarDocumento.bind(null, id, d.id)} boton="Retirar" className="fila"><span /></Formulario>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="sub">Sin documentos adjuntos.</p>}
-      {puede(permisos, "adjuntar") && a.estado !== "anulado" && (
-        <Formulario accion={adjuntarDocumento.bind(null, id, "asiento", aid)} boton="Adjuntar" className="fila">
-          <label style={{ flex: "1 1 260px" }}>Archivo (PDF, JPG o PNG, hasta 4 MB)
-            <input type="file" name="archivo" accept="application/pdf,image/jpeg,image/png" required />
-          </label>
-          <label style={{ flex: "1 1 220px" }}>Descripción (opcional)<input name="descripcion" placeholder="Factura del proveedor, recibo…" /></label>
-        </Formulario>
-      )}
+      <DocumentosSoporte empresaId={id} entidad="asiento" entidadId={aid} retirables={borrador}
+        puedeAdjuntar={puede(permisos, "adjuntar") && a.estado !== "anulado"} />
 
       {puede(permisos, "auditoria") && (
         <>

@@ -6,7 +6,6 @@ import { antiguedad, estadoCuenta, TRAMOS } from "@/lib/cxc";
 import { conEmpresa } from "@/lib/db";
 import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/exportar";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
-import { MODULOS } from "@/lib/modulos";
 import { deCentavos, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
@@ -92,7 +91,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           `${ACCIONES[c.accion]} ${(TABLAS[c.tabla] ?? c.tabla).toLowerCase()}`, describir(c, nombres).join(" · ")]),
       }];
     }
-    if (MODULOS.ventas && reporte === "antiguedad") {
+    if (reporte === "antiguedad") {
       const corte = fechaValida(sp.corte) ? sp.corte : hasta;
       const { filas: clientes, totales, total } = await conEmpresa(id, (tx) => antiguedad(tx, corte));
       const filas: Celda[][] = [];
@@ -106,7 +105,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         filas, totales: ["Total", "", "", "", ...totales.map(deCentavos), deCentavos(total)],
       }];
     }
-    if (MODULOS.ventas && reporte === "estado-cuenta") {
+    if (reporte === "estado-cuenta") {
       const moneda = sp.moneda === "USD" ? "USD" : "DOP";
       const datos = await conEmpresa(id, async (tx) => {
         const [c] = await tx<{ id: string; nombre: string; rnc: string | null }[]>`SELECT id, nombre, rnc FROM clientes WHERE id = ${sp.cliente ?? null}::uuid`;

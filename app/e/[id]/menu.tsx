@@ -5,17 +5,13 @@ import { usePathname } from "next/navigation";
 
 type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][] };
 
-export function Menu({ empresaId, ventas, auditoria }: { empresaId: string; ventas: boolean; auditoria: boolean }) {
+export function Menu({ empresaId, auditoria }: { empresaId: string; auditoria: boolean }) {
   const ruta = usePathname();
   const base = `/e/${empresaId}`;
   const secciones: Seccion[] = [
     { enlaces: [["", "Inicio"]] },
-    ...(ventas
-      ? [
-          { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/clientes", "Clientes"], ["/servicios", "Servicios"]] },
-          { grupo: "Cuentas por cobrar", enlaces: [["/cxc", "Antigüedad de saldos"], ["/cxc/estado", "Estado de cuenta"]] },
-        ] as Seccion[]
-      : []),
+    { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/clientes", "Clientes"], ["/servicios", "Productos y servicios"]] },
+    { grupo: "Cuentas por cobrar", enlaces: [["/cxc", "Antigüedad de saldos"], ["/cxc/estado", "Estado de cuenta"]] },
     { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/catalogo", "Catálogo de cuentas"], ["/cierres", "Cierres de período"]] },
     { grupo: "Libros", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
     {
@@ -28,7 +24,7 @@ export function Menu({ empresaId, ventas, auditoria }: { empresaId: string; vent
       grupo: "Empresa",
       enlaces: [
         ["/empresa", "Ficha de la empresa"],
-        ...(ventas ? ([["/configuracion", "Configuración de ventas"]] as [string, string][]) : []),
+        ["/configuracion", "Configuración de ventas"],
         ["/usuarios", "Usuarios y permisos"],
       ],
     },

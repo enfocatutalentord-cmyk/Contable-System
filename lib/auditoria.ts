@@ -11,6 +11,7 @@ export const TABLAS: Record<string, string> = {
   documentos: "Documento", cuentas_empresa: "Configuración de cuentas", clientes: "Cliente", servicios: "Servicio",
   secuencias_ncf: "Rango de NCF", facturas: "Comprobante", lineas_factura: "Línea de comprobante", cobros: "Cobro",
   aplicaciones_cobro: "Aplicación de cobro", impuestos: "Impuesto", retenciones: "Retención", obligaciones_empresa: "Obligación fiscal",
+  impuestos_linea_factura: "Impuesto de línea", retenciones_cobro: "Retención del cobro",
 };
 
 export const ACCIONES = { insert: "Creó", update: "Modificó", delete: "Eliminó" } as const;
@@ -26,13 +27,17 @@ const CAMPOS: Record<string, string> = {
   tasa: "Tasa", impuesto: "Impuesto", activo: "Activo", nota: "Nota", vigente_desde: "Vigente desde", vigente_hasta: "Vigente hasta",
   cuenta_ventas_id: "Cuenta en ventas", cuenta_compras_id: "Cuenta en compras", cuenta_por_terceros_id: "Cuenta cuando nos retienen",
   cuenta_a_terceros_id: "Cuenta cuando retenemos", codigo_606: "Tipo en el 606", clave: "Obligación", tipo_persona: "Tipo de contribuyente",
+  ncf: "NCF", ncf_vence: "NCF válido hasta", tipo_ncf: "Comprobante", subtotal: "Subtotal", itbis: "ITBIS", otros_impuestos: "Otros impuestos", otros: "Otros impuestos",
+  cliente_id: "Cliente", vence: "Vence", moneda: "Moneda", cantidad: "Cantidad", precio: "Precio", monto: "Monto", recibido: "Recibido",
+  emitida_en: "Emitida", ncf_predeterminado: "Comprobante habitual", dias_credito: "Días de crédito", impuesto_id: "Impuesto",
   contribuye_itbis: "Contribuyente de ITBIS", agente_retencion: "Agente de retención", emisor_ecf: "Emisor e-CF", ecf_desde: "e-CF desde",
 };
 
 // Campos técnicos que no aportan al leer el historial.
 const RUIDO = new Set(["id", "empresa_id", "creado", "creado_por", "modificado_por", "modificado_en", "aprobado_por", "aprobado_en",
   "anulado", "anulado_por", "anulado_en", "orden", "asiento_id", "sha256", "subido_por", "subido_en", "eliminado_por", "eliminado_en",
-  "firma_id", "creada", "padre_id", "nivel", "tipo", "revierte_a", "usuario_id"]);
+  "firma_id", "creada", "padre_id", "nivel", "tipo", "revierte_a", "usuario_id", "factura_id", "linea_id", "cobro_id",
+  "emitida_por", "cuenta_ingreso_id", "servicio_id", "retencion_id", "cuenta_destino_id"]);
 
 export type Nombres = Record<string, string>;
 
@@ -43,6 +48,7 @@ function valor(v: unknown, nombres: Nombres = {}, campo = ""): string {
   if (MONTOS.has(campo) && (typeof v === "number" || typeof v === "string") && !Number.isNaN(Number(v))) return verMonto(String(v));
   if (typeof v === "string" && nombres[v]) return nombres[v];
   if (typeof v === "boolean") return v ? "sí" : "no";
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return new Date(v).toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
   return String(v);
 }
 
@@ -83,6 +89,10 @@ export async function historial(tx: Tx, f: Filtros, limite = 200): Promise<Cambi
 export async function nombresHistorial(tx: Tx): Promise<Nombres> {
   const filas = await tx<{ id: string; nombre: string }[]>`
     SELECT id::text, codigo || ' · ' || nombre AS nombre FROM cuentas
-    UNION ALL SELECT id::text, nombre FROM perfiles`;
+    UNION ALL SELECT id::text, nombre FROM perfiles
+    UNION ALL SELECT id::text, nombre FROM clientes
+    UNION ALL SELECT id::text, nombre FROM impuestos
+    UNION ALL SELECT id::text, nombre FROM retenciones
+    UNION ALL SELECT id::text, nombre FROM servicios`;
   return Object.fromEntries(filas.map((f) => [f.id, f.nombre]));
 }

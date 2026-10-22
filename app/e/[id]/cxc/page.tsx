@@ -1,4 +1,3 @@
-import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { Fragment } from "react";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -11,7 +10,6 @@ export default async function Antiguedad({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ corte?: string; detalle?: string }>;
 }) {
-  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
   const { empresa } = await accesoEmpresa(id);

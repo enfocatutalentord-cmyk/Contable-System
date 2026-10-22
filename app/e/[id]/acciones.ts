@@ -167,7 +167,14 @@ export async function revertir(empresaId: string, asientoId: string, _: Estado, 
 
 // ───── Documentos adjuntos ─────
 
-export async function adjuntarDocumento(empresaId: string, entidad: "asiento", entidadId: string, _: Estado, fd: FormData): Promise<Estado> {
+// Dónde vive cada tipo de documento que acepta adjuntos (tabla y ruta de su página).
+const ENTIDADES = {
+  asiento: { tabla: "asientos", ruta: "asientos", nombre: "El asiento" },
+  factura: { tabla: "facturas", ruta: "facturas", nombre: "La factura" },
+  cobro: { tabla: "cobros", ruta: "cobros", nombre: "El cobro" },
+} as const;
+
+export async function adjuntarDocumento(empresaId: string, entidad: keyof typeof ENTIDADES, entidadId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "adjuntar");
   const archivo = fd.get("archivo");
   if (!(archivo instanceof File) || archivo.size === 0) return { error: "Elige el archivo." };
@@ -177,8 +184,10 @@ export async function adjuntarDocumento(empresaId: string, entidad: "asiento", e
   if (!tipo) return { error: "Solo se aceptan PDF, JPG y PNG." };
   try {
     await conEmpresa(empresaId, async (tx) => {
-      const [a] = await tx`SELECT 1 FROM asientos WHERE id = ${entidadId}`;
-      if (!a) throw new ErrorContable("El asiento no existe");
+      const e = ENTIDADES[entidad];
+      if (!e || !esUuid(entidadId)) throw new ErrorContable("Documento no válido");
+      const [a] = await tx`SELECT 1 FROM ${tx(e.tabla)} WHERE id = ${entidadId}`;
+      if (!a) throw new ErrorContable(`${e.nombre} no existe`);
       await tx`
         INSERT INTO documentos (empresa_id, entidad, entidad_id, nombre, tipo, tamano, sha256, contenido, descripcion, subido_por)
         VALUES (${empresaId}, ${entidad}, ${entidadId}, ${nombreSeguro(archivo.name)}, ${tipo}, ${bytes.length}, ${huella(bytes)},
@@ -188,28 +197,28 @@ export async function adjuntarDocumento(empresaId: string, entidad: "asiento", e
     const err = e as { code?: string };
     return { error: err.code === "23505" ? "Ese mismo archivo ya está adjunto." : mensajeError(e) };
   }
-  revalidatePath(`/e/${empresaId}/asientos/${entidadId}`);
+  revalidatePath(`/e/${empresaId}`, "layout");
   return { ok: "Documento adjuntado." };
 }
 
-// Los documentos de un asiento contabilizado son su soporte y no se retiran; los de un borrador sí (queda registro).
+// El soporte de algo contabilizado o emitido no se retira; el de un borrador sí (queda registro).
 export async function retirarDocumento(empresaId: string, documentoId: string, _: Estado): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "adjuntar");
-  let asiento: string;
   try {
-    asiento = await conEmpresa(empresaId, async (tx) => {
-      const [d] = await tx<{ entidad_id: string; estado: string | null }[]>`
-        SELECT d.entidad_id, a.estado FROM documentos d LEFT JOIN asientos a ON a.id = d.entidad_id
-         WHERE d.id = ${documentoId} AND NOT d.eliminado`;
+    await conEmpresa(empresaId, async (tx) => {
+      const [d] = await tx<{ entidad_id: string; borrador: boolean }[]>`
+        SELECT d.entidad_id,
+               COALESCE((SELECT a.estado = 'borrador' FROM asientos a WHERE d.entidad = 'asiento' AND a.id = d.entidad_id),
+                        (SELECT f.estado = 'borrador' FROM facturas f WHERE d.entidad = 'factura' AND f.id = d.entidad_id), false) AS borrador
+          FROM documentos d WHERE d.id = ${documentoId} AND NOT d.eliminado`;
       if (!d) throw new ErrorContable("El documento no existe");
-      if (d.estado !== "borrador") throw new ErrorContable("El soporte de un asiento contabilizado no se retira");
+      if (!d.borrador) throw new ErrorContable("El soporte de algo ya contabilizado o emitido no se retira");
       await tx`UPDATE documentos SET eliminado = true, eliminado_por = ${usuario.id}, eliminado_en = now() WHERE id = ${documentoId}`;
-      return d.entidad_id;
     });
   } catch (e) {
     return { error: mensajeError(e) };
   }
-  revalidatePath(`/e/${empresaId}/asientos/${asiento}`);
+  revalidatePath(`/e/${empresaId}`, "layout");
   return { ok: "Documento retirado." };
 }
 
