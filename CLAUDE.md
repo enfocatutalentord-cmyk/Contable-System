@@ -18,6 +18,12 @@ Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendi
   606/607/608 y e-CF).
 - No inventar datos, montos ni resultados. Antes de decir que algo funciona, probarlo.
 
+## Documento rector
+
+**`docs/requerimientos-sistema.md`** (22-oct-2026) manda sobre todo lo anterior: sistema para **firmas contables** con
+varios clientes, por fases con aprobación expresa, sin módulos ni cambios no autorizados. Antes de desarrollar se presenta
+la estructura técnica, dependencias y orden (presentado el 22-oct-2026; esperando aprobación).
+
 ## Qué es
 
 Software contable para empresas en República Dominicana, **pensado para venderse** a otras empresas (decisión de Joannie,
