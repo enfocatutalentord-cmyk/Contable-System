@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -13,16 +14,17 @@ export default async function Servicios({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ editar?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id } = await params;
   const { editar } = await searchParams;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const { servicios, ingresos } = await conEmpresa(id, async (tx) => ({
     servicios: await tx<Servicio[]>`
       SELECT s.id, s.nombre, s.precio::text, s.tasa_itbis::text, s.cuenta_ingreso_id, s.activo, c.codigo || ' · ' || c.nombre AS cuenta
         FROM servicios s LEFT JOIN cuentas c ON c.id = s.cuenta_ingreso_id ORDER BY s.activo DESC, s.nombre`,
     ingresos: (await listarCuentas(tx)).filter((c) => c.tipo === "ingreso" && c.de_detalle && c.activa),
   }));
-  const editable = puede(rol, "registrar");
+  const editable = puede(permisos, "registrar");
   const enEdicion = editable ? servicios.find((s) => s.id === editar) : undefined;
 
   return (

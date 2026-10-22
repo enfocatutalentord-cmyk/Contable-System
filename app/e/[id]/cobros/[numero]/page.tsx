@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
@@ -11,23 +12,24 @@ import { anularRecibo } from "../../ventas-acciones";
 type Cobro = {
   id: string; fecha: string; moneda: string; tasa: string; forma_pago: string; referencia: string | null; notas: string | null;
   recibido: string; retencion_itbis: string; retencion_isr: string; anulado: boolean; motivo_anulacion: string | null;
-  cliente: string; rnc: string | null; cuenta: string; asiento: number | null; creado_por: string | null;
+  cliente: string; rnc: string | null; cuenta: string; asiento: number | null; asiento_id: string | null; creado_por: string | null;
 };
 
 export default async function VerCobro({ params, searchParams }: {
   params: Promise<{ id: string; numero: string }>;
   searchParams: Promise<{ nuevo?: string; anulado?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id, numero: n } = await params;
   const sp = await searchParams;
   const numero = Number(n);
   if (!Number.isInteger(numero) || numero < 1) notFound();
-  const { empresa, rol } = await accesoEmpresa(id);
+  const { empresa, permisos } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Cobro[]>`
       SELECT c.id, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, c.moneda, c.tasa::text, c.forma_pago, c.referencia, c.notas,
              c.recibido::text, c.retencion_itbis::text, c.retencion_isr::text, c.anulado, c.motivo_anulacion,
-             cl.nombre AS cliente, cl.rnc, cu.codigo || ' · ' || cu.nombre AS cuenta, a.numero AS asiento, u.nombre AS creado_por
+             cl.nombre AS cliente, cl.rnc, cu.codigo || ' · ' || cu.nombre AS cuenta, a.numero AS asiento, a.id AS asiento_id, u.nombre AS creado_por
         FROM cobros c JOIN clientes cl ON cl.id = c.cliente_id JOIN cuentas cu ON cu.id = c.cuenta_destino_id
         LEFT JOIN asientos a ON a.id = c.asiento_id LEFT JOIN usuarios u ON u.id = c.creado_por
        WHERE c.numero = ${numero}`;
@@ -52,7 +54,7 @@ export default async function VerCobro({ params, searchParams }: {
         {c.anulado && <p className="aviso">Recibo anulado. Motivo: {c.motivo_anulacion}</p>}
         <div className="fila" style={{ marginBottom: 16 }}>
           <BotonImprimir />
-          {c.asiento && <Link className="boton" href={`/e/${id}/asientos/${c.asiento}`}>Ver asiento n.º {c.asiento}</Link>}
+          {c.asiento && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
         </div>
       </div>
       <div className="documento">
@@ -94,7 +96,7 @@ export default async function VerCobro({ params, searchParams }: {
         </div>
         {c.notas && <p>{c.notas}</p>}
       </div>
-      {!c.anulado && puede(rol, "anular") && (
+      {!c.anulado && puede(permisos, "revertir") && (
         <div className="no-imprimir">
           <h2>Anular recibo</h2>
           {fueraDeCierre ? (

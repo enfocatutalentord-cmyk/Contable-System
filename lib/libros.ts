@@ -3,23 +3,23 @@ import { aCentavos } from "./montos";
 import { saldoNatural, saldosPorCuenta, type CuentaSaldo } from "./reportes";
 
 export type LineaDiario = {
-  numero: number; fecha: string; concepto: string; referencia: string | null;
+  asiento_id: string; numero: number; fecha: string; concepto: string; referencia: string | null;
   codigo: string; cuenta: string; descripcion: string | null; debe: string; haber: string;
 };
 
 export async function libroDiario(tx: Tx, desde: string, hasta: string): Promise<LineaDiario[]> {
   return tx<LineaDiario[]>`
-    SELECT a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.referencia,
+    SELECT a.id AS asiento_id, a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.referencia,
            c.codigo, c.nombre AS cuenta, l.descripcion, l.debe::text, l.haber::text
       FROM asientos a JOIN lineas_asiento l ON l.asiento_id = a.id JOIN cuentas c ON c.id = l.cuenta_id
-     WHERE NOT a.anulado AND a.fecha BETWEEN ${desde} AND ${hasta}
+     WHERE a.estado = 'contabilizado' AND a.fecha BETWEEN ${desde} AND ${hasta}
      ORDER BY a.fecha, a.numero, l.orden`;
 }
 
 export type Mayor = {
   cuenta: CuentaSaldo;
   inicial: bigint; // saldo natural
-  movimientos: { numero: number; fecha: string; concepto: string; descripcion: string | null; debe: string; haber: string; saldo: bigint }[];
+  movimientos: { asiento_id: string; numero: number; fecha: string; concepto: string; descripcion: string | null; debe: string; haber: string; saldo: bigint }[];
   final: bigint;
 };
 
@@ -28,10 +28,10 @@ export async function libroMayor(tx: Tx, cuentaId: string, desde: string, hasta:
   const saldos = await saldosPorCuenta(tx, desde, hasta);
   const cuenta = saldos.find((c) => c.id === cuentaId);
   if (!cuenta) return null;
-  const filas = await tx<{ numero: number; fecha: string; concepto: string; descripcion: string | null; debe: string; haber: string }[]>`
-    SELECT a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, l.descripcion, l.debe::text, l.haber::text
+  const filas = await tx<{ asiento_id: string; numero: number; fecha: string; concepto: string; descripcion: string | null; debe: string; haber: string }[]>`
+    SELECT a.id AS asiento_id, a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, l.descripcion, l.debe::text, l.haber::text
       FROM lineas_asiento l JOIN asientos a ON a.id = l.asiento_id JOIN cuentas c ON c.id = l.cuenta_id
-     WHERE NOT a.anulado AND a.fecha BETWEEN ${desde} AND ${hasta}
+     WHERE a.estado = 'contabilizado' AND a.fecha BETWEEN ${desde} AND ${hasta}
        AND (c.id = ${cuentaId} OR (${!cuenta.de_detalle} AND c.codigo LIKE ${cuenta.codigo + "%"}))
      ORDER BY a.fecha, a.numero, l.orden`;
   const inicial = saldoNatural(cuenta.tipo, cuenta.inicial);

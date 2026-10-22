@@ -15,9 +15,9 @@ export default async function Catalogo({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { editar } = await searchParams;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const cuentas = await conEmpresa(id, listarCuentas);
-  const editable = puede(rol, "catalogo");
+  const editable = puede(permisos, "catalogo");
   const enEdicion = editable ? cuentas.find((c) => c.id === editar) : undefined;
 
   return (

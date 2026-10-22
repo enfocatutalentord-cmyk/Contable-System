@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
@@ -17,13 +18,14 @@ const CLAVES: [clave: string, nombre: string, ayuda: string][] = [
 ];
 
 export default async function Configuracion({ params }: { params: Promise<{ id: string }> }) {
+  exigirModulo("ventas");
   const { id } = await params;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const { cuentas, actuales } = await conEmpresa(id, async (tx) => ({
     cuentas: (await listarCuentas(tx)).filter((c) => c.de_detalle && c.activa),
     actuales: Object.fromEntries((await tx<{ clave: string; cuenta_id: string }[]>`SELECT clave, cuenta_id FROM cuentas_empresa`).map((r) => [r.clave, r.cuenta_id])),
   }));
-  const editable = puede(rol, "catalogo");
+  const editable = puede(permisos, "catalogo");
 
   return (
     <>

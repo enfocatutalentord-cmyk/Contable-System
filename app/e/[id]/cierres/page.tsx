@@ -8,7 +8,7 @@ import { fijarBloqueo } from "../acciones";
 
 export default async function Cierres({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { empresa, rol } = await accesoEmpresa(id);
+  const { empresa, permisos } = await accesoEmpresa(id);
   const historial = await conEmpresa(id, (tx) => tx<{ accion: string; detalle: { antes: string | null; despues: string | null }; fecha: Date; nombre: string | null }[]>`
     SELECT b.accion, b.detalle, b.fecha, u.nombre FROM bitacora b LEFT JOIN usuarios u ON u.id = b.usuario_id
      WHERE b.accion IN ('periodo_cerrado', 'periodo_reabierto') ORDER BY b.fecha DESC LIMIT 24`);
@@ -29,17 +29,17 @@ export default async function Cierres({ params }: { params: Promise<{ id: string
             ? <>Período cerrado hasta el <strong>{verFecha(empresa.fecha_bloqueo)}</strong>.</>
             : <>No hay ningún período cerrado.</>}
         </p>
-        {puede(rol, "cerrar") ? (
+        {puede(permisos, "cerrar") ? (
           <Formulario accion={fijarBloqueo.bind(null, id)} boton="Guardar fecha de cierre" className="fila">
             <label>Cerrar hasta<input type="date" name="fecha" defaultValue={empresa.fecha_bloqueo ?? mesAnterior} /></label>
           </Formulario>
         ) : (
           <p className="sub">Solo el dueño o el contador pueden cerrar períodos.</p>
         )}
-        {puede(rol, "cerrar") && !puede(rol, "reabrir") && (
+        {puede(permisos, "cerrar") && !puede(permisos, "reabrir") && (
           <p className="sub" style={{ marginBottom: 0 }}>Puedes avanzar la fecha de cierre. Para reabrir un período cerrado hace falta el dueño.</p>
         )}
-        {puede(rol, "reabrir") && (
+        {puede(permisos, "reabrir") && (
           <p className="sub" style={{ marginBottom: 0 }}>Para reabrir, pon una fecha anterior o deja el campo vacío. Queda anotado quién lo hizo.</p>
         )}
       </div>

@@ -37,7 +37,7 @@ export default async function Balanza({ params, searchParams }: {
           <input type="checkbox" name="ceros" value="1" defaultChecked={conCeros} style={{ minHeight: 0 }} /> Incluir cuentas en cero
         </label>
         <button>Ver</button>
-        <a className="boton" href={`/e/${id}/exportar/balanza?${consulta}`}>Descargar Excel</a>
+        <><a className="boton" href={`/e/${id}/exportar/balanza?formato=xlsx&${consulta}`}>Excel</a><a className="boton" href={`/e/${id}/exportar/balanza?formato=pdf&${consulta}`}>PDF</a></>
       </form>
       {!cuadra && <p className="aviso">La balanza no cuadra. Esto no debería pasar; avísale al soporte.</p>}
       <div className="tabla-envoltura">

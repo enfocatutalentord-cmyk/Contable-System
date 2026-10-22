@@ -1,24 +1,27 @@
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
-import { NOMBRE_ROL } from "@/lib/permisos";
+import { MODULOS } from "@/lib/modulos";
+import { puede } from "@/lib/permisos";
 import { salir } from "../../acciones-cuenta";
 import { Menu } from "./menu";
 
 export default async function LayoutEmpresa({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { empresa, usuario, rol } = await accesoEmpresa(id);
+  const { empresa, usuario, perfil, permisos } = await accesoEmpresa(id);
   return (
     <div className="app">
       <nav className="menu" aria-label="Menú principal">
         <div className="marca">Contable-System</div>
         <div className="empresa">
-          {empresa.nombre}
-          {empresa.rnc && <> · RNC {empresa.rnc}</>}
-          <div><Link href="/empresas">Cambiar de empresa</Link></div>
+          <div style={{ fontSize: "0.78rem" }}>{empresa.firma}</div>
+          <strong style={{ color: "var(--texto)" }}>{empresa.nombre}</strong>
+          {empresa.rnc && <> · {empresa.rnc}</>}
+          {!empresa.activa && <div className="error" style={{ margin: 0 }}>Cliente inactivo</div>}
+          <div><Link href="/empresas">Cambiar de cliente</Link></div>
         </div>
-        <Menu empresaId={id} />
+        <Menu empresaId={id} ventas={MODULOS.ventas} auditoria={puede(permisos, "auditoria")} />
         <div className="pie">
-          <Link href="/cuenta">{usuario.nombre}</Link> · {NOMBRE_ROL[rol]}
+          <Link href="/cuenta">{usuario.nombre}</Link> · {perfil}
           <form action={salir}><button style={{ marginTop: 8 }}>Salir</button></form>
         </div>
       </nav>

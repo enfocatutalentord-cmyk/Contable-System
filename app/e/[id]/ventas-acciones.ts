@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPermiso } from "@/lib/acceso";
+import { exigirPermiso as exigirPermisoBase } from "@/lib/acceso";
+import { exigirModulo } from "@/lib/modulos";
+import type { Permiso } from "@/lib/permisos";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc, rncValido } from "@/lib/empresas";
@@ -13,6 +15,12 @@ import {
   registrarCobro, type LineaVenta, type TipoNcf,
 } from "@/lib/ventas";
 import type { Estado } from "../../acciones-cuenta";
+
+// Todas las acciones de ventas exigen que el módulo esté encendido.
+async function exigirPermiso(empresaId: string, permiso: Permiso) {
+  exigirModulo("ventas");
+  return exigirPermisoBase(empresaId, permiso);
+}
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -202,7 +210,7 @@ export async function crearFactura(empresaId: string, _: Estado, fd: FormData): 
 }
 
 export async function crearNotaCredito(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "anular");
+  const { usuario } = await exigirPermiso(empresaId, "revertir");
   const fecha = texto(fd, "fecha");
   const subtotal = monto(fd, "subtotal");
   const tasaItbis = Number(texto(fd, "tasa_itbis"));
@@ -222,7 +230,7 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "anular");
+  const { usuario } = await exigirPermiso(empresaId, "revertir");
   const motivo = texto(fd, "motivo");
   if (!MOTIVOS_608[motivo]) return { error: "Elige el motivo de anulación." };
   try {
@@ -276,7 +284,7 @@ export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Pr
 }
 
 export async function anularRecibo(empresaId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "anular");
+  const { usuario } = await exigirPermiso(empresaId, "revertir");
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {

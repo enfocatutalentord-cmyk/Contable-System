@@ -22,7 +22,7 @@ Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendi
 
 **`docs/requerimientos-sistema.md`** (22-oct-2026) manda sobre todo lo anterior: sistema para **firmas contables** con
 varios clientes, por fases con aprobación expresa, sin módulos ni cambios no autorizados. Antes de desarrollar se presenta
-la estructura técnica, dependencias y orden (presentado el 22-oct-2026; esperando aprobación).
+la estructura técnica, dependencias y orden (aprobada por Joannie el 22-oct-2026 con el orden de fases de abajo).
 
 ## Qué es
 
@@ -60,23 +60,45 @@ Notas de infraestructura que costaron tiempo:
 - Asientos automáticos: `lib/asientos.ts` (`insertarAsiento`). Los asientos con `origen` distinto de `manual` solo se anulan
   anulando su documento.
 - Sesiones: cookie httpOnly con token cuyo hash se guarda en `sesiones`; contraseñas con scrypt (`lib/auth.ts`).
-- Roles (`lib/permisos.ts`): dueño (todo), contador (registrar, anular, catálogo, cerrar), auxiliar (registrar), solo lectura.
-  Solo el dueño reabre períodos y da accesos.
+- **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
+  (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
+  contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
+  Cada persona tiene un perfil por empresa (`miembros.perfil_id`). El administrador de la firma tiene todo en todas.
+  `conEmpresa` también fija `app.usuario_id` para la auditoría; `conUsuario` para lo de la firma.
+- **Estados del asiento:** borrador (editable, puede no cuadrar, sin número) → contabilizado (numerado, inmutable) ;
+  «anulado» solo para asientos de documentos. Lo contabilizado se corrige con **reversión** (`revierte_a`), como Xero/QBO.
+  Si la empresa tiene `requiere_aprobacion`, quien registra no contabiliza su propio asiento.
+- **Auditoría:** trigger `auditar()` (SECURITY DEFINER) guarda en `auditoria` cada cambio con antes/después y usuario.
+  Pantalla «Historial de cambios» e historial por asiento (`lib/auditoria.ts`).
+- **Documentos de soporte:** tabla `documentos` (bytea, PDF/JPG/PNG ≤ 4 MB, tipo comprobado por contenido, retiro lógico).
+- **Exportación:** Excel real (.xlsx, exceljs) y PDF (pdfmake con fuentes estándar) en `lib/exportar.ts`; CSV se mantiene.
+- **Módulo de ventas apagado** (`lib/modulos.ts`): el código de ventas/CxC sigue en la rama pero no se ve hasta su fase;
+  se enciende con la variable `MODULO_VENTAS=1`.
+- **Respaldos:** `.github/workflows/respaldo.yml` (diario, pg_dump cifrado AES-256 con prueba de restauración). Necesita en
+  GitHub → Settings → Secrets: `DATABASE_URL` (conexión directa de Neon, sin pooler) y `RESPALDO_CLAVE`. Ver `docs/respaldos.md`.
 
 ## Estado por fase
 
+Orden aprobado por Joannie (22-oct-2026). Cada fase: presentar → desarrollar → mostrar pantallas → pruebas → pedir aprobación.
+No se pasa a la siguiente sin su autorización expresa.
+
 | Fase | Contenido | Estado |
 |---|---|---|
-| 1. Base para varias empresas | Usuarios, empresas, roles, catálogo dominicano por niveles, asientos, diario, mayor, balanza, cierres con bloqueo, descargas CSV para Excel | **En `main` y en producción** (commit `53ec121` + `ad104ee`) |
-| 2. Ventas y CxC | Clientes, servicios, rangos NCF (B01/B02/B14/B15/B04) con vencimiento, facturas DOP/USD con asiento automático e impresión, notas de crédito B04, anulación con motivos del 608, cobros a varias facturas con retención de ITBIS/ISR y diferencia cambiaria, recibos, antigüedad de saldos, estado de cuenta, configuración de cuentas | **Hecha y probada en la rama** (commit `24b800c`). **Falta el «sí» de Joannie para pasarla a `main`.** Al publicarse, la migración `002_ventas.sql` configura sola las cuentas de las empresas que ya existen (probado). |
-| 3. Compras, CxP y bancos | Proveedores, gastos con retenciones de ITBIS/ISR, pagos, importación del estado de cuenta (Excel/CSV) y conciliación con reglas | Pendiente |
-| 4. Impuestos DGII | 606, 607, 608, 609 con el formato de la Herramienta de Envío; IT-1, IR-17; calendario fiscal con avisos | Pendiente |
-| 5. Estados financieros | Resultados, balance, flujo de efectivo, comparativos; Excel y PDF | Pendiente |
-| 6. Producto vendible | Registro con prueba gratis, planes y cobro recurrente; portal del contador con varios clientes (como QuickBooks Online Accountant) | Pendiente |
+| (antes) Base | Usuarios, empresas, catálogo dominicano, asientos, diario, mayor, balanza, cierres, CSV | En `main` y producción (`53ec121` + `ad104ee`) |
+| 1. Plataforma y núcleo | Firmas con varios clientes, perfiles y permisos configurables, equipo de la firma, ficha de la empresa, borradores/contabilización/reversión, aprobación opcional, alerta de duplicados, documentos adjuntos, historial de cambios, búsqueda avanzada, Excel y PDF, respaldos | **Hecha y probada en la rama** (21 pruebas de base + recorrido de 19 pasos en navegador; migración probada sobre datos con la forma de producción). **Esperando aprobación de Joannie.** |
+| 2. Configuración tributaria | Impuestos, retenciones, NCF y parámetros DGII por empresa | Pendiente |
+| 3. Ventas y CxC | Adaptar lo ya hecho en la rama (commit `24b800c`, hoy apagado) | Pendiente |
+| 4. Compras y CxP | Proveedores, gastos con retenciones, pagos | Pendiente |
+| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Pendiente |
+| 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
+| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
 
 ### Pendientes y decisiones abiertas
 
-- **Pasar la Fase 2 a `main`** (esperando a Joannie).
+- **Aprobación de la Fase 1** y su «sí» para pasarla a `main` (al publicarse, la migración 003 convierte a cada dueño
+  actual en una firma con sus empresas; Goemhy queda en una firma con el nombre de Manaury).
+- Preguntar a Joannie: ¿qué firma usará el sistema (Empire, Enfoca o se vende a muchas)? ¿Goemhy sigue como primer cliente?
+- Antes de producción: secretos de respaldo en GitHub (`DATABASE_URL` directa y `RESPALDO_CLAVE`) y activar PITR en Neon.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
@@ -92,7 +114,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-npm test                            # reglas de la base, montos y cálculos de ventas (16 pruebas)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 21 pruebas de base
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase2.cjs

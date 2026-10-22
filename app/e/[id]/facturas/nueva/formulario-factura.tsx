@@ -1,5 +1,6 @@
 "use client";
 
+import { alEnviar } from "@/app/enviar";
 import { useActionState, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { verMonto } from "@/lib/montos";
@@ -64,7 +65,7 @@ export function FormularioFactura({ accion, clientes, servicios, hoy, disponible
   const sinRnc = cliente && !cliente.rnc && tipo !== "B02";
 
   return (
-    <form action={enviar}>
+    <form onSubmit={alEnviar(enviar)}>
       <div className="fila" style={{ marginBottom: 16 }}>
         <label style={{ flex: "2 1 260px" }}>Cliente
           <select name="cliente" value={clienteId} onChange={(e) => elegirCliente(e.target.value)} required>

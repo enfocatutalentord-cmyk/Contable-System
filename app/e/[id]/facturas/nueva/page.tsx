@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { exigirPermiso } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -6,6 +7,7 @@ import { crearFactura } from "../../ventas-acciones";
 import { FormularioFactura } from "./formulario-factura";
 
 export default async function NuevaFactura({ params }: { params: Promise<{ id: string }> }) {
+  exigirModulo("ventas");
   const { id } = await params;
   await exigirPermiso(id, "registrar");
   const hoy = hoyISO();

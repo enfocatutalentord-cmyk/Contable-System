@@ -23,7 +23,7 @@ export default async function Diario({ params, searchParams }: {
       <form className="fila" style={{ marginBottom: 16 }}>
         <CamposPeriodo desde={desde} hasta={hasta} />
         <button>Ver</button>
-        <a className="boton" href={`/e/${id}/exportar/diario?desde=${desde}&hasta=${hasta}`}>Descargar Excel</a>
+        <><a className="boton" href={`/e/${id}/exportar/diario?formato=xlsx&desde=${desde}&hasta=${hasta}`}>Excel</a><a className="boton" href={`/e/${id}/exportar/diario?formato=pdf&desde=${desde}&hasta=${hasta}`}>PDF</a></>
       </form>
       <div className="tabla-envoltura">
         <table>
@@ -34,7 +34,7 @@ export default async function Diario({ params, searchParams }: {
               return (
                 <tr key={i}>
                   <td>{primera && verFecha(l.fecha)}</td>
-                  <td>{primera && <Link href={`/e/${id}/asientos/${l.numero}`}>{l.numero}</Link>}</td>
+                  <td>{primera && <Link href={`/e/${id}/asientos/${l.asiento_id}`}>{l.numero}</Link>}</td>
                   <td>{l.codigo} · {l.cuenta}</td>
                   <td>{primera ? l.concepto : ""}{l.descripcion && <div className="sub" style={{ margin: 0 }}>{l.descripcion}</div>}</td>
                   <td className="num">{verMonto(l.debe, true)}</td>

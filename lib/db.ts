@@ -16,11 +16,30 @@ export function db(): postgres.Sql {
   return global._sql;
 }
 
+// Usuario de la sesión, para que el historial de cambios sepa quién hizo cada cosa.
+async function usuarioEnCurso(): Promise<string> {
+  try {
+    const { usuarioActual } = await import("./auth");
+    return (await usuarioActual())?.id ?? "";
+  } catch {
+    return ""; // fuera de una solicitud web (pruebas, scripts)
+  }
+}
+
 // Corre fn dentro de una transacción atada a una empresa: la base solo deja ver y escribir sus datos.
 export async function conEmpresa<T>(empresaId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const usuarioId = await usuarioEnCurso();
   return db().begin(async (tx) => {
-    await tx`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
+    await tx`SELECT set_config('app.empresa_id', ${empresaId}, true), set_config('app.usuario_id', ${usuarioId}, true)`;
     await tx`SET LOCAL ROLE contable_app`;
+    return fn(tx);
+  }) as Promise<T>;
+}
+
+// Transacción con el usuario de conexión (para firma, equipo y accesos), registrando quién hace el cambio.
+export async function conUsuario<T>(usuarioId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db().begin(async (tx) => {
+    await tx`SELECT set_config('app.usuario_id', ${usuarioId}, true)`;
     return fn(tx);
   }) as Promise<T>;
 }

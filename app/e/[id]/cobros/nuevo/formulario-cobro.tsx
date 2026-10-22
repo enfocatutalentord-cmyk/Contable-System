@@ -1,5 +1,6 @@
 "use client";
 
+import { alEnviar } from "@/app/enviar";
 import { useActionState, useMemo, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { verFecha, verMonto } from "@/lib/montos";
@@ -58,7 +59,7 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, hoy, cl
   const aplicaciones = visibles.filter((p) => (cent(aplicar[p.id] ?? "") || 0) > 0).map((p) => ({ facturaId: p.id, monto: aplicar[p.id] }));
 
   return (
-    <form action={enviar}>
+    <form onSubmit={alEnviar(enviar)}>
       <div className="fila" style={{ marginBottom: 16 }}>
         <label style={{ flex: "2 1 260px" }}>Cliente
           <select name="cliente" value={clienteId} onChange={(e) => elegirCliente(e.target.value)} required>

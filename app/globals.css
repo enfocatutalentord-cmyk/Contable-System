@@ -123,3 +123,23 @@ tr.anulado td { color: var(--suave); text-decoration: line-through; }
   .documento { border: 0; padding: 0; }
   a { color: inherit; }
 }
+
+/* Perfiles y permisos */
+.casillas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 18px; margin: 12px 0; }
+.casilla { flex-direction: row !important; align-items: center; gap: 8px !important; color: var(--texto) !important; font-size: 0.92rem !important; }
+.casilla input { min-height: 0; }
+
+/* Estados del asiento y datos de registro */
+.estado { font-size: 0.8rem; font-weight: 700; border-radius: 999px; padding: 3px 12px; border: 1px solid var(--borde); white-space: nowrap; }
+.estado-borrador { background: var(--aviso-fondo); color: var(--aviso-texto); border-color: transparent; }
+.estado-contabilizado { color: var(--ok); }
+.estado-anulado { color: var(--peligro); }
+.ficha-datos { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 16px; font-size: 0.92rem; }
+.ficha-datos dt { color: var(--suave); }
+.ficha-datos dd { margin: 0; }
+tr.borrador td { background: var(--aviso-fondo); }
+
+/* Filtros de búsqueda en rejilla */
+.filtros { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 12px; align-items: end; }
+.filtros .ancho { grid-column: span 2; }
+@media (max-width: 560px) { .filtros .ancho { grid-column: auto; } }

@@ -1,45 +1,61 @@
+import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
-import { conEmpresa } from "@/lib/db";
-import { NOMBRE_ROL, puede, type Rol } from "@/lib/permisos";
-import { agregarMiembro, cambiarRol } from "../acciones";
-
-const DESCRIPCION: Record<Rol, string> = {
-  dueno: "Todo, incluido dar acceso a otras personas y reabrir períodos cerrados.",
-  contador: "Registra y anula asientos, maneja el catálogo y cierra períodos.",
-  auxiliar: "Registra asientos y consulta los libros.",
-  lectura: "Solo consulta los libros y reportes.",
-};
+import { db } from "@/lib/db";
+import { PERMISOS, puede } from "@/lib/permisos";
+import { asignarAcceso } from "../acciones";
 
 export default async function Usuarios({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { rol, usuario } = await accesoEmpresa(id);
-  const miembros = await conEmpresa(id, (tx) => tx<{ id: string; nombre: string; email: string; rol: Rol }[]>`
-    SELECT u.id, u.nombre, u.email, m.rol FROM miembros m JOIN usuarios u ON u.id = m.usuario_id ORDER BY u.nombre`);
-  const administra = puede(rol, "usuarios");
+  const { permisos, empresa, usuario, adminFirma } = await accesoEmpresa(id);
+  const [admins, miembros, perfiles, equipo] = await Promise.all([
+    db()<{ id: string; nombre: string; email: string }[]>`
+      SELECT u.id, u.nombre, u.email FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+       WHERE mf.firma_id = ${empresa.firma_id} AND mf.administrador ORDER BY u.nombre`,
+    db()<{ id: string; nombre: string; email: string; perfil_id: string; perfil: string }[]>`
+      SELECT u.id, u.nombre, u.email, p.id AS perfil_id, p.nombre AS perfil
+        FROM miembros m JOIN usuarios u ON u.id = m.usuario_id JOIN perfiles p ON p.id = m.perfil_id
+        JOIN miembros_firma mf ON mf.firma_id = ${empresa.firma_id} AND mf.usuario_id = u.id AND NOT mf.administrador
+       WHERE m.empresa_id = ${id} ORDER BY u.nombre`,
+    db()<{ id: string; nombre: string; permisos: string[] }[]>`SELECT id, nombre, permisos FROM perfiles WHERE firma_id = ${empresa.firma_id} ORDER BY sistema DESC, nombre`,
+    db()<{ id: string; nombre: string }[]>`
+      SELECT u.id, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+       WHERE mf.firma_id = ${empresa.firma_id} AND NOT mf.administrador
+         AND NOT EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = ${id} AND m.usuario_id = u.id) ORDER BY u.nombre`,
+  ]);
+  const administra = puede(permisos, "usuarios");
+  const selectorPerfil = (actual = "") => (
+    <select name="perfil" defaultValue={actual}>
+      <option value="">{actual ? "Quitar acceso" : "Elige el perfil…"}</option>
+      {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+    </select>
+  );
 
   return (
     <>
-      <h1>Usuarios y roles</h1>
-      <p className="sub">Quién tiene acceso a esta empresa y qué puede hacer.</p>
+      <h1>Usuarios y permisos</h1>
+      <p className="sub">
+        Quién trabaja en este cliente y con qué perfil.
+        {adminFirma && <> Los perfiles se ajustan en <Link href={`/firma/${empresa.firma_id}/perfiles`}>Perfiles y permisos</Link> de la firma.</>}
+      </p>
       <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
         <table>
-          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th></tr></thead>
+          <thead><tr><th>Persona</th><th>Correo</th><th>Acceso</th></tr></thead>
           <tbody>
+            {admins.map((a) => (
+              <tr key={a.id}><td>{a.nombre}{a.id === usuario.id && " (tú)"}</td><td>{a.email}</td><td>Administrador de la firma (todos los permisos)</td></tr>
+            ))}
             {miembros.map((m) => (
               <tr key={m.id}>
                 <td>{m.nombre}{m.id === usuario.id && " (tú)"}</td>
                 <td>{m.email}</td>
                 <td>
                   {administra ? (
-                    <Formulario accion={cambiarRol.bind(null, id)} boton="Cambiar" className="fila">
+                    <Formulario accion={asignarAcceso.bind(null, id)} boton="Cambiar" className="fila">
                       <input type="hidden" name="usuario" value={m.id} />
-                      <select name="rol" defaultValue={m.rol} aria-label={`Rol de ${m.nombre}`}>
-                        {(Object.keys(NOMBRE_ROL) as Rol[]).map((r) => <option key={r} value={r}>{NOMBRE_ROL[r]}</option>)}
-                        <option value="quitar">Quitar acceso</option>
-                      </select>
+                      {selectorPerfil(m.perfil_id)}
                     </Formulario>
-                  ) : NOMBRE_ROL[m.rol]}
+                  ) : m.perfil}
                 </td>
               </tr>
             ))}
@@ -48,25 +64,36 @@ export default async function Usuarios({ params }: { params: Promise<{ id: strin
       </div>
       {administra && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>Dar acceso</h2>
-          <p className="sub">Si la persona todavía no tiene cuenta, se le crea con una contraseña temporal que verás una sola vez.</p>
-          <Formulario accion={agregarMiembro.bind(null, id)} boton="Dar acceso" className="fila">
+          <h2 style={{ marginTop: 0 }}>Dar acceso a este cliente</h2>
+          {equipo.length > 0 && (
+            <Formulario accion={asignarAcceso.bind(null, id)} boton="Dar acceso" className="fila">
+              <label style={{ flex: "1 1 220px" }}>Persona del equipo
+                <select name="usuario" required defaultValue="">
+                  <option value="" disabled>Elige…</option>
+                  {equipo.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+              </label>
+              <label>Perfil{selectorPerfil()}</label>
+            </Formulario>
+          )}
+          <p className="sub" style={{ marginTop: 16 }}>¿Alguien nuevo? Se suma al equipo de la firma con acceso solo a este cliente. Si no tiene cuenta, verás una contraseña temporal una sola vez.</p>
+          <Formulario accion={asignarAcceso.bind(null, id)} boton="Agregar y dar acceso" className="fila">
             <label style={{ flex: "1 1 220px" }}>Correo<input name="email" type="email" required /></label>
             <label style={{ flex: "1 1 200px" }}>Nombre (si es nueva)<input name="nombre" /></label>
-            <label>Rol
-              <select name="rol" defaultValue="auxiliar">
-                {(Object.keys(NOMBRE_ROL) as Rol[]).map((r) => <option key={r} value={r}>{NOMBRE_ROL[r]}</option>)}
-              </select>
-            </label>
+            <label>Perfil{selectorPerfil()}</label>
           </Formulario>
         </div>
       )}
-      <h2>Qué puede hacer cada rol</h2>
+      <h2>Qué permite cada perfil</h2>
       <div className="tabla-envoltura">
         <table>
+          <thead><tr><th>Permiso</th>{perfiles.map((p) => <th key={p.id} className="num">{p.nombre}</th>)}</tr></thead>
           <tbody>
-            {(Object.keys(DESCRIPCION) as Rol[]).map((r) => (
-              <tr key={r}><td style={{ whiteSpace: "nowrap" }}><strong>{NOMBRE_ROL[r]}</strong></td><td>{DESCRIPCION[r]}</td></tr>
+            {PERMISOS.map((pm) => (
+              <tr key={pm.clave}>
+                <td>{pm.nombre}</td>
+                {perfiles.map((p) => <td key={p.id} className="num">{p.permisos.includes(pm.clave) ? "✓" : ""}</td>)}
+              </tr>
             ))}
           </tbody>
         </table>

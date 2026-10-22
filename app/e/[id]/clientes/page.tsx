@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -12,9 +13,10 @@ export default async function Clientes({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ editar?: string; q?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const q = (sp.q ?? "").trim();
   const clientes = await conEmpresa(id, (tx) => tx<Cliente[]>`
     SELECT c.*, COALESCE((SELECT sum(s.saldo * f.tasa) FROM saldos_factura s JOIN facturas f ON f.id = s.factura_id
@@ -22,7 +24,7 @@ export default async function Clientes({ params, searchParams }: {
       FROM clientes c
      WHERE ${q} = '' OR c.nombre ILIKE ${"%" + q + "%"} OR c.rnc = ${q.replace(/-/g, "")}
      ORDER BY c.activo DESC, c.nombre`);
-  const editable = puede(rol, "registrar");
+  const editable = puede(permisos, "registrar");
   const enEdicion = editable ? clientes.find((c) => c.id === sp.editar) : undefined;
 
   return (

@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { cerrarSesion, cifrarClave, claveCorrecta, iniciarSesion, exigirUsuario } from "@/lib/auth";
 import { db, mensajeError } from "@/lib/db";
-import { crearEmpresa, limpiarRnc, rncValido } from "@/lib/empresas";
+import { accesoFirma } from "@/lib/acceso";
+import { crearEmpresa, crearFirma, leerFicha, limpiarRnc, rncValido } from "@/lib/empresas";
 
 export type Estado = { error?: string; ok?: string };
 
@@ -11,13 +12,14 @@ function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
 }
 
+// Alta de una firma contable: crea la cuenta de la persona, la firma y la deja como administradora.
 export async function registrarse(_: Estado, fd: FormData): Promise<Estado> {
   const nombre = texto(fd, "nombre");
   const email = texto(fd, "email").toLowerCase();
   const clave = String(fd.get("clave") ?? "");
-  const empresa = texto(fd, "empresa");
+  const firma = texto(fd, "firma");
   const rnc = limpiarRnc(texto(fd, "rnc"));
-  if (!nombre || !empresa) return { error: "Escribe tu nombre y el de la empresa." };
+  if (!nombre || !firma) return { error: "Escribe tu nombre y el de la firma." };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "El correo no es válido." };
   if (clave.length < 10) return { error: "La contraseña debe tener al menos 10 caracteres." };
   if (rnc && !rncValido(rnc)) return { error: "El RNC debe tener 9 dígitos (o 11 si es cédula)." };
@@ -30,7 +32,7 @@ export async function registrarse(_: Estado, fd: FormData): Promise<Estado> {
     usuarioId = (await db().begin(async (tx) => {
       const [{ id }] = await tx<{ id: string }[]>`
         INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${email}, ${nombre}, ${hash}) RETURNING id`;
-      await crearEmpresa({ nombre: empresa, rnc: rnc || null, usuarioId: id }, tx);
+      await crearFirma(tx, { nombre: firma, rnc: rnc || null, usuarioId: id });
       return id;
     })) as string;
   } catch (e) {
@@ -54,15 +56,14 @@ export async function salir(): Promise<void> {
   redirect("/entrar");
 }
 
-export async function nuevaEmpresa(_: Estado, fd: FormData): Promise<Estado> {
-  const usuario = await exigirUsuario();
-  const nombre = texto(fd, "empresa");
-  const rnc = limpiarRnc(texto(fd, "rnc"));
-  if (!nombre) return { error: "Escribe el nombre de la empresa." };
-  if (rnc && !rncValido(rnc)) return { error: "El RNC debe tener 9 dígitos (o 11 si es cédula)." };
+// Nuevo cliente de la firma (solo administradores de la firma).
+export async function nuevaEmpresa(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  const ficha = leerFicha(fd);
+  if (typeof ficha === "string") return { error: ficha };
   let id: string;
   try {
-    id = await crearEmpresa({ nombre, rnc: rnc || null, usuarioId: usuario.id });
+    id = await crearEmpresa({ firmaId, usuarioId: usuario.id, ficha });
   } catch (e) {
     return { error: mensajeError(e) };
   }

@@ -4,6 +4,7 @@ import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { antiguedad } from "@/lib/cxc";
+import { MODULOS } from "@/lib/modulos";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
 
 export default async function InicioEmpresa({ params, searchParams }: {
@@ -12,20 +13,21 @@ export default async function InicioEmpresa({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { sin_permiso } = await searchParams;
-  const { empresa, rol } = await accesoEmpresa(id);
+  const { empresa, permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;
 
-  const { cuentas, delMes, recientes, cxc } = await conEmpresa(id, async (tx) => {
+  const { cuentas, delMes, recientes, cxc, borradores } = await conEmpresa(id, async (tx) => {
     const cuentas = await saldosPorCuenta(tx, inicioAnio, hoy);
     const [{ n }] = await tx<{ n: number }[]>`
-      SELECT count(*)::int AS n FROM asientos WHERE NOT anulado AND fecha BETWEEN ${primerDiaMes(hoy)} AND ${hoy}`;
-    const recientes = await tx<{ numero: number; fecha: string; concepto: string; total: string; anulado: boolean }[]>`
-      SELECT a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.anulado, sum(l.debe)::text AS total
-        FROM asientos a JOIN lineas_asiento l ON l.asiento_id = a.id
-       GROUP BY a.id ORDER BY a.fecha DESC, a.numero DESC LIMIT 5`;
-    const cxc = await antiguedad(tx, hoy);
-    return { cuentas, delMes: n, recientes, cxc };
+      SELECT count(*)::int AS n FROM asientos WHERE estado = 'contabilizado' AND fecha BETWEEN ${primerDiaMes(hoy)} AND ${hoy}`;
+    const [{ b }] = await tx<{ b: number }[]>`SELECT count(*)::int AS b FROM asientos WHERE estado = 'borrador'`;
+    const recientes = await tx<{ id: string; numero: number | null; fecha: string; concepto: string; total: string | null; estado: string }[]>`
+      SELECT a.id, a.numero, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.concepto, a.estado,
+             (SELECT sum(debe)::text FROM lineas_asiento WHERE asiento_id = a.id) AS total
+        FROM asientos a ORDER BY a.creado DESC LIMIT 6`;
+    const cxc = MODULOS.ventas ? await antiguedad(tx, hoy) : null;
+    return { cuentas, delMes: n, recientes, cxc, borradores: b };
   });
 
   const clase = (c: string) => cuentas.find((x) => x.codigo === c);
@@ -42,7 +44,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
 
   return (
     <>
-      {sin_permiso && <p className="aviso">Tu rol no permite esa acción. Pídele al dueño de la empresa que te dé el permiso.</p>}
+      {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
       <h1>Inicio</h1>
       <p className="sub">
         {empresa.nombre} · cifras al {verFecha(hoy)}
@@ -55,38 +57,47 @@ export default async function InicioEmpresa({ params, searchParams }: {
           <div className="etiqueta">Resultado de {hoy.slice(0, 4)}</div>
           <div className="valor" style={{ color: resultado < 0n ? "var(--peligro)" : undefined }}>{verMonto(resultado)}</div>
         </div>
-        <Link href={`/e/${id}/cxc`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
-          <div className="etiqueta">Por cobrar</div><div className="valor">{verMonto(cxc.total)}</div>
+        {cxc && (
+          <>
+            <Link href={`/e/${id}/cxc`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+              <div className="etiqueta">Por cobrar</div><div className="valor">{verMonto(cxc.total)}</div>
+            </Link>
+            <Link href={`/e/${id}/cxc?detalle=1`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+              <div className="etiqueta">Vencido</div>
+              <div className="valor" style={{ color: cxc.total - cxc.totales[0] > 0n ? "var(--peligro)" : undefined }}>{verMonto(cxc.total - cxc.totales[0])}</div>
+            </Link>
+          </>
+        )}
+        <div className="tarjeta cifra"><div className="etiqueta">Asientos contabilizados este mes</div><div className="valor">{delMes}</div></div>
+        <Link href={`/e/${id}/asientos?estado=borrador`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Borradores por contabilizar</div>
+          <div className="valor" style={{ color: borradores ? "var(--aviso-texto)" : undefined }}>{borradores}</div>
         </Link>
-        <Link href={`/e/${id}/cxc?detalle=1`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
-          <div className="etiqueta">Vencido</div>
-          <div className="valor" style={{ color: cxc.total - cxc.totales[0] > 0n ? "var(--peligro)" : undefined }}>{verMonto(cxc.total - cxc.totales[0])}</div>
-        </Link>
-        <div className="tarjeta cifra"><div className="etiqueta">Asientos este mes</div><div className="valor">{delMes}</div></div>
       </div>
 
       <div className="entre">
-        <h2 style={{ marginTop: 0 }}>Últimos asientos</h2>
-        {puede(rol, "registrar") && (
+        <h2 style={{ marginTop: 0 }}>Últimos movimientos</h2>
+        {puede(permisos, "registrar") && (
           <div className="fila">
-            <Link className="boton" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>
-            <Link className="boton primario" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>
+            <Link className="boton primario" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>
+            {MODULOS.ventas && <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
           </div>
         )}
       </div>
       <div className="tabla-envoltura" style={{ marginTop: 8 }}>
         <table>
-          <thead><tr><th>N.º</th><th>Fecha</th><th>Concepto</th><th className="num">Total</th></tr></thead>
+          <thead><tr><th>N.º</th><th>Fecha</th><th>Concepto</th><th>Estado</th><th className="num">Total</th></tr></thead>
           <tbody>
             {recientes.map((a) => (
-              <tr key={a.numero} className={a.anulado ? "anulado" : undefined}>
-                <td><Link href={`/e/${id}/asientos/${a.numero}`}>{a.numero}</Link></td>
+              <tr key={a.id} className={a.estado === "anulado" ? "anulado" : a.estado === "borrador" ? "borrador" : undefined}>
+                <td><Link href={`/e/${id}/asientos/${a.id}`}>{a.numero ?? "Borrador"}</Link></td>
                 <td>{verFecha(a.fecha)}</td>
                 <td>{a.concepto}</td>
-                <td className="num">{verMonto(a.total)}</td>
+                <td>{a.estado === "borrador" ? "Borrador" : a.estado === "anulado" ? "Anulado" : "Contabilizado"}</td>
+                <td className="num">{verMonto(a.total ?? "0")}</td>
               </tr>
             ))}
-            {recientes.length === 0 && <tr><td colSpan={4}>Todavía no hay asientos. Empieza con el asiento de apertura.</td></tr>}
+            {recientes.length === 0 && <tr><td colSpan={5}>Todavía no hay asientos. Empieza con el asiento de apertura.</td></tr>}
           </tbody>
         </table>
       </div>

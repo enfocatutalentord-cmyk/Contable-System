@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -9,13 +10,14 @@ import { agregarSecuencia, desactivarSecuencia } from "../ventas-acciones";
 type Secuencia = { id: string; tipo: TipoNcf; desde: string; hasta: string; siguiente: string; vence: string; activa: boolean };
 
 export default async function Comprobantes({ params }: { params: Promise<{ id: string }> }) {
+  exigirModulo("ventas");
   const { id } = await params;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const secuencias = await conEmpresa(id, (tx) => tx<Secuencia[]>`
     SELECT id, tipo, desde::text, hasta::text, siguiente::text, to_char(vence, 'YYYY-MM-DD') AS vence, activa
       FROM secuencias_ncf ORDER BY tipo, desde`);
   const hoy = hoyISO();
-  const editable = puede(rol, "catalogo");
+  const editable = puede(permisos, "catalogo");
   const finDeAnio = `${Number(hoy.slice(0, 4)) + 1}-12-31`;
 
   return (

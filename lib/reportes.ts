@@ -26,7 +26,7 @@ export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string): Pro
            COALESCE(sum(l.haber) FILTER (WHERE a.fecha BETWEEN ${desde} AND ${hasta}), 0)::text AS haber
       FROM cuentas c
       LEFT JOIN lineas_asiento l ON l.cuenta_id = c.id
-      LEFT JOIN asientos a ON a.id = l.asiento_id AND NOT a.anulado AND a.fecha <= ${hasta}
+      LEFT JOIN asientos a ON a.id = l.asiento_id AND a.estado = 'contabilizado' AND a.fecha <= ${hasta}
      GROUP BY c.id
      ORDER BY c.codigo`;
 
@@ -37,7 +37,7 @@ export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string): Pro
     haber: aCentavos(f.haber),
     final: 0n,
   }));
-  // Las líneas de asientos anulados se unen con a = NULL; la consulta ya las deja fuera de los FILTER.
+  // Las líneas de borradores y asientos anulados se unen con a = NULL; la consulta ya las deja fuera de los FILTER.
   const porCodigo = new Map(cuentas.map((c) => [c.codigo, c]));
   for (const c of cuentas) {
     if (!c.de_detalle) continue;

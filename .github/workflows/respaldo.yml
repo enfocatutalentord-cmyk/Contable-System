@@ -1,0 +1,82 @@
+# Copia de seguridad diaria de la base de datos de producción (Neon), con prueba de restauración.
+# Necesita dos secretos en GitHub → Settings → Secrets and variables → Actions:
+#   DATABASE_URL     cadena de conexión directa (sin pooler) de Neon
+#   RESPALDO_CLAVE   frase larga para cifrar la copia; guardarla también fuera de GitHub
+# Restaurar: docs/respaldos.md
+name: Respaldo diario
+
+on:
+  schedule:
+    - cron: "17 9 * * *" # 5:17 a. m. en República Dominicana
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  respaldo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: prueba
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RESPALDO_CLAVE: ${{ secrets.RESPALDO_CLAVE }}
+      PRUEBA_URL: postgres://postgres:prueba@localhost:5432/postgres
+    steps:
+      - name: Revisar que estén los secretos
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$RESPALDO_CLAVE" ]; then
+            echo "::error::Faltan los secretos DATABASE_URL o RESPALDO_CLAVE"; exit 1
+          fi
+
+      - name: Instalar el cliente de Postgres 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Sacar la copia
+        # Con permisos incluidos (GRANT a contable_app) para que la restauración real quede lista para la app.
+        run: pg_dump --format=custom --no-owner --file=respaldo.dump "$DATABASE_URL"
+
+      - name: Probar que la copia se restaura y está completa
+        run: |
+          psql "$PRUEBA_URL" -qc "CREATE ROLE contable_app NOLOGIN" -c "CREATE DATABASE restaurada"
+          pg_restore --no-owner --no-privileges --exit-on-error --dbname="${PRUEBA_URL%/postgres}/restaurada" respaldo.dump
+          contar() { psql "$1" -tAc "SELECT string_agg(t || '=' || n, ' ' ORDER BY t) FROM (
+            SELECT 'empresas' t, count(*) n FROM empresas UNION ALL SELECT 'asientos', count(*) FROM asientos
+            UNION ALL SELECT 'lineas', count(*) FROM lineas_asiento UNION ALL SELECT 'historial', count(*) FROM auditoria
+            UNION ALL SELECT 'documentos', count(*) FROM documentos UNION ALL SELECT 'usuarios', count(*) FROM usuarios) x"; }
+          origen=$(contar "$DATABASE_URL"); copia=$(contar "${PRUEBA_URL%/postgres}/restaurada")
+          echo "Producción: $origen"; echo "Copia:      $copia"
+          # El historial puede crecer mientras corre el respaldo; el resto debe coincidir.
+          if [ "$(echo "$origen" | sed 's/historial=[0-9]*//')" != "$(echo "$copia" | sed 's/historial=[0-9]*//')" ]; then
+            echo "::error::La copia restaurada no coincide con producción"; exit 1
+          fi
+
+      - name: Cifrar
+        run: |
+          nombre="respaldo-$(date -u +%Y-%m-%d)"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in respaldo.dump -out "$nombre.dump.enc" -pass env:RESPALDO_CLAVE
+          sha256sum "$nombre.dump.enc" > "$nombre.sha256"
+          echo "NOMBRE=$nombre" >> "$GITHUB_ENV"
+          rm respaldo.dump
+
+      - name: Guardar la copia cifrada (90 días)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOMBRE }}
+          path: |
+            ${{ env.NOMBRE }}.dump.enc
+            ${{ env.NOMBRE }}.sha256
+          retention-days: 90
+          if-no-files-found: error

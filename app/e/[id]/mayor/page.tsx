@@ -33,7 +33,7 @@ export default async function Mayor({ params, searchParams }: {
         </label>
         <CamposPeriodo desde={desde} hasta={hasta} />
         <button>Ver</button>
-        {mayor && <a className="boton" href={`/e/${id}/exportar/mayor?cuenta=${mayor.cuenta.id}&desde=${desde}&hasta=${hasta}`}>Descargar Excel</a>}
+        {mayor && <><a className="boton" href={`/e/${id}/exportar/mayor?formato=xlsx&cuenta=${mayor.cuenta.id}&desde=${desde}&hasta=${hasta}`}>Excel</a><a className="boton" href={`/e/${id}/exportar/mayor?formato=pdf&cuenta=${mayor.cuenta.id}&desde=${desde}&hasta=${hasta}`}>PDF</a></>}
       </form>
       {mayor && (
         <>
@@ -46,7 +46,7 @@ export default async function Mayor({ params, searchParams }: {
                 {mayor.movimientos.map((m, i) => (
                   <tr key={i}>
                     <td>{verFecha(m.fecha)}</td>
-                    <td><Link href={`/e/${id}/asientos/${m.numero}`}>{m.numero}</Link></td>
+                    <td><Link href={`/e/${id}/asientos/${m.asiento_id}`}>{m.numero}</Link></td>
                     <td>{m.concepto}{m.descripcion && <div className="sub" style={{ margin: 0 }}>{m.descripcion}</div>}</td>
                     <td className="num">{verMonto(m.debe, true)}</td>
                     <td className="num">{verMonto(m.haber, true)}</td>

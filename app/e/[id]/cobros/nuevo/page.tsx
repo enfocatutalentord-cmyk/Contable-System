@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { exigirPermiso } from "@/lib/acceso";
 import { pendientesAl } from "@/lib/cxc";
@@ -11,6 +12,7 @@ export default async function NuevoCobro({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ cliente?: string; factura?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
   await exigirPermiso(id, "registrar");

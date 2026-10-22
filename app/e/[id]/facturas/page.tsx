@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -12,9 +13,10 @@ export default async function Facturas({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ mes?: string; estado?: string; q?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : sp.mes === "" ? "" : hoy.slice(0, 7);
   const estado = ESTADOS[sp.estado ?? ""] ? sp.estado! : "todas";
@@ -44,7 +46,7 @@ export default async function Facturas({ params, searchParams }: {
           <h1>Facturas</h1>
           <p className="sub">Facturas y notas de crédito con su NCF. Cada una genera su asiento automáticamente.</p>
         </div>
-        {puede(rol, "registrar") && <Link className="boton primario" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
+        {puede(permisos, "registrar") && <Link className="boton primario" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
       </div>
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>

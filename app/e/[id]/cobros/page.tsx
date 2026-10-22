@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -10,9 +11,10 @@ export default async function Cobros({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ mes?: string; q?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id } = await params;
   const sp = await searchParams;
-  const { rol } = await accesoEmpresa(id);
+  const { permisos } = await accesoEmpresa(id);
   const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : hoyISO().slice(0, 7);
   const q = (sp.q ?? "").trim();
   const filas = await conEmpresa(id, (tx) => tx<Fila[]>`
@@ -32,7 +34,7 @@ export default async function Cobros({ params, searchParams }: {
           <h1>Cobros</h1>
           <p className="sub">Recibos de ingreso. Un cobro puede saldar varias facturas del mismo cliente.</p>
         </div>
-        {puede(rol, "registrar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
+        {puede(permisos, "registrar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
       </div>
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>

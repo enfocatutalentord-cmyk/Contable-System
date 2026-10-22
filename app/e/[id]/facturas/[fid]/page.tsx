@@ -1,3 +1,4 @@
+import { exigirModulo } from "@/lib/modulos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
@@ -12,7 +13,7 @@ import { anularComprobante, crearNotaCredito } from "../../ventas-acciones";
 type Factura = {
   id: string; tipo_ncf: TipoNcf; ncf: string; ncf_vence: string; fecha: string; vence: string; moneda: string; tasa: string;
   subtotal: string; itbis: string; total: string; notas: string | null; anulada: boolean; motivo_anulacion: string | null;
-  asiento: number | null; cliente: string; rnc: string | null; direccion: string | null; email: string | null;
+  asiento: number | null; asiento_id: string | null; cliente: string; rnc: string | null; direccion: string | null; email: string | null;
   origen_id: string | null; origen_ncf: string | null; creado_por: string | null; saldo: string | null;
 };
 
@@ -20,15 +21,16 @@ export default async function VerFactura({ params, searchParams }: {
   params: Promise<{ id: string; fid: string }>;
   searchParams: Promise<{ nueva?: string; anulada?: string }>;
 }) {
+  exigirModulo("ventas");
   const { id, fid } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(fid)) notFound();
-  const { empresa, rol } = await accesoEmpresa(id);
+  const { empresa, permisos } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [f] = await tx<Factura[]>`
       SELECT f.id, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
              to_char(f.vence, 'YYYY-MM-DD') AS vence, f.moneda, f.tasa::text, f.subtotal::text, f.itbis::text, f.total::text,
-             f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, c.nombre AS cliente, c.rnc, c.direccion, c.email,
+             f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, c.nombre AS cliente, c.rnc, c.direccion, c.email,
              o.id AS origen_id, o.ncf AS origen_ncf, u.nombre AS creado_por, s.saldo::text
         FROM facturas f JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN asientos a ON a.id = f.asiento_id
@@ -66,10 +68,10 @@ export default async function VerFactura({ params, searchParams }: {
         {f.anulada && <p className="aviso">Anulado: {MOTIVOS_608[f.motivo_anulacion ?? ""] ?? f.motivo_anulacion}. El asiento también quedó anulado.</p>}
         <div className="fila" style={{ marginBottom: 16 }}>
           <BotonImprimir />
-          {!esNota && !f.anulada && saldo > 0 && puede(rol, "registrar") && (
+          {!esNota && !f.anulada && saldo > 0 && puede(permisos, "registrar") && (
             <Link className="boton primario" href={`/e/${id}/cobros/nuevo?factura=${f.id}`}>Registrar cobro</Link>
           )}
-          {f.asiento && <Link className="boton" href={`/e/${id}/asientos/${f.asiento}`}>Ver asiento n.º {f.asiento}</Link>}
+          {f.asiento && <Link className="boton" href={`/e/${id}/asientos/${f.asiento_id}`}>Ver asiento n.º {f.asiento}</Link>}
         </div>
       </div>
 
@@ -143,7 +145,7 @@ export default async function VerFactura({ params, searchParams }: {
         </div>
       )}
 
-      {!f.anulada && puede(rol, "anular") && (
+      {!f.anulada && puede(permisos, "revertir") && (
         <div className="no-imprimir">
           {!esNota && saldo > 0 && (
             <>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import type { Estado } from "@/app/acciones-cuenta";
+import { alEnviar } from "@/app/enviar";
+import type { EstadoAsiento } from "../../acciones";
 import type { Cuenta } from "@/lib/cuentas";
 import { aCentavos, deCentavos, leerMonto, verMonto } from "@/lib/montos";
 
-type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string };
+export type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string };
 const vacia = (): Linea => ({ cuentaId: "", descripcion: "", debe: "", haber: "" });
 
 export function FormularioAsiento({
@@ -13,14 +14,18 @@ export function FormularioAsiento({
   cuentas,
   hoy,
   bloqueo,
+  puedeContabilizar,
+  inicial,
 }: {
-  accion: (estado: Estado, fd: FormData) => Promise<Estado>;
+  accion: (estado: EstadoAsiento, fd: FormData) => Promise<EstadoAsiento>;
   cuentas: Cuenta[];
   hoy: string;
   bloqueo: string | null;
+  puedeContabilizar: boolean;
+  inicial?: { fecha: string; concepto: string; referencia: string; lineas: Linea[] };
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
-  const [lineas, setLineas] = useState<Linea[]>([vacia(), vacia()]);
+  const [lineas, setLineas] = useState<Linea[]>(inicial?.lineas.length ? [...inicial.lineas, ...(inicial.lineas.length < 2 ? [vacia()] : [])] : [vacia(), vacia()]);
 
   const total = (campo: "debe" | "haber") =>
     lineas.reduce((s, l) => s + aCentavos(leerMonto(l[campo]) ?? "0"), 0n);
@@ -50,11 +55,11 @@ export function FormularioAsiento({
   };
 
   return (
-    <form action={enviar}>
+    <form onSubmit={alEnviar(enviar)}>
       <div className="fila" style={{ marginBottom: 16 }}>
-        <label>Fecha<input type="date" name="fecha" defaultValue={hoy} min={bloqueo ? siguienteDia(bloqueo) : undefined} required /></label>
-        <label style={{ flex: "2 1 280px" }}>Concepto<input name="concepto" required placeholder="Ej.: Asiento de apertura" /></label>
-        <label style={{ flex: "1 1 160px" }}>Referencia<input name="referencia" placeholder="Factura, cheque…" /></label>
+        <label>Fecha<input type="date" name="fecha" defaultValue={inicial?.fecha ?? hoy} min={bloqueo ? siguienteDia(bloqueo) : undefined} required /></label>
+        <label style={{ flex: "2 1 280px" }}>Concepto<input name="concepto" required defaultValue={inicial?.concepto} placeholder="Ej.: Asiento de apertura" /></label>
+        <label style={{ flex: "1 1 160px" }}>Referencia<input name="referencia" defaultValue={inicial?.referencia} placeholder="Factura, cheque…" /></label>
       </div>
       <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
       <div className="tabla-envoltura">
@@ -98,10 +103,19 @@ export function FormularioAsiento({
       </div>
       <div className="fila" style={{ marginTop: 12 }}>
         <button type="button" onClick={() => setLineas((ls) => [...ls, vacia()])}>+ Agregar línea</button>
-        <button className="primario" disabled={enviando || diferencia !== 0n || totalDebe === 0n}>
-          {enviando ? "Guardando…" : "Registrar asiento"}
-        </button>
+        <button name="accion" value="borrador" disabled={enviando}>{enviando ? "Guardando…" : "Guardar borrador"}</button>
+        {puedeContabilizar && (
+          <button className="primario" name="accion" value="contabilizar" disabled={enviando || diferencia !== 0n || totalDebe === 0n}>
+            {enviando ? "Guardando…" : "Contabilizar"}
+          </button>
+        )}
       </div>
+      {!puedeContabilizar && <p className="sub" style={{ marginTop: 8 }}>Se guardará como borrador para que otra persona con permiso lo contabilice.</p>}
+      {estado.duplicado && (
+        <label className="aviso" style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
+          <input type="checkbox" name="confirmar_duplicado" style={{ minHeight: 0 }} /> Es otro asiento distinto: registrarlo de todas formas
+        </label>
+      )}
       {estado.error && <p className="error" role="alert">{estado.error}</p>}
     </form>
   );
