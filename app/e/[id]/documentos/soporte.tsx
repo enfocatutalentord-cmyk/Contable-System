@@ -7,7 +7,7 @@ const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Sa
 
 // Documentos de soporte de un asiento, factura o cobro: lista, descarga y formulario para adjuntar.
 export async function DocumentosSoporte({ empresaId, entidad, entidadId, puedeAdjuntar, retirables }: {
-  empresaId: string; entidad: "asiento" | "factura" | "cobro"; entidadId: string; puedeAdjuntar: boolean; retirables: boolean;
+  empresaId: string; entidad: "asiento" | "factura" | "cobro" | "compra" | "pago"; entidadId: string; puedeAdjuntar: boolean; retirables: boolean;
 }) {
   const documentos = await conEmpresa(empresaId, (tx) => tx<{ id: string; nombre: string; tipo: string; tamano: number; descripcion: string | null; subido_en: Date; quien: string | null }[]>`
     SELECT d.id, d.nombre, d.tipo, d.tamano, d.descripcion, d.subido_en, u.nombre AS quien

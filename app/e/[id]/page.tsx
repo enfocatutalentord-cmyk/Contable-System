@@ -4,6 +4,7 @@ import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { antiguedad } from "@/lib/cxc";
+import { antiguedadCxp } from "@/lib/cxp";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
 
 export default async function InicioEmpresa({ params, searchParams }: {
@@ -16,7 +17,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;
 
-  const { cuentas, delMes, recientes, cxc, borradores } = await conEmpresa(id, async (tx) => {
+  const { cuentas, delMes, recientes, cxc, cxp, borradores } = await conEmpresa(id, async (tx) => {
     const cuentas = await saldosPorCuenta(tx, inicioAnio, hoy);
     const [{ n }] = await tx<{ n: number }[]>`
       SELECT count(*)::int AS n FROM asientos WHERE estado = 'contabilizado' AND fecha BETWEEN ${primerDiaMes(hoy)} AND ${hoy}`;
@@ -26,7 +27,8 @@ export default async function InicioEmpresa({ params, searchParams }: {
              (SELECT sum(debe)::text FROM lineas_asiento WHERE asiento_id = a.id) AS total
         FROM asientos a ORDER BY a.creado DESC LIMIT 6`;
     const cxc = await antiguedad(tx, hoy);
-    return { cuentas, delMes: n, recientes, cxc, borradores: b };
+    const cxp = await antiguedadCxp(tx, hoy);
+    return { cuentas, delMes: n, recientes, cxc, cxp, borradores: b };
   });
 
   const clase = (c: string) => cuentas.find((x) => x.codigo === c);
@@ -62,8 +64,11 @@ export default async function InicioEmpresa({ params, searchParams }: {
               <div className="etiqueta">Por cobrar</div><div className="valor">{verMonto(cxc.total)}</div>
             </Link>
             <Link href={`/e/${id}/cxc?detalle=1`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
-              <div className="etiqueta">Vencido</div>
+              <div className="etiqueta">Por cobrar vencido</div>
               <div className="valor" style={{ color: cxc.total - cxc.totales[0] > 0n ? "var(--peligro)" : undefined }}>{verMonto(cxc.total - cxc.totales[0])}</div>
+            </Link>
+            <Link href={`/e/${id}/cxp`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+              <div className="etiqueta">Por pagar</div><div className="valor">{verMonto(cxp.total)}</div>
             </Link>
           </>
         )}
@@ -80,6 +85,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
           <div className="fila">
             <Link className="boton primario" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>
             <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>
+            <Link className="boton" href={`/e/${id}/compras/nueva`}>+ Nueva compra</Link>
           </div>
         )}
       </div>

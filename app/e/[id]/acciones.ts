@@ -172,6 +172,8 @@ const ENTIDADES = {
   asiento: { tabla: "asientos", ruta: "asientos", nombre: "El asiento" },
   factura: { tabla: "facturas", ruta: "facturas", nombre: "La factura" },
   cobro: { tabla: "cobros", ruta: "cobros", nombre: "El cobro" },
+  compra: { tabla: "compras", ruta: "compras", nombre: "La compra" },
+  pago: { tabla: "pagos", ruta: "pagos", nombre: "El pago" },
 } as const;
 
 export async function adjuntarDocumento(empresaId: string, entidad: keyof typeof ENTIDADES, entidadId: string, _: Estado, fd: FormData): Promise<Estado> {
@@ -209,7 +211,8 @@ export async function retirarDocumento(empresaId: string, documentoId: string, _
       const [d] = await tx<{ entidad_id: string; borrador: boolean }[]>`
         SELECT d.entidad_id,
                COALESCE((SELECT a.estado = 'borrador' FROM asientos a WHERE d.entidad = 'asiento' AND a.id = d.entidad_id),
-                        (SELECT f.estado = 'borrador' FROM facturas f WHERE d.entidad = 'factura' AND f.id = d.entidad_id), false) AS borrador
+                        (SELECT f.estado = 'borrador' FROM facturas f WHERE d.entidad = 'factura' AND f.id = d.entidad_id),
+                        (SELECT c.estado = 'borrador' FROM compras c WHERE d.entidad = 'compra' AND c.id = d.entidad_id), false) AS borrador
           FROM documentos d WHERE d.id = ${documentoId} AND NOT d.eliminado`;
       if (!d) throw new ErrorContable("El documento no existe");
       if (!d.borrador) throw new ErrorContable("El soporte de algo ya contabilizado o emitido no se retira");

@@ -11,7 +11,9 @@ export const TABLAS: Record<string, string> = {
   documentos: "Documento", cuentas_empresa: "Configuración de cuentas", clientes: "Cliente", servicios: "Servicio",
   secuencias_ncf: "Rango de NCF", facturas: "Comprobante", lineas_factura: "Línea de comprobante", cobros: "Cobro",
   aplicaciones_cobro: "Aplicación de cobro", impuestos: "Impuesto", retenciones: "Retención", obligaciones_empresa: "Obligación fiscal",
-  impuestos_linea_factura: "Impuesto de línea", retenciones_cobro: "Retención del cobro",
+  impuestos_linea_factura: "Impuesto de línea", retenciones_cobro: "Retención del cobro", proveedores: "Proveedor", compras: "Compra",
+  lineas_compra: "Línea de compra", impuestos_linea_compra: "Impuesto de línea de compra", pagos: "Pago", aplicaciones_pago: "Aplicación de pago",
+  retenciones_pago: "Retención del pago",
 };
 
 export const ACCIONES = { insert: "Creó", update: "Modificó", delete: "Eliminó" } as const;
@@ -27,6 +29,8 @@ const CAMPOS: Record<string, string> = {
   tasa: "Tasa", impuesto: "Impuesto", activo: "Activo", nota: "Nota", vigente_desde: "Vigente desde", vigente_hasta: "Vigente hasta",
   cuenta_ventas_id: "Cuenta en ventas", cuenta_compras_id: "Cuenta en compras", cuenta_por_terceros_id: "Cuenta cuando nos retienen",
   cuenta_a_terceros_id: "Cuenta cuando retenemos", codigo_606: "Tipo en el 606", clave: "Obligación", tipo_persona: "Tipo de contribuyente",
+  tipo_comprobante: "Comprobante", tipo_gasto: "Tipo de gasto (606)", itbis_al_costo: "ITBIS al costo", clase: "Bien o servicio",
+  pagado: "Pagado", forma_pago: "Forma de pago", registrada_en: "Registrada", del_exterior: "Del exterior", proveedor_id: "Proveedor",
   ncf: "NCF", ncf_vence: "NCF válido hasta", tipo_ncf: "Comprobante", subtotal: "Subtotal", itbis: "ITBIS", otros_impuestos: "Otros impuestos", otros: "Otros impuestos",
   cliente_id: "Cliente", vence: "Vence", moneda: "Moneda", cantidad: "Cantidad", precio: "Precio", monto: "Monto", recibido: "Recibido",
   emitida_en: "Emitida", ncf_predeterminado: "Comprobante habitual", dias_credito: "Días de crédito", impuesto_id: "Impuesto",
@@ -37,7 +41,7 @@ const CAMPOS: Record<string, string> = {
 const RUIDO = new Set(["id", "empresa_id", "creado", "creado_por", "modificado_por", "modificado_en", "aprobado_por", "aprobado_en",
   "anulado", "anulado_por", "anulado_en", "orden", "asiento_id", "sha256", "subido_por", "subido_en", "eliminado_por", "eliminado_en",
   "firma_id", "creada", "padre_id", "nivel", "tipo", "revierte_a", "usuario_id", "factura_id", "linea_id", "cobro_id",
-  "emitida_por", "cuenta_ingreso_id", "servicio_id", "retencion_id", "cuenta_destino_id"]);
+  "emitida_por", "registrada_por", "compra_id", "pago_id", "compra_origen_id", "cuenta_ingreso_id", "servicio_id", "retencion_id", "cuenta_destino_id"]);
 
 export type Nombres = Record<string, string>;
 
@@ -93,6 +97,7 @@ export async function nombresHistorial(tx: Tx): Promise<Nombres> {
     UNION ALL SELECT id::text, nombre FROM clientes
     UNION ALL SELECT id::text, nombre FROM impuestos
     UNION ALL SELECT id::text, nombre FROM retenciones
-    UNION ALL SELECT id::text, nombre FROM servicios`;
+    UNION ALL SELECT id::text, nombre FROM servicios
+    UNION ALL SELECT id::text, nombre FROM proveedores`;
   return Object.fromEntries(filas.map((f) => [f.id, f.nombre]));
 }

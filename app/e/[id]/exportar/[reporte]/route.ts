@@ -3,6 +3,7 @@ import { bitacora } from "@/lib/asientos";
 import { ACCIONES, describir, historial, nombresHistorial, TABLAS } from "@/lib/auditoria";
 import { buscarAsientos, estadoTexto, leerFiltros } from "@/lib/busqueda-asientos";
 import { antiguedad, estadoCuenta, TRAMOS } from "@/lib/cxc";
+import { antiguedadCxp, estadoCuentaProveedor } from "@/lib/cxp";
 import { conEmpresa } from "@/lib/db";
 import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/exportar";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
@@ -115,6 +116,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return ["estado-de-cuenta", {
         ...base, titulo: `Estado de cuenta · ${datos.c.nombre}${datos.c.rnc ? ` (RNC ${datos.c.rnc})` : ""}`, detalle: `${periodo} · ${moneda}`,
         columnas: [col("Fecha", false, 12), col("Documento", false, 16), col("Detalle", false, 40), col("Cargos", true), col("Abonos", true), col("Saldo", true)],
+        filas: [[verFecha(desde), "", "Saldo anterior", "", "", deCentavos(datos.e.inicial)],
+          ...datos.e.movimientos.map((m) => [verFecha(m.fecha), m.documento, m.detalle, deCentavos(m.cargo), deCentavos(m.abono), deCentavos(m.saldo)] as Celda[])],
+      }];
+    }
+    if (reporte === "antiguedad-cxp") {
+      const corte = fechaValida(sp.corte) ? sp.corte : hasta;
+      const { filas: proveedores, totales, total } = await conEmpresa(id, (tx) => antiguedadCxp(tx, corte));
+      const filas: Celda[][] = [];
+      for (const p of proveedores) for (const c of p.compras) {
+        const t = c.dias <= 0 ? 0 : c.dias <= 30 ? 1 : c.dias <= 60 ? 2 : c.dias <= 90 ? 3 : 4;
+        filas.push([p.proveedor, c.ncf, verFecha(c.vence), Math.max(0, c.dias), ...TRAMOS.map((_, i) => (i === t ? deCentavos(c.saldoPesos) : "")), deCentavos(c.saldoPesos)]);
+      }
+      return [`antiguedad-cuentas-por-pagar-${corte}`, {
+        ...base, titulo: "Antigüedad de cuentas por pagar (DOP)", detalle: `Al ${verFecha(corte)}`, horizontal: true,
+        columnas: [col("Proveedor", false, 28), col("NCF", false, 14), col("Vence", false, 12), col("Días vencida", false, 10), ...TRAMOS.map((x) => col(x, true)), col("Total", true)],
+        filas, totales: ["Total", "", "", "", ...totales.map(deCentavos), deCentavos(total)],
+      }];
+    }
+    if (reporte === "estado-cuenta-proveedor") {
+      const moneda = sp.moneda === "USD" ? "USD" : "DOP";
+      const datos = await conEmpresa(id, async (tx) => {
+        const [p] = await tx<{ id: string; nombre: string; rnc: string | null }[]>`SELECT id, nombre, rnc FROM proveedores WHERE id = ${sp.proveedor ?? null}::uuid`;
+        return p ? { p, e: await estadoCuentaProveedor(tx, id, p.id, moneda, desde, hasta) } : null;
+      }).catch(() => null);
+      if (!datos) return null;
+      return ["estado-de-cuenta-proveedor", {
+        ...base, titulo: `Estado de cuenta · ${datos.p.nombre}${datos.p.rnc ? ` (RNC ${datos.p.rnc})` : ""}`, detalle: `${periodo} · ${moneda}`,
+        columnas: [col("Fecha", false, 12), col("Documento", false, 16), col("Detalle", false, 40), col("Compras", true), col("Pagos y notas", true), col("Saldo", true)],
         filas: [[verFecha(desde), "", "Saldo anterior", "", "", deCentavos(datos.e.inicial)],
           ...datos.e.movimientos.map((m) => [verFecha(m.fecha), m.documento, m.detalle, deCentavos(m.cargo), deCentavos(m.abono), deCentavos(m.saldo)] as Celda[])],
       }];

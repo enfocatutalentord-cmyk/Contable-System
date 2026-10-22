@@ -10,8 +10,11 @@ const CLAVES: [clave: string, nombre: string, ayuda: string][] = [
   ["cxc", "Cuentas por cobrar clientes", "Se carga con cada factura y se abona con cada cobro."],
   ["ingreso_servicios", "Ingresos por servicios", "Para las líneas de factura sin cuenta propia."],
   ["devoluciones_ventas", "Devoluciones y descuentos en ventas", "Para las notas de crédito."],
-  ["ganancia_cambiaria", "Ganancia cambiaria", "Cuando cobras en dólares a una tasa mayor que la de la factura."],
-  ["perdida_cambiaria", "Pérdida cambiaria", "Cuando cobras en dólares a una tasa menor que la de la factura."],
+  ["ganancia_cambiaria", "Ganancia cambiaria", "Cuando cobras o pagas dólares a una tasa que te favorece."],
+  ["perdida_cambiaria", "Pérdida cambiaria", "Cuando cobras o pagas dólares a una tasa que te desfavorece."],
+  ["cxp", "Cuentas por pagar a proveedores locales", "Se carga con cada compra y se abona con cada pago."],
+  ["cxp_exterior", "Cuentas por pagar a proveedores del exterior", "Para los proveedores marcados como del exterior."],
+  ["gasto_general", "Gasto por defecto de las compras", "Para las líneas de compra sin cuenta del proveedor."],
 ];
 
 export default async function Configuracion({ params }: { params: Promise<{ id: string }> }) {
@@ -25,9 +28,9 @@ export default async function Configuracion({ params }: { params: Promise<{ id: 
 
   return (
     <>
-      <h1>Configuración de ventas</h1>
+      <h1>Configuración de cuentas</h1>
       <p className="sub">
-        Las cuentas que usan los asientos automáticos de facturas, notas de crédito y cobros. Las de impuestos y retenciones
+        Las cuentas que usan los asientos automáticos de ventas, cobros, compras y pagos. Las de impuestos y retenciones
         se eligen en <Link href={`/e/${id}/fiscal/impuestos`}>Impuestos</Link> y <Link href={`/e/${id}/fiscal/retenciones`}>Retenciones</Link>.
       </p>
       <div className="tarjeta">

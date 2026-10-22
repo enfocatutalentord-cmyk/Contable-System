@@ -39,7 +39,9 @@ export default async function VerAsiento({ params, searchParams }: {
              ua.nombre AS aprobado_por, a.aprobado_en, um.nombre AS modificado_por, a.modificado_en, un.nombre AS anulado_por,
              a.revierte_a, o.numero AS revierte_numero, r.id AS revertido_por, r.numero AS revertido_numero,
              COALESCE((SELECT '/facturas/' || f.id FROM facturas f WHERE f.asiento_id = a.id),
-                      (SELECT '/cobros/' || c.numero FROM cobros c WHERE c.asiento_id = a.id)) AS documento
+                      (SELECT '/cobros/' || c.numero FROM cobros c WHERE c.asiento_id = a.id),
+                      (SELECT '/compras/' || co.id FROM compras co WHERE co.asiento_id = a.id),
+                      (SELECT '/pagos/' || p.numero FROM pagos p WHERE p.asiento_id = a.id)) AS documento
         FROM asientos a
         LEFT JOIN usuarios uc ON uc.id = a.creado_por
         LEFT JOIN usuarios ua ON ua.id = a.aprobado_por

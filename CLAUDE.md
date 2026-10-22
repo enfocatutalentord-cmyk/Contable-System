@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 22-oct-2026 (Fases 1, 2 y 3 aprobadas y en `main`).
+Última actualización: 22-oct-2026 (Fases 1, 2 y 3 en `main`; Fase 4 hecha en la rama, esperando aprobación).
 
 ## Con quién y cómo
 
@@ -90,6 +90,15 @@ Notas de infraestructura que costaron tiempo:
   de impuestos salen de `impuestos.cuenta_ventas_id`; las retenciones del cobro, de `retenciones` (tabla `retenciones_cobro`,
   cuenta `cuenta_por_terceros_id`). Clientes con tipo de identificación, comprobante habitual y retenciones habituales.
   Tipos de venta: B01, B02, B14, B15, B16 y B04 (los e-CF llegan con la fase fiscal). Ya no hay módulo apagado.
+- **Compras y CxP** (`lib/compras.ts`, `lib/cxp.ts`, `migraciones/006_compras.sql`): mismo esquema borrador → registrada.
+  Comprobante del proveedor (B01, B02, B14, B15, E31, E32, E44, E45; notas B04/E34) o propio con nuestro rango (B11 compras a
+  informales con cédula, B13 gastos menores, B17 pagos al exterior). **Control de duplicados:** índice único
+  (empresa, proveedor, NCF) entre las no anuladas. Asiento: gasto/costo/activo (+ impuestos sin crédito) e ITBIS pagado
+  (`impuestos.cuenta_compras_id`) contra CxP (`cxp` o `cxp_exterior`). B02/E32/B13, «ITBIS al costo» o empresa no
+  contribuyente → el ITBIS va al gasto. Cada compra guarda el tipo de gasto del 606 (01–11) y cada línea si es bien o servicio;
+  los pagos guardan la forma de pago del 606 (01–07) y las retenciones que hacemos (`retenciones_pago`, cuenta
+  `cuenta_a_terceros_id`, con su código 606) en la fecha del pago. Registrar compras y hacer pagos exige «contabilizar».
+  Cuentas en `cuentas_empresa`: `cxp` 210101, `cxp_exterior` 210102, `gasto_general` 610214 (Configuración de cuentas).
 - **Configuración tributaria** (`lib/fiscal.ts`, `migraciones/004_tributaria.sql`): tablas `impuestos` y `retenciones` por empresa
   con tasa `numeric(7,4)`, cuentas asignadas (trigger: cuenta de detalle activa de la misma empresa) y vigencia desde/hasta, para
   que un cambio de ley (p. ej. Ley 30-26: ISR honorarios 10 % → 15 % desde 1-jul-2026) no altere lo anterior. Las retenciones de
@@ -111,7 +120,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 1. Plataforma y núcleo | Firmas con varios clientes, perfiles y permisos configurables, equipo de la firma, ficha de la empresa, borradores/contabilización/reversión, aprobación opcional, alerta de duplicados, documentos adjuntos, historial de cambios, búsqueda avanzada, Excel y PDF, respaldos | **Aprobada y en `main`** (22-oct-2026, commit `dd422f7`). |
 | 2. Configuración tributaria | Perfil fiscal (persona física/jurídica, contribuyente de ITBIS, agente de retención, emisor e-CF), obligaciones DGII sugeridas y confirmables, impuestos con tasa, cuentas y vigencia, retenciones ITBIS/ISR con vigencia y tipo 606, todos los comprobantes B y E con sus rangos, «Probar cálculo» con asientos de ejemplo, permiso «impuestos» | **Aprobada y en `main`** (22-oct-2026, commit `3983185`; migración `004_tributaria.sql`; 34 pruebas; recorrido `pruebas/navegador/tributaria.cjs` de 11 pasos). |
 | 3. Ventas y CxC | Borradores y emisión de facturas, impuestos de la configuración por línea (con propina/selectivo), notas de crédito B04, anulación 608, cobros con retenciones configurables y sugeridas, clientes con datos fiscales, productos con impuestos, adjuntos e historial en facturas y cobros, antigüedad y estado de cuenta | **Aprobada y en `main`** (22-oct-2026, commit `0a396a1`; migración `005_ventas_fiscal.sql`; 45 pruebas, 11 de ellas de ventas con la lógica real; recorrido `pruebas/navegador/ventas.cjs` de 13 pasos; los de las fases 1 y 2 siguen pasando). |
-| 4. Compras y CxP | Proveedores, gastos con retenciones, pagos | Pendiente |
+| 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Hecha y probada en la rama** (migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). **Esperando aprobación de Joannie.** |
 | 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Pendiente |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
 | 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
@@ -120,7 +129,8 @@ No se pasa a la siguiente sin su autorización expresa.
 
 - Publicado en `main` el 22-oct-2026: la migración 003 convierte a cada dueño actual en una firma con sus empresas
   (Goemhy queda en una firma con el nombre de Manaury). Confirmar con Joannie la publicación en Vercel (captura de Deployments).
-- Fase 3 publicada el 22-oct-2026 (confirmar en Vercel). Siguiente: Fase 4 (Compras y CxP), solo con autorización expresa.
+- Fase 3 publicada el 22-oct-2026 (Joannie confirmó en Vercel). **Aprobación de la Fase 4** y su «sí» para `main`.
+  Siguiente: Fase 5 (Bancos), solo con autorización expresa.
 - Preguntar a Joannie: ¿qué firma usará el sistema (Empire, Enfoca o se vende a muchas)? ¿Goemhy sigue como primer cliente?
 - Antes de producción: secretos de respaldo en GitHub (`DATABASE_URL` directa y `RESPALDO_CLAVE`) y activar PITR en Neon.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
@@ -138,11 +148,12 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 45 pruebas (base, montos, cálculos, fiscal y ventas)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 56 pruebas (base, montos, cálculos, fiscal, ventas y compras)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
+PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes
