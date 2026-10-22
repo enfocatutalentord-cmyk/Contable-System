@@ -101,51 +101,6 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
   return { ok: `Servicio ${nombre} guardado.` };
 }
 
-export async function agregarSecuencia(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "catalogo");
-  const tipo = texto(fd, "tipo") as TipoNcf;
-  const desde = Number(texto(fd, "desde"));
-  const hasta = Number(texto(fd, "hasta"));
-  const vence = texto(fd, "vence");
-  if (!["B01", "B02", "B14", "B15", "B04"].includes(tipo)) return { error: "Elige el tipo de comprobante." };
-  if (!Number.isInteger(desde) || !Number.isInteger(hasta) || desde < 1 || hasta > 99999999 || desde > hasta) {
-    return { error: "El rango no es válido (del 1 al 99,999,999, y «desde» no puede pasar de «hasta»)." };
-  }
-  if (!fechaValida(vence)) return { error: "Pon la fecha de vencimiento que indica la DGII." };
-  try {
-    await conEmpresa(empresaId, async (tx) => {
-      const [choque] = await tx<{ n: number }[]>`
-        SELECT count(*)::int AS n FROM secuencias_ncf WHERE tipo = ${tipo} AND desde <= ${hasta} AND hasta >= ${desde}`;
-      if (choque.n > 0) throw new ErrorContable("Ese rango se cruza con otro ya registrado del mismo tipo");
-      const [{ usado }] = await tx<{ usado: number }[]>`
-        SELECT count(*)::int AS usado FROM facturas WHERE tipo_ncf = ${tipo} AND substr(ncf, 4)::bigint BETWEEN ${desde} AND ${hasta}`;
-      if (usado > 0) throw new ErrorContable("Ya hay comprobantes emitidos dentro de ese rango");
-      await tx`INSERT INTO secuencias_ncf (empresa_id, tipo, desde, hasta, siguiente, vence)
-               VALUES (${empresaId}, ${tipo}, ${desde}, ${hasta}, ${desde}, ${vence})`;
-      await bitacora(tx, empresaId, usuario.id, "secuencia_agregada", { tipo, desde, hasta, vence });
-    });
-  } catch (e) {
-    return { error: mensajeError(e) };
-  }
-  revalidatePath(`/e/${empresaId}/comprobantes`);
-  return { ok: `Rango ${tipo} agregado.` };
-}
-
-export async function desactivarSecuencia(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "catalogo");
-  const id = texto(fd, "id");
-  try {
-    await conEmpresa(empresaId, async (tx) => {
-      await tx`UPDATE secuencias_ncf SET activa = false WHERE id = ${id}`;
-      await bitacora(tx, empresaId, usuario.id, "secuencia_desactivada", { id });
-    });
-  } catch (e) {
-    return { error: mensajeError(e) };
-  }
-  revalidatePath(`/e/${empresaId}/comprobantes`);
-  return { ok: "Rango desactivado." };
-}
-
 type LineaForm = { servicioId: string; descripcion: string; cantidad: string; precio: string; tasa: string };
 
 export async function crearFactura(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {

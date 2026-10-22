@@ -11,6 +11,7 @@ export const PERMISOS = [
   { clave: "exportar", nombre: "Descargar Excel y PDF" },
   { clave: "auditoria", nombre: "Ver el historial de cambios" },
   { clave: "empresa", nombre: "Editar la ficha de la empresa" },
+  { clave: "impuestos", nombre: "Configurar impuestos, retenciones y comprobantes" },
   { clave: "usuarios", nombre: "Dar y quitar acceso a la empresa" },
 ] as const;
 

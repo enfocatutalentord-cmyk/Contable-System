@@ -5,7 +5,7 @@ import type { Estado } from "./acciones-cuenta";
 import { alEnviar } from "./enviar";
 
 // Envuelve un formulario con su server action y muestra el error o el aviso que devuelva.
-// Los datos escritos se conservan si hay error; se limpian cuando la acción sale bien.
+// Los datos escritos se conservan si hay error; se limpian cuando la acción sale bien. Sin `boton`, es solo lectura.
 export function Formulario({
   accion,
   boton,
@@ -27,9 +27,11 @@ export function Formulario({
       {children}
       {estado.error && <p className="error" role="alert">{estado.error}</p>}
       {estado.ok && <p className="exito" role="status">{estado.ok}</p>}
-      <div>
-        <button className="primario" disabled={enviando}>{enviando ? "Guardando…" : boton}</button>
-      </div>
+      {boton && (
+        <div>
+          <button className="primario" disabled={enviando}>{enviando ? "Guardando…" : boton}</button>
+        </div>
+      )}
     </form>
   );
 }

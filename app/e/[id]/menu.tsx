@@ -18,12 +18,17 @@ export function Menu({ empresaId, ventas, auditoria }: { empresaId: string; vent
       : []),
     { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/catalogo", "Catálogo de cuentas"], ["/cierres", "Cierres de período"]] },
     { grupo: "Libros", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
+    {
+      grupo: "Impuestos",
+      enlaces: [["/fiscal", "Perfil fiscal"], ["/fiscal/impuestos", "Impuestos"], ["/fiscal/retenciones", "Retenciones"],
+                ["/comprobantes", "Comprobantes fiscales"], ["/fiscal/probar", "Probar cálculo"]],
+    },
     { grupo: "Control", enlaces: auditoria ? [["/historial", "Historial de cambios"]] : [] },
     {
       grupo: "Empresa",
       enlaces: [
         ["/empresa", "Ficha de la empresa"],
-        ...(ventas ? ([["/comprobantes", "Comprobantes NCF"], ["/configuracion", "Configuración"]] as [string, string][]) : []),
+        ...(ventas ? ([["/configuracion", "Configuración de ventas"]] as [string, string][]) : []),
         ["/usuarios", "Usuarios y permisos"],
       ],
     },

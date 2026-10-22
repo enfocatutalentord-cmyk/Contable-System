@@ -56,20 +56,25 @@ export async function crearFirma(tx: Tx, datos: { nombre: string; rnc: string | 
   return id;
 }
 
-// Crea una empresa cliente dentro de la firma y le carga el catálogo de cuentas dominicano.
+// Crea una empresa cliente dentro de la firma con el catálogo de cuentas dominicano y la configuración tributaria sugerida.
 export async function crearEmpresa(datos: { firmaId: string; usuarioId: string; ficha: Ficha }, tx?: Tx): Promise<string> {
   const f = datos.ficha;
+  // Con cédula, de entrada se asume persona física; se ajusta en «Perfil fiscal».
+  const persona = f.tipo_identificacion === "cedula" ? "fisica" : "juridica";
   const correr = async (t: Tx) => {
     await t`SELECT set_config('app.usuario_id', ${datos.usuarioId}, true)`;
     const [{ id }] = await t<{ id: string }[]>`
       INSERT INTO empresas (firma_id, nombre, nombre_comercial, tipo_identificacion, rnc, actividad_economica, regimen,
-                            direccion, telefono, correo, mes_cierre, inicio_operaciones, requiere_aprobacion)
+                            direccion, telefono, correo, mes_cierre, inicio_operaciones, requiere_aprobacion,
+                            tipo_persona, agente_retencion)
       VALUES (${datos.firmaId}, ${f.nombre}, ${f.nombre_comercial}, ${f.tipo_identificacion}, ${f.rnc}, ${f.actividad_economica},
-              ${f.regimen}, ${f.direccion}, ${f.telefono}, ${f.correo}, ${f.mes_cierre}, ${f.inicio_operaciones}, ${f.requiere_aprobacion})
+              ${f.regimen}, ${f.direccion}, ${f.telefono}, ${f.correo}, ${f.mes_cierre}, ${f.inicio_operaciones}, ${f.requiere_aprobacion},
+              ${persona}, ${persona === "juridica"})
       RETURNING id`;
     await t`SELECT set_config('app.empresa_id', ${id}, true)`;
     await cargarCatalogo(t, id);
     await t`SELECT configurar_cuentas_empresa(${id})`;
+    await t`SELECT configurar_tributaria(${id})`;
     await t`INSERT INTO bitacora (empresa_id, usuario_id, accion) VALUES (${id}, ${datos.usuarioId}, 'empresa_creada')`;
     return id;
   };

@@ -6,6 +6,10 @@ const path = require("node:path");
 const fs = require("node:fs");
 const S = process.env.CAPTURAS || "/tmp", B = process.env.BASE || "http://localhost:3100";
 const assert = (c, m) => { if (!c) throw new Error(m); };
+// Archivos de prueba para los adjuntos: un PDF mínimo válido y un ejecutable disfrazado de PDF.
+fs.mkdirSync(S, { recursive: true });
+fs.writeFileSync(path.join(S, "soporte.pdf"), "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
 
 (async () => {
   const browser = await chromium.launch();

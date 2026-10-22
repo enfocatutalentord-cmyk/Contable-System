@@ -10,7 +10,7 @@ export const TABLAS: Record<string, string> = {
   asientos: "Asiento", lineas_asiento: "Línea de asiento", cuentas: "Cuenta", empresas: "Empresa", miembros: "Acceso",
   documentos: "Documento", cuentas_empresa: "Configuración de cuentas", clientes: "Cliente", servicios: "Servicio",
   secuencias_ncf: "Rango de NCF", facturas: "Comprobante", lineas_factura: "Línea de comprobante", cobros: "Cobro",
-  aplicaciones_cobro: "Aplicación de cobro",
+  aplicaciones_cobro: "Aplicación de cobro", impuestos: "Impuesto", retenciones: "Retención", obligaciones_empresa: "Obligación fiscal",
 };
 
 export const ACCIONES = { insert: "Creó", update: "Modificó", delete: "Eliminó" } as const;
@@ -23,6 +23,10 @@ const CAMPOS: Record<string, string> = {
   nombre_comercial: "Nombre comercial", perfil_id: "Perfil", eliminado: "Eliminado", motivo_anulacion: "Motivo de anulación",
   tipo_identificacion: "Tipo de identificación", inicio_operaciones: "Inicio de operaciones", total: "Total", anulada: "Anulada",
   origen: "Origen", nombre_comercial_firma: "Firma", administrador: "Administrador",
+  tasa: "Tasa", impuesto: "Impuesto", activo: "Activo", nota: "Nota", vigente_desde: "Vigente desde", vigente_hasta: "Vigente hasta",
+  cuenta_ventas_id: "Cuenta en ventas", cuenta_compras_id: "Cuenta en compras", cuenta_por_terceros_id: "Cuenta cuando nos retienen",
+  cuenta_a_terceros_id: "Cuenta cuando retenemos", codigo_606: "Tipo en el 606", clave: "Obligación", tipo_persona: "Tipo de contribuyente",
+  contribuye_itbis: "Contribuyente de ITBIS", agente_retencion: "Agente de retención", emisor_ecf: "Emisor e-CF", ecf_desde: "e-CF desde",
 };
 
 // Campos técnicos que no aportan al leer el historial.
