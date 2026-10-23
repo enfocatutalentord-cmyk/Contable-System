@@ -135,8 +135,10 @@ No se pasa a la siguiente sin su autorización expresa.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
-- Seguridad: recuperar contraseña por correo y limitar intentos de entrada (hoy el dueño da una clave temporal y la persona
-  la cambia en «Mi cuenta»).
+- Seguridad: **límite de intentos de entrada hecho en la rama** (23-oct-2026, `migraciones/007_intentos_entrada.sql`,
+  `lib/intentos.ts`: 5 fallos seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos; esperando el «sí» de
+  Joannie para `main`). Falta recuperar contraseña por correo: necesita un servicio de correo (por ejemplo la misma
+  contraseña de aplicación de Gmail que la web de Empire); hoy el administrador da una clave temporal.
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local
@@ -147,7 +149,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 56 pruebas (base, montos, cálculos, fiscal, ventas y compras)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 60 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
