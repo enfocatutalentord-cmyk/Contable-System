@@ -129,7 +129,7 @@ No se pasa a la siguiente sin su autorización expresa.
 
 - Publicado en `main` el 22-oct-2026: la migración 003 convierte a cada dueño actual en una firma con sus empresas
   (Goemhy queda en una firma con el nombre de Manaury). Confirmar con Joannie la publicación en Vercel (captura de Deployments).
-- Fase 4 publicada el 23-oct-2026 (confirmar en Vercel). Siguiente: Fase 5 (Bancos), solo con autorización expresa.
+- Fase 4 publicada el 23-oct-2026 (Joannie confirmó en Vercel: c49b62b Ready). Siguiente: Fase 5 (Bancos), solo con autorización expresa.
 - Preguntar a Joannie: ¿qué firma usará el sistema (Empire, Enfoca o se vende a muchas)? ¿Goemhy sigue como primer cliente?
 - Antes de producción: secretos de respaldo en GitHub (`DATABASE_URL` directa y `RESPALDO_CLAVE`) y activar PITR en Neon.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
