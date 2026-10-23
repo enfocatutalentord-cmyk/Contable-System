@@ -1,10 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cerrarSesion, cifrarClave, claveCorrecta, iniciarSesion, exigirUsuario } from "@/lib/auth";
 import { db, mensajeError } from "@/lib/db";
 import { accesoFirma } from "@/lib/acceso";
 import { crearEmpresa, crearFirma, leerFicha, limpiarRnc, rncValido } from "@/lib/empresas";
+import { anotarIntento, entradaBloqueada, MINUTOS } from "@/lib/intentos";
 
 export type Estado = { error?: string; ok?: string };
 
@@ -45,8 +47,14 @@ export async function registrarse(_: Estado, fd: FormData): Promise<Estado> {
 export async function entrar(_: Estado, fd: FormData): Promise<Estado> {
   const email = texto(fd, "email").toLowerCase();
   const clave = String(fd.get("clave") ?? "");
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() || null;
+  if (await entradaBloqueada(db(), email, ip)) {
+    return { error: `Demasiados intentos fallidos. Espera ${MINUTOS} minutos y vuelve a intentarlo, o pide a un administrador de la firma una clave temporal.` };
+  }
   const [u] = await db()<{ id: string; clave_hash: string }[]>`SELECT id, clave_hash FROM usuarios WHERE email = ${email}`;
-  if (!u || !(await claveCorrecta(clave, u.clave_hash))) return { error: "Correo o contraseña incorrectos." };
+  const correcta = !!u && (await claveCorrecta(clave, u.clave_hash));
+  await anotarIntento(db(), email, ip, correcta);
+  if (!correcta) return { error: "Correo o contraseña incorrectos." };
   await iniciarSesion(u.id);
   redirect("/empresas");
 }
