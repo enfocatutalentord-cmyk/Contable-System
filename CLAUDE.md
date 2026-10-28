@@ -142,14 +142,14 @@ No se pasa a la siguiente sin su autorización expresa.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
-- Seguridad: **límite de intentos de entrada hecho en la rama** (23-oct-2026, `migraciones/007_intentos_entrada.sql`,
-  `lib/intentos.ts`: 5 fallos seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos; esperando el «sí» de
-  Joannie para `main`). La recuperación de contraseña por correo quedó hecha con el acceso por correo (migración 008).
+- Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
+  seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
+  desde el 28-oct-2026 (`f23de8f`, «sí» de Joannie). Joannie puso `GMAIL_CLAVE_APP` en Vercel › contable-system.
+  Falta: confirmar el despliegue en Vercel y que una invitación de prueba llegue (reenviar la de Patricia en Equipo).
 - 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
   clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
   (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
-  primer ingreso: hecho en la rama (migración 008), falta su «sí» para `main` y poner `GMAIL_CLAVE_APP` en Vercel › contable-system.
-  Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
+  primer ingreso: hecho y en `main` (ver Seguridad). Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
   (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
