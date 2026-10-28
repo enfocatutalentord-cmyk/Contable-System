@@ -10,7 +10,8 @@ import { nivelDeCodigo } from "@/lib/catalogo-rd";
 import { conEmpresa, conUsuario, mensajeError, type Tx } from "@/lib/db";
 import { huella, nombreSeguro, TAMANO_MAXIMO, tipoPorContenido } from "@/lib/documentos";
 import { leerFicha } from "@/lib/empresas";
-import { asegurarUsuario } from "@/lib/equipo";
+import { crearEnlace, enviarEnlace } from "@/lib/enlaces";
+import { asegurarUsuario, avisoEnlace } from "@/lib/equipo";
 import { aCentavos, leerMonto, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
@@ -255,14 +256,14 @@ export async function asignarAcceso(empresaId: string, _: Estado, fd: FormData):
   const personaId = texto(fd, "usuario");
   const perfil = texto(fd, "perfil");
   try {
-    const temporal = await conUsuario(usuario.id, async (tx) => {
+    const invitado = await conUsuario(usuario.id, async (tx) => {
       let id = personaId;
-      let clave: string | null = null;
+      let enlace: { nombre: string; url: string } | null = null;
       if (!id) {
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ErrorContable("El correo no es válido");
         const u = await asegurarUsuario(tx, email, nombre);
         id = u.id;
-        clave = u.temporal;
+        if (u.nuevo) enlace = { nombre: u.nombre, url: await crearEnlace(tx, u.id, "invitacion", usuario.id) };
         await tx`INSERT INTO miembros_firma (firma_id, usuario_id) VALUES (${empresa.firma_id}, ${id}) ON CONFLICT DO NOTHING`;
       }
       if (!esUuid(id)) throw new ErrorContable("Persona no válida");
@@ -277,14 +278,14 @@ export async function asignarAcceso(empresaId: string, _: Estado, fd: FormData):
         await tx`INSERT INTO miembros (empresa_id, usuario_id, perfil_id) VALUES (${empresaId}, ${id}, ${perfil})
                  ON CONFLICT (empresa_id, usuario_id) DO UPDATE SET perfil_id = EXCLUDED.perfil_id`;
       }
-      return clave;
+      return enlace;
     });
     revalidatePath(`/e/${empresaId}/usuarios`);
-    return {
-      ok: temporal
-        ? `Acceso creado. Contraseña temporal para ${email}: ${temporal} (cópiala ahora; no se vuelve a mostrar).`
-        : perfil ? "Acceso guardado." : "Acceso quitado.",
-    };
+    if (invitado) {
+      const enviado = await enviarEnlace({ para: email, nombre: invitado.nombre, url: invitado.url, tipo: "invitacion", firma: empresa.firma, quien: usuario.nombre });
+      return { ok: `Acceso creado. ${avisoEnlace(email, enviado, invitado.url)}` };
+    }
+    return { ok: perfil ? "Acceso guardado." : "Acceso quitado." };
   } catch (e) {
     return { error: mensajeError(e) };
   }

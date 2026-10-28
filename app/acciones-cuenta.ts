@@ -6,6 +6,7 @@ import { cerrarSesion, cifrarClave, claveCorrecta, iniciarSesion, exigirUsuario 
 import { db, mensajeError } from "@/lib/db";
 import { accesoFirma } from "@/lib/acceso";
 import { crearEmpresa, crearFirma, leerFicha, limpiarRnc, rncValido } from "@/lib/empresas";
+import { crearEnlace, enviarEnlace, recuperacionesRecientes, usarEnlace } from "@/lib/enlaces";
 import { anotarIntento, entradaBloqueada, MINUTOS } from "@/lib/intentos";
 
 export type Estado = { error?: string; ok?: string };
@@ -49,7 +50,7 @@ export async function entrar(_: Estado, fd: FormData): Promise<Estado> {
   const clave = String(fd.get("clave") ?? "");
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() || null;
   if (await entradaBloqueada(db(), email, ip)) {
-    return { error: `Demasiados intentos fallidos. Espera ${MINUTOS} minutos y vuelve a intentarlo, o pide a un administrador de la firma una clave temporal.` };
+    return { error: `Demasiados intentos fallidos. Espera ${MINUTOS} minutos y vuelve a intentarlo, o usa «¿Olvidaste tu contraseña?».` };
   }
   const [u] = await db()<{ id: string; clave_hash: string }[]>`SELECT id, clave_hash FROM usuarios WHERE email = ${email}`;
   const correcta = !!u && (await claveCorrecta(clave, u.clave_hash));
@@ -92,4 +93,29 @@ export async function cambiarClave(_: Estado, fd: FormData): Promise<Estado> {
   });
   await iniciarSesion(usuario.id);
   return { ok: "Contraseña cambiada. Se cerraron tus otras sesiones." };
+}
+
+// ───── Acceso por correo (enlaces de un solo uso, lib/enlaces.ts) ─────
+
+export async function crearClaveConEnlace(token: string, _: Estado, fd: FormData): Promise<Estado> {
+  const clave = String(fd.get("clave") ?? "");
+  const repetida = String(fd.get("repetida") ?? "");
+  if (clave.length < 10) return { error: "La contraseña debe tener al menos 10 caracteres." };
+  if (clave !== repetida) return { error: "Las dos contraseñas no coinciden." };
+  const usuarioId = await usarEnlace(token, clave);
+  if (!usuarioId) return { error: "Este enlace ya se usó o venció. Pide uno nuevo en «¿Olvidaste tu contraseña?» o al administrador de tu firma." };
+  await iniciarSesion(usuarioId);
+  redirect("/empresas?bienvenida=1");
+}
+
+// Siempre responde lo mismo, exista o no la cuenta, para no revelar qué correos están registrados.
+export async function pedirRecuperacion(_: Estado, fd: FormData): Promise<Estado> {
+  const email = texto(fd, "email").toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "El correo no es válido." };
+  const respuesta = { ok: `Si ${email} tiene una cuenta, le llegará en unos minutos un correo con el enlace para crear una nueva contraseña (vale 1 hora). Revisa también la carpeta de spam.` };
+  const [u] = await db()<{ id: string; nombre: string }[]>`SELECT id, nombre FROM usuarios WHERE email = ${email}`;
+  if (!u || (await recuperacionesRecientes(u.id)) >= 3) return respuesta;
+  const url = await db().begin((tx) => crearEnlace(tx, u.id, "recuperacion", null)) as string;
+  await enviarEnlace({ para: email, nombre: u.nombre, url, tipo: "recuperacion" });
+  return respuesta;
 }

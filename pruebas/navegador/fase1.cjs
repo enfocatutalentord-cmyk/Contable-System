@@ -163,15 +163,16 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   await page.locator("form:has(input[name=email]) select[name=perfil]").selectOption({ label: "Auxiliar" });
   await page.click("text=Agregar y dar acceso");
   const msg = await page.locator(".exito").innerText();
-  const temporal = msg.match(/: (\S+) \(cópiala/)[1];
-  paso("auxiliar agregada con perfil Auxiliar y clave temporal");
+  // Sin correo configurado en las pruebas, el sistema muestra el enlace de invitación para pasarlo a mano.
+  const enlace = msg.match(/https?:\/\/\S+\/acceso\/[A-Za-z0-9_-]+/)[0];
+  paso("auxiliar agregada con perfil Auxiliar e invitación por correo");
 
   const aux = await nueva();
-  await aux.goto(B + "/entrar");
-  await aux.fill("input[name=email]", "aux@firma.do");
-  await aux.fill("input[name=clave]", temporal);
+  await aux.goto(enlace);
+  await aux.fill("input[name=clave]", "clave-auxiliar-1");
+  await aux.fill("input[name=repetida]", "clave-auxiliar-1");
   await aux.click("button.primario");
-  await aux.waitForURL(B + "/empresas");
+  await aux.waitForURL(/empresas/);
   assert((await aux.locator("text=+ Nuevo cliente").count()) === 0, "auxiliar no crea clientes");
   await aux.goto(base + "/asientos/nuevo");
   assert((await aux.getByRole("button", { name: "Contabilizar" }).count()) === 0, "auxiliar no contabiliza");

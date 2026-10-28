@@ -17,7 +17,8 @@ export default function Entrar() {
             <label>Correo<input name="email" type="email" autoComplete="email" required /></label>
             <label>Contraseña<input name="clave" type="password" autoComplete="current-password" required /></label>
           </Formulario>
-          <p className="sub" style={{ marginTop: 16 }}>¿No tienes cuenta? <Link href="/registro">Crea una</Link></p>
+          <p className="sub" style={{ marginTop: 16 }}><Link href="/recuperar">¿Olvidaste tu contraseña?</Link></p>
+          <p className="sub">¿No tienes cuenta? <Link href="/registro">Crea una</Link></p>
         </div>
       </div>
     </main>

@@ -1,7 +1,7 @@
 import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
-import { agregarPersona, guardarAccesos, quitarDeFirma } from "../../acciones";
+import { agregarPersona, enviarAcceso, guardarAccesos, quitarDeFirma } from "../../acciones";
 import { EncabezadoFirma } from "../../encabezado";
 
 export const metadata = { title: "Equipo · Empire Tax’N Legal" };
@@ -10,8 +10,8 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
   const { fid } = await params;
   const { firma, usuario } = await accesoFirma(fid);
   const [personas, empresas, perfiles, accesos] = await Promise.all([
-    db()<{ id: string; nombre: string; email: string; administrador: boolean }[]>`
-      SELECT u.id, u.nombre, u.email, mf.administrador FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+    db()<{ id: string; nombre: string; email: string; administrador: boolean; verificado: boolean }[]>`
+      SELECT u.id, u.nombre, u.email, mf.administrador, u.correo_verificado IS NOT NULL AS verificado FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
        WHERE mf.firma_id = ${fid} ORDER BY mf.administrador DESC, u.nombre`,
     db()<{ id: string; nombre: string }[]>`SELECT id, nombre FROM empresas WHERE firma_id = ${fid} AND activa ORDER BY nombre`,
     db()<{ id: string; nombre: string }[]>`SELECT id, nombre FROM perfiles WHERE firma_id = ${fid} ORDER BY sistema DESC, nombre`,
@@ -30,6 +30,7 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
 
       <div className="tarjeta" style={{ marginBottom: 20 }}>
         <h2 style={{ marginTop: 0 }}>Agregar a una persona</h2>
+        <p className="sub">Le llega un correo con un enlace para verificar su correo y crear su propia contraseña (vale 72 horas).</p>
         <Formulario accion={agregarPersona.bind(null, fid)} boton="Agregar" className="fila">
           <label style={{ flex: "1 1 220px" }}>Correo<input name="email" type="email" required /></label>
           <label style={{ flex: "1 1 200px" }}>Nombre (si es nueva)<input name="nombre" /></label>
@@ -44,10 +45,15 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
           <div className="entre">
             <div>
               <strong>{p.nombre}</strong>{p.id === usuario.id && " (tú)"}
-              <div className="sub" style={{ margin: 0 }}>{p.email}</div>
+              <div className="sub" style={{ margin: 0 }}>
+                {p.email} · {p.verificado ? "correo verificado" : <span className="error">correo sin verificar</span>}
+              </div>
             </div>
             {p.id !== usuario.id && (
-              <Formulario accion={quitarDeFirma.bind(null, fid, p.id)} boton="Quitar de la firma" className="fila"><span /></Formulario>
+              <div className="fila" style={{ alignItems: "flex-start" }}>
+                <Formulario accion={enviarAcceso.bind(null, fid, p.id)} boton={p.verificado ? "Enviar enlace para nueva contraseña" : "Reenviar invitación"} className="fila"><span /></Formulario>
+                <Formulario accion={quitarDeFirma.bind(null, fid, p.id)} boton="Quitar de la firma" className="fila"><span /></Formulario>
+              </div>
             )}
           </div>
           <Formulario accion={guardarAccesos.bind(null, fid, p.id)} boton="Guardar accesos" className="">

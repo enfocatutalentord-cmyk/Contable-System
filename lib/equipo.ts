@@ -1,21 +1,25 @@
+import { randomBytes } from "node:crypto";
 import { cifrarClave } from "./auth";
 import { ErrorContable } from "./asientos";
 import type { Tx } from "./db";
 
-function claveTemporal(): string {
-  const letras = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => letras[b % letras.length]).join("");
+// Busca a la persona por correo; si no tiene cuenta, se la crea con una contraseña al azar que nadie conoce:
+// la persona crea la suya con el enlace que le llega por correo (lib/enlaces.ts).
+export async function asegurarUsuario(tx: Tx, email: string, nombre: string): Promise<{ id: string; nombre: string; nuevo: boolean }> {
+  const [u] = await tx<{ id: string; nombre: string }[]>`SELECT id, nombre FROM usuarios WHERE email = ${email}`;
+  if (u) return { ...u, nuevo: false };
+  if (!nombre) throw new ErrorContable("Esa persona aún no tiene cuenta: escribe también su nombre");
+  const [n] = await tx<{ id: string }[]>`
+    INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${email}, ${nombre}, ${await cifrarClave(randomBytes(32).toString("base64"))}) RETURNING id`;
+  return { id: n.id, nombre, nuevo: true };
 }
 
-// Busca a la persona por correo; si no tiene cuenta, se la crea con una contraseña temporal (que se muestra una vez).
-export async function asegurarUsuario(tx: Tx, email: string, nombre: string): Promise<{ id: string; temporal: string | null }> {
-  const [u] = await tx<{ id: string }[]>`SELECT id FROM usuarios WHERE email = ${email}`;
-  if (u) return { id: u.id, temporal: null };
-  if (!nombre) throw new ErrorContable("Esa persona aún no tiene cuenta: escribe también su nombre");
-  const temporal = claveTemporal();
-  const [n] = await tx<{ id: string }[]>`
-    INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${email}, ${nombre}, ${await cifrarClave(temporal)}) RETURNING id`;
-  return { id: n.id, temporal };
+// Mensaje para quien dio el acceso: si el correo no salió, le muestra el enlace para pasarlo a mano (WhatsApp, etc.).
+export function avisoEnlace(email: string, enviado: boolean, url: string, nuevo = true): string {
+  const que = nuevo ? "verificar su correo y crear su contraseña" : "crear una nueva contraseña";
+  return enviado
+    ? `Le enviamos a ${email} un correo con el enlace para ${que}.`
+    : `No se pudo enviar el correo. Pásale a ${email} este enlace para ${que} (es personal y sirve una sola vez): ${url}`;
 }
 
 export async function revisarQueQuedeAdministrador(tx: Tx, firmaId: string): Promise<void> {

@@ -15,7 +15,7 @@ type Cliente = {
   id: string; nombre: string; rnc: string | null; regimen: string; activa: boolean; fecha_bloqueo: string | null; perfil: string | null;
 };
 
-export default async function Panel({ searchParams }: { searchParams: Promise<{ q?: string; sin_permiso?: string; inactivos?: string }> }) {
+export default async function Panel({ searchParams }: { searchParams: Promise<{ q?: string; sin_permiso?: string; inactivos?: string; bienvenida?: string }> }) {
   const usuario = await exigirUsuario();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().toLowerCase();
@@ -53,6 +53,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         </div>
         <form action={salir}><button>Salir</button></form>
       </div>
+      {sp.bienvenida && <p className="exito">Listo, tu contraseña quedó guardada. Desde ahora entras con tu correo y esa contraseña.</p>}
       {sp.sin_permiso && <p className="aviso">Esa sección es solo para administradores de la firma.</p>}
       {firmas.length === 0 ? (
         <div className="aviso">

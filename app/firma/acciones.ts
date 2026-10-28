@@ -4,14 +4,16 @@ import { revalidatePath } from "next/cache";
 import { accesoFirma, esUuid } from "@/lib/acceso";
 import { ErrorContable } from "@/lib/asientos";
 import { conUsuario, mensajeError } from "@/lib/db";
-import { asegurarUsuario, revisarQueQuedeAdministrador } from "@/lib/equipo";
+import { enviarCorreo } from "@/lib/correo";
+import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
+import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
 import type { Estado } from "../acciones-cuenta";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 
 export async function agregarPersona(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await accesoFirma(firmaId);
+  const { usuario, firma } = await accesoFirma(firmaId);
   const email = texto(fd, "email").toLowerCase();
   const nombre = texto(fd, "nombre");
   const administrador = fd.get("administrador") === "on";
@@ -21,14 +23,41 @@ export async function agregarPersona(firmaId: string, _: Estado, fd: FormData): 
       const u = await asegurarUsuario(tx, email, nombre);
       const x = await tx`INSERT INTO miembros_firma (firma_id, usuario_id, administrador) VALUES (${firmaId}, ${u.id}, ${administrador}) ON CONFLICT DO NOTHING`;
       if (x.count === 0) throw new ErrorContable("Esa persona ya es parte de la firma");
-      return u;
+      return { ...u, url: u.nuevo ? await crearEnlace(tx, u.id, "invitacion", usuario.id) : null };
     });
     revalidatePath(`/firma/${firmaId}/equipo`);
-    return {
-      ok: r.temporal
-        ? `Cuenta creada. Contraseña temporal para ${email}: ${r.temporal} (cópiala ahora; no se vuelve a mostrar). Asígnale clientes abajo.`
-        : `${email} ya es parte de la firma. Asígnale clientes abajo.`,
-    };
+    if (r.url) {
+      const enviado = await enviarEnlace({ para: email, nombre: r.nombre, url: r.url, tipo: "invitacion", firma: firma.nombre, quien: usuario.nombre });
+      return { ok: `${avisoEnlace(email, enviado, r.url)} Asígnale clientes abajo.` };
+    }
+    // Ya tenía cuenta: solo se le avisa, entra con su contraseña de siempre.
+    await enviarCorreo({
+      para: email, asunto: `Acceso a ${firma.nombre}`, titulo: `Hola, ${r.nombre}`,
+      parrafos: [`${usuario.nombre} te agregó a la firma ${firma.nombre} en el sistema contable.`, "Entra con tu correo y tu contraseña de siempre."],
+      boton: { texto: "Entrar al sistema", url: `${await urlApp()}/entrar` },
+    });
+    return { ok: `${email} ya tenía cuenta: ahora es parte de la firma y entra con su contraseña de siempre. Asígnale clientes abajo.` };
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+}
+
+// Envía (o reenvía) a una persona del equipo el enlace para crear su contraseña: sirve si no le llegó la invitación
+// o si la olvidó. El enlace anterior deja de servir.
+export async function enviarAcceso(firmaId: string, personaId: string, _: Estado): Promise<Estado> {
+  const { usuario, firma } = await accesoFirma(firmaId);
+  if (!esUuid(personaId)) return { error: "Persona no válida." };
+  try {
+    const r = await conUsuario(usuario.id, async (tx) => {
+      const [p] = await tx<{ email: string; nombre: string; verificado: boolean }[]>`
+        SELECT u.email, u.nombre, u.correo_verificado IS NOT NULL AS verificado
+          FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id WHERE mf.firma_id = ${firmaId} AND mf.usuario_id = ${personaId}`;
+      if (!p) throw new ErrorContable("Esa persona no es parte de la firma");
+      const tipo = p.verificado ? "recuperacion" as const : "invitacion" as const;
+      return { ...p, tipo, url: await crearEnlace(tx, personaId, tipo, usuario.id) };
+    });
+    const enviado = await enviarEnlace({ para: r.email, nombre: r.nombre, url: r.url, tipo: r.tipo, firma: firma.nombre, quien: usuario.nombre });
+    return { ok: avisoEnlace(r.email, enviado, r.url, r.tipo === "invitacion") };
   } catch (e) {
     return { error: mensajeError(e) };
   }

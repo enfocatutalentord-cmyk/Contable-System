@@ -76,7 +76,7 @@ export default async function Usuarios({ params }: { params: Promise<{ id: strin
               <label>Perfil{selectorPerfil()}</label>
             </Formulario>
           )}
-          <p className="sub" style={{ marginTop: 16 }}>¿Alguien nuevo? Se suma al equipo de la firma con acceso solo a este cliente. Si no tiene cuenta, verás una contraseña temporal una sola vez.</p>
+          <p className="sub" style={{ marginTop: 16 }}>¿Alguien nuevo? Se suma al equipo de la firma con acceso solo a este cliente. Si no tiene cuenta, le llega un correo para verificarlo y crear su contraseña.</p>
           <Formulario accion={asignarAcceso.bind(null, id)} boton="Agregar y dar acceso" className="fila">
             <label style={{ flex: "1 1 220px" }}>Correo<input name="email" type="email" required /></label>
             <label style={{ flex: "1 1 200px" }}>Nombre (si es nueva)<input name="nombre" /></label>

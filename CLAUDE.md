@@ -69,6 +69,13 @@ Notas de infraestructura que costaron tiempo:
 - Asientos automáticos: `lib/asientos.ts` (`insertarAsiento`). Los asientos con `origen` distinto de `manual` solo se anulan
   anulando su documento.
 - Sesiones: cookie httpOnly con token cuyo hash se guarda en `sesiones`; contraseñas con scrypt (`lib/auth.ts`).
+- **Acceso por correo** (`migraciones/008_acceso_por_correo.sql`, `lib/enlaces.ts`, `lib/correo.ts`): ya no se muestran
+  contraseñas temporales. Al agregar a alguien nuevo (Equipo o Usuarios del cliente) se le envía por Gmail un enlace de un
+  solo uso (`enlaces_acceso`, token con hash, 72 h) que verifica el correo (`usuarios.correo_verificado`) y le pide crear su
+  contraseña antes de entrar (`/acceso/[token]`). «¿Olvidaste tu contraseña?» (`/recuperar`, 1 h, máx. 3 por hora, misma
+  respuesta exista o no la cuenta) y «Reenviar invitación / Enviar enlace para nueva contraseña» en Equipo. Mirar la página
+  no gasta el enlace; un enlace nuevo anula los anteriores. Sin `GMAIL_CLAVE_APP` en Vercel el correo no sale y quien da el
+  acceso ve el enlace para pasarlo a mano. Recorrido: `pruebas/navegador/acceso.cjs`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -141,7 +148,9 @@ No se pasa a la siguiente sin su autorización expresa.
   contraseña de aplicación de Gmail que la web de Empire); hoy el administrador da una clave temporal.
 - 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
   clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
-  (lo hace un administrador en Firma → Equipo). Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
+  (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
+  primer ingreso: hecho en la rama (migración 008), falta su «sí» para `main` y poner `GMAIL_CLAVE_APP` en Vercel › contable-system.
+  Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
   (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
