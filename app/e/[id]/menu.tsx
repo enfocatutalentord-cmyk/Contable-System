@@ -2,47 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PESTANAS, type Seccion } from "@/lib/pestanas";
 
-type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][] };
-
-export function Menu({ empresaId, auditoria }: { empresaId: string; auditoria: boolean }) {
+export function Menu({ firmaId, empresaId, admin, auditoria }: { firmaId: string; empresaId: string | null; admin: boolean; auditoria: boolean }) {
   const ruta = usePathname();
-  const base = `/e/${empresaId}`;
-  const secciones: Seccion[] = [
-    { enlaces: [["", "Inicio"]] },
-    { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/clientes", "Clientes"], ["/servicios", "Productos y servicios"]] },
-    { grupo: "Cuentas por cobrar", enlaces: [["/cxc", "Antigüedad de saldos"], ["/cxc/estado", "Estado de cuenta"]] },
-    { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/proveedores", "Proveedores"]] },
-    { grupo: "Cuentas por pagar", enlaces: [["/cxp", "Antigüedad por pagar"], ["/cxp/estado", "Estado de cuenta"]] },
-    { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/catalogo", "Catálogo de cuentas"], ["/cierres", "Cierres de período"]] },
-    { grupo: "Libros", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
-    {
-      grupo: "Impuestos",
-      enlaces: [["/fiscal", "Perfil fiscal"], ["/fiscal/impuestos", "Impuestos"], ["/fiscal/retenciones", "Retenciones"],
-                ["/comprobantes", "Comprobantes fiscales"], ["/fiscal/probar", "Probar cálculo"]],
-    },
-    { grupo: "Control", enlaces: auditoria ? [["/historial", "Historial de cambios"]] : [] },
-    {
-      grupo: "Empresa",
-      enlaces: [
-        ["/empresa", "Ficha de la empresa"],
-        ["/configuracion", "Configuración de cuentas"],
-        ["/usuarios", "Usuarios y permisos"],
-      ],
-    },
+  const firma = `/firma/${firmaId}`;
+  const base = empresaId ? `/e/${empresaId}` : null;
+  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/actividad`, "Actividad"]];
+  if (admin) general.push([`${firma}/clientes`, "Clientes de la firma"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]);
+  const cliente: Seccion[] = [
+    { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"]] },
+    ...PESTANAS,
+    { grupo: "Control", enlaces: auditoria || !base ? [["/historial", "Historial de cambios"]] : [] },
+    { grupo: "Empresa", enlaces: [["/empresa", "Ficha de la empresa"], ["/configuracion", "Configuración de cuentas"], ["/usuarios", "Usuarios y permisos"]] },
   ];
-  const todas = secciones.flatMap((s) => s.enlaces.map(([r]) => r));
+  const todas = cliente.flatMap((s) => s.enlaces.map(([r]) => r));
+  const activoCliente = (r: string) => {
+    if (!base) return false;
+    const href = base + r;
+    return r === "" ? ruta === base
+      : ruta === href || (ruta.startsWith(href + "/") && !todas.some((o) => o.length > r.length && ruta.startsWith(base + o)));
+  };
   return (
     <>
-      {secciones.filter((s) => s.enlaces.length).map((s, i) => (
+      <div className="grupo">General</div>
+      {general.map(([href, nombre]) => (
+        <Link key={href} href={href} aria-current={(href === firma ? ruta === firma : ruta.startsWith(href)) ? "page" : undefined}>{nombre}</Link>
+      ))}
+      {cliente.filter((s) => s.enlaces.length).map((s, i) => (
         <div key={i} style={{ display: "contents" }}>
           {s.grupo && <div className="grupo">{s.grupo}</div>}
-          {s.enlaces.map(([r, nombre]) => {
-            const href = base + r;
-            const activo = r === "" ? ruta === base
-              : ruta === href || (ruta.startsWith(href + "/") && !todas.some((o) => o.length > r.length && ruta.startsWith(base + o)));
-            return <Link key={r} href={href} aria-current={activo ? "page" : undefined}>{nombre}</Link>;
-          })}
+          {s.enlaces.map(([r, nombre]) => (
+            <Link key={r} href={base ? base + r : `${firma}/elegir?a=${encodeURIComponent(r || "/")}`}
+              aria-current={activoCliente(r) ? "page" : undefined}>{nombre}</Link>
+          ))}
         </div>
       ))}
     </>

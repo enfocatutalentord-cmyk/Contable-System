@@ -3,7 +3,6 @@ import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
 import { PERMISOS } from "@/lib/permisos";
 import { eliminarPerfil, guardarPerfil } from "../../acciones";
-import { EncabezadoFirma } from "../../encabezado";
 
 export const metadata = { title: "Perfiles y permisos · Empire Tax’N Legal" };
 
@@ -26,8 +25,8 @@ export default async function Perfiles({ params }: { params: Promise<{ fid: stri
   );
 
   return (
-    <main className="contenido" style={{ margin: "0 auto" }}>
-      <EncabezadoFirma firma={firma} actual="perfiles" />
+    <>
+      <h1>Roles y permisos</h1>
       <p className="sub">Cada perfil es un conjunto de permisos. Al dar acceso a un cliente, eliges el perfil de la persona.</p>
       {perfiles.map((p) => {
         const admin = p.sistema && p.nombre === "Administrador";
@@ -56,6 +55,6 @@ export default async function Perfiles({ params }: { params: Promise<{ fid: stri
           {casillas(["ver"])}
         </Formulario>
       </div>
-    </main>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { misFirmas } from "@/lib/acceso";
 import { exigirUsuario } from "@/lib/auth";
 import { conEmpresa, db } from "@/lib/db";
@@ -20,6 +21,11 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().toLowerCase();
   const firmas = await misFirmas(usuario.id);
+  // Con una sola firma (lo normal) se entra directo a «Inicio de la firma».
+  if (firmas.length === 1) {
+    const aviso = sp.bienvenida ? "?bienvenida=1" : sp.sin_permiso ? "?sin_permiso=1" : "";
+    redirect(`/firma/${firmas[0].id}${aviso}`);
+  }
 
   const porFirma = await Promise.all(firmas.map(async (f) => {
     // El administrador ve todos los clientes de la firma; el resto, los que tiene asignados.
@@ -76,9 +82,10 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
             <h2 style={{ margin: 0 }}>{firma.nombre}{firma.rnc && <span className="sub" style={{ fontSize: "0.9rem" }}> · RNC {firma.rnc}</span>}</h2>
             {firma.administrador && (
               <div className="fila">
+                <Link className="boton" href={`/firma/${firma.id}`}>Abrir</Link>
                 <Link className="boton" href={`/firma/${firma.id}/equipo`}>Equipo</Link>
                 <Link className="boton" href={`/firma/${firma.id}/perfiles`}>Perfiles y permisos</Link>
-                <Link className="boton primario" href={`/empresas/nueva?firma=${firma.id}`}>+ Nuevo cliente</Link>
+                <Link className="boton primario" href={`/firma/${firma.id}/clientes/nuevo`}>+ Nuevo cliente</Link>
               </div>
             )}
           </div>
@@ -114,7 +121,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
                     {total > 0 ? "Ningún cliente coincide con la búsqueda." : firma.administrador ? (
                       <>
                         <strong>Esta firma todavía no tiene clientes</strong>, por eso no ves módulos. Crea el primero con
-                        {" "}<Link href={`/empresas/nueva?firma=${firma.id}`}>+ Nuevo cliente</Link>: al guardarlo se le carga el catálogo
+                        {" "}<Link href={`/firma/${firma.id}/clientes/nuevo`}>+ Nuevo cliente</Link>: al guardarlo se le carga el catálogo
                         de cuentas y la configuración de impuestos, y al abrirlo aparece el menú con todos los módulos.
                       </>
                     ) : (

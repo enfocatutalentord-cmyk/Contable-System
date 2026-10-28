@@ -28,7 +28,7 @@ fs.writeFileSync(path.join(S, "orden.pdf"), "%PDF-1.4\n1 0 obj<<>>endobj\ntraile
   await page.fill("input[name=clave]", "clave-segura-123");
   await page.fill("input[name=firma]", "Firma Ventas SRL");
   await page.click("button.primario");
-  await page.waitForURL(B + "/empresas");
+  await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
   await page.click("text=+ Nuevo cliente");
   await page.fill("input[name=nombre]", "Enfoca Prueba SRL");
   await page.fill("input[name=rnc]", "101000009");

@@ -86,12 +86,30 @@ h3 { color: var(--titulo); }
 .logo-completo { display: grid; justify-items: center; gap: 6px; margin: 0 auto 20px; }
 .logo-completo img { width: 230px; height: auto; }
 .logo-completo .producto { color: var(--suave); font-size: 0.95rem; letter-spacing: 0.04em; margin: 0; }
+.principal { min-width: 0; display: flex; flex-direction: column; }
+.barra-cliente { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 32px; background: var(--superficie); border-bottom: 1px solid var(--borde); }
+.selector-cliente { display: flex; flex-direction: column; gap: 2px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dorado); }
+.selector-cliente select { min-width: 280px; max-width: 100%; border: 2px solid var(--dorado); font-weight: 600; font-size: 1rem; text-transform: none; letter-spacing: 0; }
+.barra-cliente .firma-nombre { margin-left: auto; color: var(--suave); font-size: 0.9rem; }
+.inicio-firma { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.inicio-firma h2 { margin-top: 8px; }
+.actividad { list-style: none; margin: 0; padding: 6px 16px; }
+.actividad li { padding: 9px 0; border-bottom: 1px solid var(--borde); }
+.actividad li:last-child { border-bottom: 0; }
+.actividad .sub { margin: 2px 0 0; font-size: 0.82rem; }
+.elegir-cliente { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.elegir-cliente a { display: flex; flex-direction: column; gap: 4px; color: inherit; }
+.elegir-cliente a:hover { border-color: var(--dorado); text-decoration: none; }
+@media (max-width: 980px) { .inicio-firma { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .barra-cliente { padding: 10px 16px; } .selector-cliente, .selector-cliente select { width: 100%; min-width: 0; } .barra-cliente .firma-nombre { margin-left: 0; } }
 .contenido { padding: 28px 32px; max-width: 1200px; width: 100%; min-width: 0; }
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; }
   .menu { border-bottom: 3px solid var(--dorado); flex-direction: row; flex-wrap: wrap; }
   .menu .marca { width: 100%; padding-bottom: 10px; }
-  .menu .grupo, .menu .pie { display: none; }
+  .menu .grupo { display: none; }
+  .menu .pie { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .menu .pie button { margin-top: 0 !important; }
   .menu .empresa { width: 100%; }
   .contenido { padding: 20px 16px; }
 }

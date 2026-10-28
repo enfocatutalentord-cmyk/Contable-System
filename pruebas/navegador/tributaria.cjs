@@ -28,7 +28,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await page.fill("input[name=clave]", "clave-segura-123");
   await page.fill("input[name=firma]", "Firma Tributaria SRL");
   await page.click("button.primario");
-  await page.waitForURL(B + "/empresas");
+  await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
   await page.click("text=+ Nuevo cliente");
   await page.fill("input[name=nombre]", "Servicios Dos SRL");
   await page.fill("input[name=rnc]", "101000001");

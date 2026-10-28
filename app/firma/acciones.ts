@@ -152,3 +152,41 @@ export async function eliminarPerfil(firmaId: string, perfilId: string, _: Estad
   revalidatePath(`/firma/${firmaId}/perfiles`);
   return { ok: "Perfil eliminado." };
 }
+
+// Nombre y RNC de la firma (salen arriba en todas las pantallas y en los correos de acceso).
+export async function guardarFirma(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  const nombre = texto(fd, "nombre");
+  const rnc = texto(fd, "rnc").replace(/[-\s]/g, "");
+  if (!nombre) return { error: "Escribe el nombre de la firma." };
+  if (rnc && !/^(\d{9}|\d{11})$/.test(rnc)) return { error: "El RNC debe tener 9 dígitos (o 11 si es cédula)." };
+  try {
+    await conUsuario(usuario.id, (tx) => tx`UPDATE firmas SET nombre = ${nombre}, rnc = ${rnc || null} WHERE id = ${firmaId}`);
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/firma/${firmaId}`, "layout");
+  return { ok: "Datos de la firma guardados." };
+}
+
+// Persona del equipo que se ocupa de un cliente.
+export async function asignarResponsable(firmaId: string, empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  const responsable = texto(fd, "responsable");
+  if (!esUuid(empresaId) || (responsable && !esUuid(responsable))) return { error: "Datos no válidos." };
+  try {
+    await conUsuario(usuario.id, async (tx) => {
+      if (responsable) {
+        const [m] = await tx`SELECT 1 FROM miembros_firma WHERE firma_id = ${firmaId} AND usuario_id = ${responsable}`;
+        if (!m) throw new ErrorContable("Esa persona no es parte de la firma");
+      }
+      await tx`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
+      const r = await tx`UPDATE empresas SET responsable_id = ${responsable || null} WHERE id = ${empresaId} AND firma_id = ${firmaId}`;
+      if (r.count === 0) throw new ErrorContable("Cliente no encontrado");
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/firma/${firmaId}`, "layout");
+  return { ok: "Responsable guardado." };
+}

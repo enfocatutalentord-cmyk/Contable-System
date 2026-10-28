@@ -32,8 +32,8 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   await page.fill("input[name=clave]", "clave-segura-123");
   await page.fill("input[name=firma]", "Firma Prueba SRL");
   await page.click("button.primario");
-  await page.waitForURL(B + "/empresas");
-  await ver("Esta firma todavía no tiene clientes");
+  await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
+  await ver("Todavía no hay clientes");
   paso("registro de la firma y panel vacío");
 
   // 2. Nuevo cliente con ficha completa
@@ -172,7 +172,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   await aux.fill("input[name=clave]", "clave-auxiliar-1");
   await aux.fill("input[name=repetida]", "clave-auxiliar-1");
   await aux.click("button.primario");
-  await aux.waitForURL(/empresas/);
+  await aux.waitForURL(/\/firma\//);
   assert((await aux.locator("text=+ Nuevo cliente").count()) === 0, "auxiliar no crea clientes");
   await aux.goto(base + "/asientos/nuevo");
   assert((await aux.getByRole("button", { name: "Contabilizar" }).count()) === 0, "auxiliar no contabiliza");
@@ -194,7 +194,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
 
   // El administrador aprueba el borrador de la auxiliar
   await page.goto(B + "/empresas");
-  assert((await page.locator("td.num a").first().innerText()) === "1", "panel muestra 1 borrador");
+  await page.waitForSelector("text=1 asiento en borrador");
   await page.goto(urlAux);
   await page.click("button:has-text('Contabilizar')");
   await page.waitForURL(/\?contabilizado=1/);
@@ -202,7 +202,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   paso("el administrador aprueba el borrador de la auxiliar (n.º 4); el panel lo mostraba pendiente");
 
   // 13. Perfiles: quitar «exportar» al Auxiliar
-  const fid = (await page.goto(B + "/empresas"), await page.locator("a:has-text('Perfiles y permisos')").getAttribute("href")).split("/")[2];
+  const fid = (await page.goto(B + "/empresas"), await page.locator("nav a:has-text('Roles y permisos')").getAttribute("href")).split("/")[2];
   await page.goto(`${B}/firma/${fid}/perfiles`);
   const tarjeta = page.locator(".tarjeta", { has: page.locator("h2", { hasText: /^Auxiliar$/ }) });
   await tarjeta.locator("input[value=exportar]").uncheck();
@@ -244,7 +244,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   await otra.fill("input[name=clave]", "clave-segura-456");
   await otra.fill("input[name=firma]", "Otra Firma");
   await otra.click("button.primario");
-  await otra.waitForURL(B + "/empresas");
+  await otra.waitForURL(/\/firma\/[0-9a-f-]+$/);
   for (const u of [base, base + "/asientos", urlBorrador, `${base}/exportar/diario?formato=xlsx`, `${B}/firma/${fid}/equipo`]) {
     const x = await otra.request.get(u, { maxRedirects: 0 });
     assert([404, 307].includes(x.status()) && !(await x.text()).includes("Comercial Uno"), `intruso en ${u}: ${x.status()}`);

@@ -76,6 +76,13 @@ Notas de infraestructura que costaron tiempo:
   respuesta exista o no la cuenta) y «Reenviar invitación / Enviar enlace para nueva contraseña» en Equipo. Mirar la página
   no gasta el enlace; un enlace nuevo anula los anteriores. Sin `GMAIL_CLAVE_APP` en Vercel el correo no sale y quien da el
   acceso ve el enlace para pasarlo a mano. Recorrido: `pruebas/navegador/acceso.cjs`.
+- **Marco único** (28-oct-2026, pedido de Joannie: «está dividido, no se entiende»): `app/marco.tsx` con el mismo menú
+  en toda la firma (`app/e/[id]/menu.tsx`, pestañas en `lib/pestanas.ts`) y arriba el selector «Viendo: Todos los clientes /
+  un cliente» (`app/selector-cliente.tsx`, cambia de cliente quedándose en la pestaña). Con «Todos» se ven las pantallas de la
+  firma (`app/firma/[fid]/…`): **Inicio de la firma** (cifras, clientes con responsable y pendientes, actividad), **Actividad**
+  (frases a partir de `auditoria`, `lib/firma.ts`), **Clientes de la firma** (responsable `empresas.responsable_id`,
+  migración 009; nombre y RNC de la firma), Personas y accesos, Roles y permisos; una pestaña de cliente pide elegirlo
+  (`/firma/[fid]/elegir`). `/empresas` redirige a la firma si hay una sola. Recorrido: `pruebas/navegador/firma.cjs`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).

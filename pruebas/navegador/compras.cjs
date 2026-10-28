@@ -33,7 +33,7 @@ fs.writeFileSync(path.join(S, "factura-proveedor.pdf"), "%PDF-1.4\n1 0 obj<<>>en
   await page.fill("input[name=clave]", "clave-segura-123");
   await page.fill("input[name=firma]", "Firma Compras SRL");
   await page.click("button.primario");
-  await page.waitForURL(B + "/empresas");
+  await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
   await page.click("text=+ Nuevo cliente");
   await page.fill("input[name=nombre]", "Distribuidora Prueba SRL");
   await page.fill("input[name=rnc]", "101000010");

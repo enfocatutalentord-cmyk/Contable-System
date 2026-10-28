@@ -2,9 +2,8 @@ import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
 import { agregarPersona, enviarAcceso, guardarAccesos, quitarDeFirma } from "../../acciones";
-import { EncabezadoFirma } from "../../encabezado";
 
-export const metadata = { title: "Equipo · Empire Tax’N Legal" };
+export const metadata = { title: "Personas y accesos · Empire Tax’N Legal" };
 
 export default async function Equipo({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;
@@ -21,8 +20,8 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
   const acceso = (u: string, e: string) => accesos.find((a) => a.usuario_id === u && a.empresa_id === e)?.perfil_id ?? "";
 
   return (
-    <main className="contenido" style={{ margin: "0 auto" }}>
-      <EncabezadoFirma firma={firma} actual="equipo" />
+    <>
+      <h1>Personas y accesos</h1>
       <p className="sub">
         Los administradores de la firma entran a todos los clientes con todos los permisos. Al resto del equipo se le asigna,
         cliente por cliente, el perfil con el que trabaja.
@@ -83,6 +82,6 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
           </Formulario>
         </div>
       ))}
-    </main>
+    </>
   );
 }
