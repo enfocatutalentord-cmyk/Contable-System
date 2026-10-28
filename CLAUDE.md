@@ -145,7 +145,8 @@ No se pasa a la siguiente sin su autorización expresa.
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
   desde el 28-oct-2026 (`f23de8f`, «sí» de Joannie). Joannie puso `GMAIL_CLAVE_APP` en Vercel › contable-system.
-  Falta: confirmar el despliegue en Vercel y que una invitación de prueba llegue (reenviar la de Patricia en Equipo).
+  Confirmado el 28-oct-2026: publicado y la invitación llega a Gmail (prueba de Manaury). La firma de producción se llama
+  «Manaury Enrique Gomez Guerrero» (la creó la migración 003 con el nombre del dueño).
 - 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
   clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
   (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
