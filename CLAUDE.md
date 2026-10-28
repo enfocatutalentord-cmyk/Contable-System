@@ -144,8 +144,7 @@ No se pasa a la siguiente sin su autorización expresa.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada hecho en la rama** (23-oct-2026, `migraciones/007_intentos_entrada.sql`,
   `lib/intentos.ts`: 5 fallos seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos; esperando el «sí» de
-  Joannie para `main`). Falta recuperar contraseña por correo: necesita un servicio de correo (por ejemplo la misma
-  contraseña de aplicación de Gmail que la web de Empire); hoy el administrador da una clave temporal.
+  Joannie para `main`). La recuperación de contraseña por correo quedó hecha con el acceso por correo (migración 008).
 - 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
   clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
   (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
