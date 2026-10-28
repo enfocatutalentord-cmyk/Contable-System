@@ -139,6 +139,10 @@ No se pasa a la siguiente sin su autorización expresa.
   `lib/intentos.ts`: 5 fallos seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos; esperando el «sí» de
   Joannie para `main`). Falta recuperar contraseña por correo: necesita un servicio de correo (por ejemplo la misma
   contraseña de aplicación de Gmail que la web de Empire); hoy el administrador da una clave temporal.
+- 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
+  clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
+  (lo hace un administrador en Firma → Equipo). Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
+  (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local
