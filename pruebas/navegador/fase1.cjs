@@ -33,7 +33,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   await page.fill("input[name=firma]", "Firma Prueba SRL");
   await page.click("button.primario");
   await page.waitForURL(B + "/empresas");
-  await ver("Todavía no hay clientes");
+  await ver("Esta firma todavía no tiene clientes");
   paso("registro de la firma y panel vacío");
 
   // 2. Nuevo cliente con ficha completa

@@ -138,6 +138,8 @@ tr.anulado td { color: var(--suave); text-decoration: line-through; }
 .aviso { background: var(--aviso-fondo); color: var(--aviso-texto); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; }
 .error { color: var(--peligro); margin: 8px 0; }
 .exito { color: var(--ok); margin: 8px 0; }
+.guia-panel { margin: 0 0 20px; }
+.modulos-guia { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .etiqueta-rol { font-size: 0.75rem; border: 1px solid var(--borde); border-radius: 999px; padding: 1px 8px; color: var(--suave); }
 
 /* Páginas sueltas (entrar, registro, empresas) */

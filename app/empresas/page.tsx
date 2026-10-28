@@ -8,6 +8,9 @@ import { salir } from "../acciones-cuenta";
 
 export const metadata = { title: "Panel de la firma · Empire Tax’N Legal" };
 
+// Lo que hay dentro de cada cliente (mismo orden que el menú de app/e/[id]/menu.tsx).
+const MODULOS = ["Ventas y cobros", "Cuentas por cobrar", "Compras y pagos", "Cuentas por pagar", "Contabilidad", "Libros", "Impuestos", "Historial de cambios"];
+
 type Cliente = {
   id: string; nombre: string; rnc: string | null; regimen: string; activa: boolean; fecha_bloqueo: string | null; perfil: string | null;
 };
@@ -51,7 +54,20 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         <form action={salir}><button>Salir</button></form>
       </div>
       {sp.sin_permiso && <p className="aviso">Esa sección es solo para administradores de la firma.</p>}
-      {firmas.length === 0 && <p className="aviso">Tu usuario no pertenece a ninguna firma todavía. Pide a un administrador que te dé acceso.</p>}
+      {firmas.length === 0 ? (
+        <div className="aviso">
+          <strong>Tu usuario todavía no pertenece a ninguna firma.</strong> Pide a un administrador de la firma que te agregue en
+          «Equipo». Cuando lo haga, aquí verás los clientes que te asignó y, dentro de cada uno, todos sus módulos.
+        </div>
+      ) : (
+        <div className="tarjeta guia-panel">
+          <strong>Cómo se usa:</strong> aquí están los clientes de tu firma. <strong>Los módulos están dentro de cada cliente:</strong>{" "}
+          toca el nombre de un cliente para abrir su menú.
+          <div className="modulos-guia" aria-label="Módulos de cada cliente">
+            {MODULOS.map((m) => <span key={m} className="etiqueta-rol">{m}</span>)}
+          </div>
+        </div>
+      )}
 
       {porFirma.map(({ firma, clientes, total }) => (
         <section key={firma.id} style={{ marginBottom: 36 }}>
@@ -93,7 +109,20 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
                   </tr>
                 ))}
                 {clientes.length === 0 && (
-                  <tr><td colSpan={7}>{firma.administrador ? "Todavía no hay clientes. Crea el primero con «+ Nuevo cliente»." : "No tienes clientes asignados."}</td></tr>
+                  <tr><td colSpan={7}>
+                    {total > 0 ? "Ningún cliente coincide con la búsqueda." : firma.administrador ? (
+                      <>
+                        <strong>Esta firma todavía no tiene clientes</strong>, por eso no ves módulos. Crea el primero con
+                        {" "}<Link href={`/empresas/nueva?firma=${firma.id}`}>+ Nuevo cliente</Link>: al guardarlo se le carga el catálogo
+                        de cuentas y la configuración de impuestos, y al abrirlo aparece el menú con todos los módulos.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Todavía no tienes clientes asignados</strong>, por eso no ves módulos. Pide a un administrador de
+                        la firma que te asigne clientes en «Equipo».
+                      </>
+                    )}
+                  </td></tr>
                 )}
               </tbody>
             </table>
