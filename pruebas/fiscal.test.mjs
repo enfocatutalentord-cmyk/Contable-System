@@ -133,7 +133,11 @@ test("la configuración sugerida se carga con sus cuentas", conBase, async () =>
   assert.equal(impuestos[0].cuenta_ventas_id, cuentasA["210201"]);
   assert.equal(impuestos[0].cuenta_compras_id, cuentasA["110401"]);
   assert.equal(impuestos[2].cuenta_ventas_id, null);
-  assert.equal(retenciones.length, 5);
+  assert.equal(retenciones.length, 6);
+  // ISR de alquileres al 15 % desde el 1-jul-2026 (formulario IR-17 2026, casilla 1), con su concepto del IR-17.
+  const [alq] = await conEmpresa(empresaA, (tx) => tx`
+    SELECT tasa::int AS tasa, codigo_606, codigo_ir17, to_char(vigente_desde, 'YYYY-MM-DD') AS desde FROM retenciones WHERE nombre = 'ISR alquileres 15 %'`);
+  assert.deepEqual({ ...alq }, { tasa: 15, codigo_606: 1, codigo_ir17: 1, desde: "2026-07-01" });
   const itbis = retenciones.find((r) => r.impuesto === "itbis");
   assert.equal(itbis.cuenta_por_terceros_id, cuentasA["110404"]);
   assert.equal(itbis.cuenta_a_terceros_id, cuentasA["210202"]);

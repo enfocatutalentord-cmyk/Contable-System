@@ -186,7 +186,8 @@ Notas de infraestructura que costaron tiempo:
   ITBIS son % del ITBIS facturado; las de ISR, % del monto sin impuestos. Cada línea puede llevar varios impuestos (ITBIS + propina).
   `configurar_tributaria(eid)` carga la configuración sugerida al crear una empresa. Catálogos de comprobantes (B01–B17, E31–E47)
   y obligaciones en `lib/fiscal.ts`; lo que la firma confirma se guarda en `obligaciones_empresa`. Pruebas: `pruebas/fiscal.test.mjs`.
-  Pendiente de confirmar con un contador: tasas que no se cargaron por no estar claras tras la Ley 30-26 (p. ej. ISR de alquileres).
+  ISR de alquileres 15 % desde el 1-jul-2026 (migración 017, «sí» del 30-oct; la tasa sale del formulario oficial IR-17 2026,
+  casilla 1); antes de julio no se cargó tasa de alquileres.
 - **Respaldos:** `.github/workflows/respaldo.yml` (diario, pg_dump cifrado AES-256 con prueba de restauración). Necesita en
   GitHub → Settings → Secrets: `DATABASE_URL` (conexión directa de Neon, sin pooler) y `RESPALDO_CLAVE`. Ver `docs/respaldos.md`.
 
@@ -243,7 +244,7 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 hecho en la rama (falta su «sí»); sigue ISR anual (IR-2-2026 ya subido);
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 en `main` (`e4f4e8a`, «sí» del 30-oct); retención de alquileres 15 % (migración 017) en la rama, falta su «sí» para `main`; sigue ISR anual (IR-2-2026 ya subido; depende de la Fase 7, presentar estructura antes);
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
