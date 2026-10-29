@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 29-oct-2026 (Fases 1 a 4 y nueva navegación en `main`; Excel en listas y verificación en dos pasos en la rama).
+Última actualización: 29-oct-2026 (Fases 1 a 4 y nueva navegación en `main`; Excel en listas y verificación en dos pasos en `main`).
 
 ## Con quién y cómo
 
@@ -210,7 +210,8 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (hechos en la rama, falta su «sí» para `main`); 3) Fase 6 Fiscal (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal (estructura presentada el 29-oct, espera su «sí»; la red de la nube
+  no llega a dgii.gov.do: pedir que la permita o que envíe los instructivos 606/607/608) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
   su «sí»: Consola de la plataforma.
