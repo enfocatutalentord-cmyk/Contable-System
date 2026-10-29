@@ -139,7 +139,7 @@ Notas de infraestructura que costaron tiempo:
   con las casillas, nombres y fórmulas del Excel oficial y su instructivo. Sugiere desde lo registrado (ventas por NCF, forma
   de venta y tipo de ingreso; gravado por tasa y exento; retenciones sufridas, B15 → 31 y demás → 29; ITBIS de compras de
   bienes/servicios deducible o al costo; retenciones hechas: B11 → 47/39, 30 % → 43, 100 % → 39/42; notas de crédito de más
-  de 30 días → casillas 9 y 43); lo demás se escribe y se guarda en `declaraciones_itbis.manuales`. Valida como la Oficina
+  de 30 días → casillas 9 y 43); lo demás se escribe y se guarda en `declaraciones.manuales` (antes `declaraciones_itbis`, migrada en la 016). Valida como la Oficina
   Virtual (11 a 15 = 10; 56 ≤ ITBIS por adelantar del 606; 60 ≥ retenido del 606; coeficiente 54). «Marcar como presentado»
   guarda las casillas en `envios_dgii.casillas`; la 34 pasa a la 29 del mes siguiente. Excel/PDF `IT-1_<RNC>_<AAAAMM>`.
 - **IR-17** (Fase 6 parte 3, 30-oct-2026, migración 016, `lib/ir17.ts`, pantalla `/dgii/ir17`): formulario oficial «IR-17-2026,
