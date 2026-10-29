@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { PRODUCTO } from "./marca";
 import "./globals.css";
 
@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: PRODUCTO,
   description: "Sistema contable de Empire Tax’N Legal para firmas que administran empresas en República Dominicana",
 };
+
+// Tamaño fijo tipo aplicación en el celular: ancho del equipo, sin zoom al entrar ni al tocar un campo.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

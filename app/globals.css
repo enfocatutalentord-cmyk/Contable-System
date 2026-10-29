@@ -43,6 +43,8 @@
 }
 
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { max-width: 100%; overflow-x: clip; }
 body {
   margin: 0;
   font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -127,6 +129,8 @@ h3 { color: var(--titulo); }
   .menu .pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
   .menu .pie button { margin-top: 0 !important; }
   .contenido { padding: 20px 16px; }
+  /* iPhone acerca la pantalla al tocar un campo con letra menor de 16 px. */
+  input, select, textarea { font-size: 16px; }
 }
 
 /* Componentes */
