@@ -71,6 +71,9 @@ h3 { color: var(--titulo); }
 .menu a[aria-current="page"] { background: rgba(255, 255, 255, 0.12); border-left-color: var(--dorado); font-weight: 600; color: #fff; }
 .menu .grupo { color: var(--dorado); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 10px 4px; }
 .menu .grupo.separada { margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 14px; }
+.menu-cabeza { display: flex; align-items: center; gap: 8px; }
+.menu-boton { display: none; align-items: center; gap: 6px; background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 8px; padding: 8px 12px; font-weight: 600; }
+.menu-cuerpo { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .menu .pie { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid rgba(255, 255, 255, 0.15); font-size: 0.85rem; color: rgba(255, 255, 255, 0.75); }
 .menu .pie a { padding: 0; border: 0; color: #fff; }
 .menu .pie button { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.4); }
@@ -114,12 +117,15 @@ h3 { color: var(--titulo); }
 .contenido { padding: 28px 32px; max-width: 1200px; width: 100%; min-width: 0; }
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; }
-  .menu { border-bottom: 3px solid var(--dorado); flex-direction: row; flex-wrap: wrap; }
-  .menu .marca { width: 100%; padding-bottom: 10px; }
-  .menu .grupo { display: none; }
-  .menu .pie { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .menu { border-bottom: 3px solid var(--dorado); padding: 10px 12px; position: sticky; top: 0; z-index: 20; }
+  .menu .marca { padding: 0; }
+  .menu .marca img { width: 44px; height: auto; }
+  .menu-cabeza { justify-content: space-between; }
+  .menu-boton { display: inline-flex; }
+  .menu-cuerpo { display: none; max-height: calc(100vh - 80px); overflow-y: auto; padding-top: 8px; }
+  .menu-cuerpo.abierto { display: flex; }
+  .menu .pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
   .menu .pie button { margin-top: 0 !important; }
-  .menu .empresa { width: 100%; }
   .contenido { padding: 20px 16px; }
 }
 

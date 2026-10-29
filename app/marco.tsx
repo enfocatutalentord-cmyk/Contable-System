@@ -3,6 +3,7 @@ import type { Usuario } from "@/lib/auth";
 import { salir } from "./acciones-cuenta";
 import { Menu } from "./e/[id]/menu";
 import { MarcaMenu } from "./marca";
+import { MenuMovil } from "./menu-movil";
 import { SelectorCliente } from "./selector-cliente";
 
 // Marco único de la aplicación: el mismo menú en toda la firma y, arriba, el selector de cliente.
@@ -23,12 +24,13 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
   return (
     <div className="app">
       <nav className="menu" aria-label="Menú principal">
-        <MarcaMenu />
-        <Menu firmaId={firma.id} empresaId={actual} admin={admin} auditoria={auditoria} pestanas={pestanas} soloCliente={soloCliente} />
-        <div className="pie">
-          <Link href="/cuenta">{usuario.nombre}</Link> · {perfil}
-          <form action={salir}><button style={{ marginTop: 8 }}>Salir</button></form>
-        </div>
+        <MenuMovil marca={<MarcaMenu />}>
+          <Menu firmaId={firma.id} empresaId={actual} admin={admin} auditoria={auditoria} pestanas={pestanas} soloCliente={soloCliente} />
+          <div className="pie">
+            <Link href="/cuenta">{usuario.nombre}</Link> · {perfil}
+            <form action={salir}><button style={{ marginTop: 8 }}>Salir</button></form>
+          </div>
+        </MenuMovil>
       </nav>
       <div className="principal">
         <header className="barra-cliente">
