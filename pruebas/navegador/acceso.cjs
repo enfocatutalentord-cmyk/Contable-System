@@ -5,6 +5,11 @@ const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const path = require("node:path");
 const S = process.env.CAPTURAS || "/tmp", B = process.env.BASE || "http://localhost:3100";
 const assert = (c, m) => { if (!c) throw new Error(m); };
+// En pantallas angostas el menú está detrás del botón «Menú»: se abre antes de usarlo (en escritorio no hace nada).
+const abrirMenu = async (p) => {
+  const b = p.locator(".menu-boton");
+  if (await b.isVisible() && (await b.getAttribute("aria-expanded")) !== "true") await b.click();
+};
 
 (async () => {
   const browser = await chromium.launch();
@@ -63,6 +68,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await p.goto(url, { waitUntil: "networkidle" });
   await p.waitForSelector("text=Este enlace ya no sirve");
   await p.goto(B + "/empresas", { waitUntil: "networkidle" });
+  await abrirMenu(p);
   await p.getByRole("button", { name: "Salir" }).click();
   await p.waitForURL(/entrar/);
   await p.fill("input[name=email]", invitada);
@@ -82,6 +88,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   paso("Equipo: «correo verificado» y botón para enviarle un enlace de nueva contraseña");
 
   // 5. «¿Olvidaste tu contraseña?» responde igual exista o no la cuenta, y el enlace anterior queda sin efecto
+  await abrirMenu(p);
   await p.getByRole("button", { name: "Salir" }).click();
   await p.click("text=¿Olvidaste tu contraseña?");
   await p.waitForURL(/recuperar/);

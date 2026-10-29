@@ -4,6 +4,11 @@ const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const path = require("node:path");
 const S = process.env.CAPTURAS || "/tmp", B = process.env.BASE || "http://localhost:3100";
 const assert = (c, m) => { if (!c) throw new Error(m); };
+// En pantallas angostas el menú está detrás del botón «Menú»: se abre antes de usarlo (en escritorio no hace nada).
+const abrirMenu = async (p) => {
+  const b = p.locator(".menu-boton");
+  if (await b.isVisible() && (await b.getAttribute("aria-expanded")) !== "true") await b.click();
+};
 
 (async () => {
   const browser = await chromium.launch();
@@ -115,6 +120,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   assert(ana.url().includes("sin_permiso"), "Ana no entra a Clientes");
   const w = await ana.evaluate(() => document.documentElement.scrollWidth);
   assert(w <= 390, "sin desborde en celular: " + w);
+  await abrirMenu(ana);
   await ana.locator("nav").getByRole("button", { name: "Salir" }).click();
   await ana.waitForURL(/entrar/);
   paso("equipo: Ana solo ve sus clientes, no administra la firma; en el celular todo cabe y puede salir");

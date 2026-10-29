@@ -5,6 +5,11 @@ const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const path = require("node:path");
 const S = process.env.CAPTURAS || "/tmp", B = process.env.BASE || "http://localhost:3100";
 const assert = (c, m) => { if (!c) throw new Error(m); };
+// En pantallas angostas el menú está detrás del botón «Menú»: se abre antes de usarlo (en escritorio no hace nada).
+const abrirMenu = async (p) => {
+  const b = p.locator(".menu-boton");
+  if (await b.isVisible() && (await b.getAttribute("aria-expanded")) !== "true") await b.click();
+};
 
 (async () => {
   const browser = await chromium.launch();
@@ -74,6 +79,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await cli.fill("input[name=repetida]", "clave-cliente-1");
   await cli.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
   await cli.waitForURL(`${B}/e/${eid}`);
+  await abrirMenu(cli);
   const menu = await cli.locator("nav.menu").innerText();
   assert(!menu.includes("Inicio de la firma") && !menu.includes("Asientos") && menu.includes("Facturas") && menu.includes("Cuentas por cobrar"), "menú del cliente: " + menu);
   assert((await cli.locator(".selector-cliente option").allInnerTexts()).join("|") === "Cliente Roles SRL", "sin «Todos los clientes»");
@@ -103,6 +109,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await ana.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
   await ana.waitForURL(/\/firma\/[0-9a-f-]+\?bienvenida=1/);
   await ana.goto(`${B}/e/${eid}/asientos`);
+  await abrirMenu(ana);
   assert((await ana.locator("nav.menu").innerText()).includes("Asientos") && !(await ana.locator("nav.menu").innerText()).includes("Cierre del mes"), "menú de Ana");
   await ana.goto(`${B}/e/${eid}/cierres`);
   await ana.waitForSelector("text=Tu rol no incluye esa pestaña");

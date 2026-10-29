@@ -5,6 +5,11 @@ const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const path = require("node:path");
 const S = process.env.CAPTURAS || "/tmp", B = process.env.BASE || "http://localhost:3100";
 const assert = (c, m) => { if (!c) throw new Error(m); };
+// En pantallas angostas el menú está detrás del botón «Menú»: se abre antes de usarlo (en escritorio no hace nada).
+const abrirMenu = async (p) => {
+  const b = p.locator(".menu-boton");
+  if (await b.isVisible() && (await b.getAttribute("aria-expanded")) !== "true") await b.click();
+};
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
 
@@ -56,11 +61,13 @@ const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
   await cli.fill("input[name=repetida]", "clave-cliente-1");
   await cli.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
   await cli.waitForURL(`${B}/e/${eid}`);
+  await abrirMenu(cli);
   const menu = await cli.locator("nav.menu").innerText();
   assert(menu.includes("Mis documentos") && !menu.includes("Compras y gastos") && !menu.includes("Facturas"), "menú del cliente: " + menu);
   paso("el cliente con «Sube documentos» solo ve su resumen y «Mis documentos»");
 
   // 2. Sube dos documentos desde el celular; el mismo archivo no se sube dos veces
+  await abrirMenu(cli);
   await cli.click("nav >> text=Mis documentos");
   await cli.waitForURL(/recepcion/);
   const subir = cli.locator("form", { has: cli.getByRole("button", { name: "Subir" }) });
