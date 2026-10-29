@@ -45,9 +45,9 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await aux.getByRole("button", { name: "Guardar rol" }).click();
   await aux.locator("text=Rol actualizado.").waitFor();
   await page.reload({ waitUntil: "networkidle" });
-  const filaCierres = await page.locator(".matriz-roles tr", { hasText: "Cierres de período" }).innerText();
-  // Columnas: Administrador, Auxiliar, Contador, Solo lectura y los dos roles para clientes.
-  assert(filaCierres.split("\t").slice(1).map((x) => x.trim()).join(" ") === "✓ — ✓ ✓ — —", "Cierres ya no lo ve el Auxiliar: " + filaCierres);
+  const filaCierres = await page.locator(".matriz-roles tr", { hasText: "Cierre del mes" }).innerText();
+  // Columnas: Administrador, Auxiliar, Contador, Facturación, Solo lectura y los dos roles para clientes.
+  assert(filaCierres.split("\t").slice(1).map((x) => x.trim()).join(" ") === "✓ — ✓ — ✓ — —", "Cierre del mes por rol: " + filaCierres);
   paso("Roles y permisos: matriz de pestañas por rol, roles para clientes y pestañas editables con casillas");
 
   // 2. Personas y accesos: un usuario de cliente con cliente y rol en un solo paso
@@ -75,7 +75,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await cli.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
   await cli.waitForURL(`${B}/e/${eid}`);
   const menu = await cli.locator("nav.menu").innerText();
-  assert(!menu.includes("Inicio de la firma") && !menu.includes("Asientos") && menu.includes("Facturas") && menu.includes("Estado de cuenta"), "menú del cliente: " + menu);
+  assert(!menu.includes("Inicio de la firma") && !menu.includes("Asientos") && menu.includes("Facturas") && menu.includes("Cuentas por cobrar"), "menú del cliente: " + menu);
   assert((await cli.locator(".selector-cliente option").allInnerTexts()).join("|") === "Cliente Roles SRL", "sin «Todos los clientes»");
   await captura(cli, "roles-cliente.png");
   await cli.goto(`${B}/e/${eid}/asientos`);
@@ -103,12 +103,17 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await ana.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
   await ana.waitForURL(/\/firma\/[0-9a-f-]+\?bienvenida=1/);
   await ana.goto(`${B}/e/${eid}/asientos`);
-  assert((await ana.locator("nav.menu").innerText()).includes("Asientos") && !(await ana.locator("nav.menu").innerText()).includes("Cierres de período"), "menú de Ana");
+  assert((await ana.locator("nav.menu").innerText()).includes("Asientos") && !(await ana.locator("nav.menu").innerText()).includes("Cierre del mes"), "menú de Ana");
   await ana.goto(`${B}/e/${eid}/cierres`);
   await ana.waitForSelector("text=Tu rol no incluye esa pestaña");
+  // Quien prepara no aprueba: la Auxiliar no registra cobros (se contabilizan al guardarse).
+  await ana.goto(`${B}/e/${eid}/cobros`);
+  assert((await ana.locator("text=+ Registrar cobro").count()) === 0, "la Auxiliar no ve «Registrar cobro»");
+  await ana.goto(`${B}/e/${eid}/cobros/nuevo`);
+  await ana.waitForSelector("text=Tu perfil no permite esa acción");
   const w = await ana.evaluate(() => document.documentElement.scrollWidth);
   assert(w <= 390, "sin desborde en celular: " + w);
-  paso("equipo: la Auxiliar ve Asientos pero no Cierres ni Impuestos, igual que se marcó en su rol");
+  paso("equipo: la Auxiliar ve Asientos pero no el Cierre del mes ni Impuestos, y no registra cobros");
 
   assert(errores.length === 0, "errores en el navegador: " + errores.join(" | "));
   console.log("Sin errores en el navegador");

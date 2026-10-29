@@ -31,7 +31,7 @@ function leerVigencia(fd: FormData): { desde: string; hasta: string | null } | s
 // ───── Perfil fiscal y obligaciones ─────
 
 export async function guardarPerfilFiscal(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  await exigirPermiso(empresaId, "impuestos");
+  await exigirPermiso(empresaId, "impuestos", "/fiscal");
   const tipoPersona = texto(fd, "tipo_persona") === "fisica" ? "fisica" : "juridica";
   const emisor = fd.get("emisor_ecf") === "on";
   const ecfDesde = emisor ? texto(fd, "ecf_desde") || null : null;
@@ -49,7 +49,7 @@ export async function guardarPerfilFiscal(empresaId: string, _: Estado, fd: Form
 }
 
 export async function guardarObligaciones(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  await exigirPermiso(empresaId, "impuestos");
+  await exigirPermiso(empresaId, "impuestos", "/fiscal");
   try {
     await conEmpresa(empresaId, async (tx) => {
       for (const clave of CLAVES_OBLIGACION) {
@@ -70,7 +70,7 @@ export async function guardarObligaciones(empresaId: string, _: Estado, fd: Form
 // ───── Impuestos ─────
 
 export async function guardarImpuesto(empresaId: string, impuestoId: string | null, _: Estado, fd: FormData): Promise<Estado> {
-  await exigirPermiso(empresaId, "impuestos");
+  await exigirPermiso(empresaId, "impuestos", "/fiscal/impuestos");
   const nombre = texto(fd, "nombre");
   const tipo = texto(fd, "tipo");
   const tasa = tipo === "exento" ? 0n : leerPorcentaje(texto(fd, "tasa"));
@@ -109,7 +109,7 @@ export async function guardarImpuesto(empresaId: string, impuestoId: string | nu
 // ───── Retenciones ─────
 
 export async function guardarRetencion(empresaId: string, retencionId: string | null, _: Estado, fd: FormData): Promise<Estado> {
-  await exigirPermiso(empresaId, "impuestos");
+  await exigirPermiso(empresaId, "impuestos", "/fiscal/retenciones");
   const nombre = texto(fd, "nombre");
   const impuesto = texto(fd, "impuesto");
   const tasa = leerPorcentaje(texto(fd, "tasa"));
@@ -149,7 +149,7 @@ export async function guardarRetencion(empresaId: string, retencionId: string | 
 // ───── Comprobantes (rangos autorizados por la DGII) ─────
 
 export async function agregarSecuencia(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "impuestos");
+  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/comprobantes");
   const tipo = texto(fd, "tipo");
   const desde = Number(texto(fd, "desde"));
   const hasta = Number(texto(fd, "hasta"));
@@ -180,7 +180,7 @@ export async function agregarSecuencia(empresaId: string, _: Estado, fd: FormDat
 }
 
 export async function desactivarSecuencia(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "impuestos");
+  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/comprobantes");
   const id = texto(fd, "id");
   if (!esUuid(id)) return { error: "Rango no válido." };
   try {

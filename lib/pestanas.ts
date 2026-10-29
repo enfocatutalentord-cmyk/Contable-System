@@ -1,28 +1,31 @@
 export type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][] };
 
-// Pestañas de cada cliente, en el orden del menú. La ruta es también la clave con la que cada rol guarda qué pestañas ve
-// (`perfiles.pestanas`; vacío = todas). Sin cliente elegido, el menú lleva a «Elige un cliente» y de ahí a la pestaña.
-export const PESTANAS: Seccion[] = [
-  { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/clientes", "Clientes"], ["/servicios", "Productos y servicios"]] },
-  { grupo: "Cuentas por cobrar", enlaces: [["/cxc", "Antigüedad de saldos"], ["/cxc/estado", "Estado de cuenta"]] },
-  { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/proveedores", "Proveedores"]] },
-  { grupo: "Cuentas por pagar", enlaces: [["/cxp", "Antigüedad por pagar"], ["/cxp/estado", "Estado de cuenta"]] },
-  { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/catalogo", "Catálogo de cuentas"], ["/cierres", "Cierres de período"]] },
-  { grupo: "Libros", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
+// Pestañas de cada cliente, en el orden del menú (aprobado por Joannie el 29-oct-2026): lo de todos los días arriba,
+// después reportes e impuestos, y la configuración al final, separada (lo más usado arriba agiliza; la configuración
+// abajo, como recomienda Material Design). La ruta es también la clave con la que cada rol guarda qué pestañas ve
+// (`perfiles.pestanas`; vacío = todas).
+export const PESTANAS_CLIENTE: Seccion[] = [
+  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"]] },
+  { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/cxc", "Cuentas por cobrar"], ["/cxc/estado", "Estado de cuenta de clientes"],
+                               ["/clientes", "Clientes y contactos"], ["/servicios", "Productos y servicios"]] },
+  { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
+                                ["/proveedores", "Proveedores"]] },
+  { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/cierres", "Cierre del mes"]] },
+  { grupo: "Reportes", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
+  { grupo: "Impuestos", enlaces: [["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
   {
-    grupo: "Impuestos",
-    enlaces: [["/fiscal", "Perfil fiscal"], ["/fiscal/impuestos", "Impuestos"], ["/fiscal/retenciones", "Retenciones"],
-              ["/comprobantes", "Comprobantes fiscales"], ["/fiscal/probar", "Probar cálculo"]],
+    grupo: "Configuración del cliente",
+    enlaces: [["/empresa", "Ficha de la empresa"], ["/catalogo", "Catálogo de cuentas"], ["/configuracion", "Configuración de cuentas"],
+              ["/fiscal/impuestos", "Tasas de impuestos"], ["/fiscal/retenciones", "Retenciones"], ["/fiscal/probar", "Probar cálculo"],
+              ["/usuarios", "Usuarios y permisos"], ["/historial", "Historial de cambios"]],
   },
 ];
 
-// Todas las pestañas de un cliente, incluido su resumen, el control y los datos de la empresa.
-export const PESTANAS_CLIENTE: Seccion[] = [
-  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"]] },
-  ...PESTANAS,
-  { grupo: "Control", enlaces: [["/historial", "Historial de cambios"]] },
-  { grupo: "Empresa", enlaces: [["/empresa", "Ficha de la empresa"], ["/configuracion", "Configuración de cuentas"], ["/usuarios", "Usuarios y permisos"]] },
-];
+// Pestañas que no van en el menú porque se abren desde otra (el estado de cuenta, desde Cuentas por cobrar o por pagar).
+export const FUERA_DEL_MENU = ["/cxc/estado", "/cxp/estado"];
+
+// Las de trabajo (sin el resumen ni la configuración), para «Elige un cliente».
+export const PESTANAS: Seccion[] = PESTANAS_CLIENTE.slice(1, -1);
 
 export const TODAS_LAS_PESTANAS = PESTANAS_CLIENTE.flatMap((s) => s.enlaces.map(([r]) => r));
 

@@ -54,7 +54,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await page.selectOption(".selector-cliente select", ids["Goemhy Prueba SRL"]);
   await page.waitForURL(`${B}/e/${ids["Goemhy Prueba SRL"]}/facturas`);
   await captura(page, "firma-cliente.png");
-  await page.click("nav >> text=/^Clientes$/");
+  await page.click("nav >> text=Clientes y contactos");
   await page.waitForURL(/\/clientes$/);
   await page.fill("input[name=nombre]", "Banco Caribe Prueba");
   await page.fill("input[name=rnc]", "101-00000-1");

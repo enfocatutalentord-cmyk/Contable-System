@@ -56,10 +56,13 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
   };
 });
 
-// Para server actions y páginas que requieren un permiso puntual.
-export async function exigirPermiso(empresaId: string, permiso: Permiso): Promise<Acceso> {
+// Para server actions y páginas que requieren un permiso puntual. La pestaña se revisa aparte porque una acción del
+// servidor se puede llamar desde cualquier página: así, quien no ve Asientos tampoco contabiliza un asiento por otra vía.
+export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana?: string): Promise<Acceso> {
   const acceso = await accesoEmpresa(empresaId);
-  if (!puede(acceso.permisos, permiso)) redirect(`/e/${empresaId}${acceso.pestanas?.[0] ?? ""}?sin_permiso=1`);
+  const inicio = `/e/${empresaId}${acceso.pestanas?.[0] ?? ""}`;
+  if (pestana !== undefined && !puedeVer(acceso.pestanas, pestana)) redirect(`${inicio}?sin_pestana=1`);
+  if (!puede(acceso.permisos, permiso)) redirect(`${inicio}?sin_permiso=1`);
   return acceso;
 }
 

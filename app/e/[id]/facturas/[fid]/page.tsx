@@ -7,6 +7,7 @@ import { conEmpresa } from "@/lib/db";
 import { verPorcentaje } from "@/lib/fiscal";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { puedeVer } from "@/lib/pestanas";
 import { MOTIVOS_608, NOMBRE_NCF, type TipoNcf } from "@/lib/ventas";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
@@ -29,7 +30,7 @@ export default async function VerFactura({ params, searchParams }: {
   const { id, fid } = await params;
   const sp = await searchParams;
   if (!esUuid(fid)) notFound();
-  const { empresa, permisos, usuario } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario, pestanas } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [f] = await tx<Factura[]>`
       SELECT f.id, f.estado, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
@@ -86,7 +87,7 @@ export default async function VerFactura({ params, searchParams }: {
         <div className="entre" style={{ marginBottom: 12 }}>
           <div className="fila">
             {!borrador && <BotonImprimir />}
-            {!esNota && !borrador && !f.anulada && saldo > 0 && puede(permisos, "registrar") && (
+            {!esNota && !borrador && !f.anulada && saldo > 0 && puede(permisos, "contabilizar") && puedeVer(pestanas, "/cobros") && (
               <Link className="boton primario" href={`/e/${id}/cobros/nuevo?factura=${f.id}`}>Registrar cobro</Link>
             )}
             {f.asiento && <Link className="boton" href={`/e/${id}/asientos/${f.asiento_id}`}>Ver asiento n.º {f.asiento}</Link>}

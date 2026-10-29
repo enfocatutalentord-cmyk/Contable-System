@@ -63,7 +63,7 @@ function verMontoPlano(c: bigint): string {
 
 // Guardar (nuevo o borrador existente) como borrador o directamente contabilizado.
 export async function guardarAsiento(empresaId: string, asientoId: string | null, _: EstadoAsiento, fd: FormData): Promise<EstadoAsiento> {
-  const { usuario, permisos, empresa } = await exigirPermiso(empresaId, "registrar");
+  const { usuario, permisos, empresa } = await exigirPermiso(empresaId, "registrar", "/asientos");
   const contabilizar = fd.get("accion") === "contabilizar";
   const fecha = texto(fd, "fecha");
   const concepto = texto(fd, "concepto");
@@ -111,7 +111,7 @@ export async function guardarAsiento(empresaId: string, asientoId: string | null
 
 // Aprobar un borrador. Si la empresa exige aprobación, debe hacerlo otra persona.
 export async function contabilizarBorrador(empresaId: string, asientoId: string, _: Estado): Promise<Estado> {
-  const { usuario, empresa } = await exigirPermiso(empresaId, "contabilizar");
+  const { usuario, empresa } = await exigirPermiso(empresaId, "contabilizar", "/asientos");
   try {
     await conEmpresa(empresaId, async (tx) => {
       const [a] = await tx<{ creado_por: string }[]>`SELECT creado_por FROM asientos WHERE id = ${asientoId}`;
@@ -130,7 +130,7 @@ export async function contabilizarBorrador(empresaId: string, asientoId: string,
 }
 
 export async function descartarBorrador(empresaId: string, asientoId: string, _: Estado): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/asientos");
   try {
     await conEmpresa(empresaId, async (tx) => {
       const r = await tx`DELETE FROM asientos WHERE id = ${asientoId} AND estado = 'borrador'`;
@@ -147,7 +147,7 @@ export async function descartarBorrador(empresaId: string, asientoId: string, _:
 }
 
 export async function revertir(empresaId: string, asientoId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/asientos");
   const fecha = texto(fd, "fecha");
   const motivo = texto(fd, "motivo");
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
@@ -229,7 +229,7 @@ export async function retirarDocumento(empresaId: string, documentoId: string, _
 // ───── Ficha de la empresa ─────
 
 export async function actualizarFicha(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "empresa");
+  const { usuario } = await exigirPermiso(empresaId, "empresa", "/empresa");
   const f = leerFicha(fd);
   if (typeof f === "string") return { error: f };
   try {
@@ -250,7 +250,7 @@ export async function actualizarFicha(empresaId: string, _: Estado, fd: FormData
 // ───── Acceso a esta empresa ─────
 
 export async function asignarAcceso(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, empresa } = await exigirPermiso(empresaId, "usuarios");
+  const { usuario, empresa } = await exigirPermiso(empresaId, "usuarios", "/usuarios");
   const email = texto(fd, "email").toLowerCase();
   const nombre = texto(fd, "nombre");
   const personaId = texto(fd, "usuario");
@@ -294,7 +294,7 @@ export async function asignarAcceso(empresaId: string, _: Estado, fd: FormData):
 // ───── Catálogo y cierres ─────
 
 export async function crearCuenta(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "catalogo");
+  const { usuario } = await exigirPermiso(empresaId, "catalogo", "/catalogo");
   const padreId = texto(fd, "padre");
   const sufijo = texto(fd, "sufijo");
   const nombre = texto(fd, "nombre");
@@ -329,7 +329,7 @@ export async function crearCuenta(empresaId: string, _: Estado, fd: FormData): P
 }
 
 export async function editarCuenta(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "catalogo");
+  const { usuario } = await exigirPermiso(empresaId, "catalogo", "/catalogo");
   const cuentaId = texto(fd, "cuenta");
   const nombre = texto(fd, "nombre");
   const activa = fd.get("activa") === "on";
@@ -349,7 +349,7 @@ export async function editarCuenta(empresaId: string, _: Estado, fd: FormData): 
 }
 
 export async function fijarBloqueo(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, empresa } = await exigirPermiso(empresaId, "cerrar");
+  const { usuario, empresa } = await exigirPermiso(empresaId, "cerrar", "/cierres");
   const nueva = texto(fd, "fecha") || null;
   if (nueva && !fechaValida(nueva)) return { error: "La fecha no es válida." };
   const actual = empresa.fecha_bloqueo;

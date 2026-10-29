@@ -14,7 +14,7 @@ export default async function NuevoCobro({ params, searchParams }: {
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  await exigirPermiso(id, "registrar");
+  await exigirPermiso(id, "contabilizar", "/cobros");
   const hoy = hoyISO();
   const { clientes, pendientes, cuentas, bases, retenciones } = await conEmpresa(id, async (tx) => ({
     clientes: await tx<{ id: string; nombre: string; retenciones: string[] }[]>`SELECT id, nombre, retenciones FROM clientes ORDER BY nombre`,

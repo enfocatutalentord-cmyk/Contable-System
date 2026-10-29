@@ -27,7 +27,7 @@ function monto(fd: FormData, campo: string): bigint | null {
 // ───── Clientes ─────
 
 export async function guardarCliente(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/clientes");
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
   const tipoId = texto(fd, "tipo_identificacion");
@@ -74,7 +74,7 @@ export async function guardarCliente(empresaId: string, _: Estado, fd: FormData)
 // ───── Productos y servicios ─────
 
 export async function guardarServicio(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/servicios");
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
   const precio = leerMonto(texto(fd, "precio"));
@@ -146,7 +146,7 @@ function leerLineas(fd: FormData): LineaEntrada[] | string {
 
 // Guarda la factura como borrador o, con accion=emitir, la guarda y la emite (toma NCF y registra el asiento).
 export async function guardarFactura(empresaId: string, facturaId: string | null, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar");
+  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar", "/facturas");
   const emitirAhora = texto(fd, "accion") === "emitir";
   if (emitirAhora && !puede(permisos, "contabilizar")) return { error: "Tu perfil no permite emitir; guárdala como borrador." };
   const clienteId = texto(fd, "cliente");
@@ -179,7 +179,7 @@ export async function guardarFactura(empresaId: string, facturaId: string | null
 }
 
 export async function emitirBorrador(empresaId: string, facturaId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar");
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/facturas");
   try {
     await conEmpresa(empresaId, (tx) => emitir(tx, { empresaId, usuarioId: usuario.id, facturaId }));
   } catch (e) {
@@ -190,7 +190,7 @@ export async function emitirBorrador(empresaId: string, facturaId: string): Prom
 }
 
 export async function descartarFactura(empresaId: string, facturaId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/facturas");
   try {
     await conEmpresa(empresaId, async (tx) => {
       await descartarBorradorFactura(tx, facturaId);
@@ -204,7 +204,7 @@ export async function descartarFactura(empresaId: string, facturaId: string): Pr
 }
 
 export async function crearNotaCredito(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/facturas");
   const fecha = texto(fd, "fecha");
   const subtotal = monto(fd, "subtotal");
   const impuestoId = texto(fd, "impuesto");
@@ -224,7 +224,7 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/facturas");
   const motivo = texto(fd, "motivo");
   if (!MOTIVOS_608[motivo]) return { error: "Elige el motivo de anulación." };
   try {
@@ -239,7 +239,8 @@ export async function anularComprobante(empresaId: string, facturaId: string, _:
 // ───── Cobros ─────
 
 export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  // El cobro se contabiliza al guardarse (como compras y pagos): lo hace quien puede contabilizar.
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/cobros");
   const clienteId = texto(fd, "cliente");
   const fecha = texto(fd, "fecha");
   const moneda = texto(fd, "moneda") === "USD" ? "USD" : "DOP";
@@ -278,7 +279,7 @@ export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Pr
 }
 
 export async function anularRecibo(empresaId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/cobros");
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {
@@ -293,7 +294,7 @@ export async function anularRecibo(empresaId: string, numero: number, _: Estado,
 // ───── Configuración de ventas ─────
 
 export async function guardarCuentasEmpresa(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "catalogo");
+  const { usuario } = await exigirPermiso(empresaId, "catalogo", "/configuracion");
   try {
     await conEmpresa(empresaId, async (tx) => {
       for (const clave of CLAVES_CUENTAS) {

@@ -19,7 +19,10 @@ export default async function Antiguedad({ params, searchParams }: {
 
   return (
     <>
-      <h1>Antigüedad de saldos</h1>
+      <div className="entre">
+        <h1>Cuentas por cobrar</h1>
+        <Link className="boton" href={`/e/${id}/cxc/estado`}>Estado de cuenta →</Link>
+      </div>
       <p className="sub">
         {empresa.nombre} · cuentas por cobrar al {verFecha(corte)}, según los días vencidos de cada factura.
         Valores en pesos (las facturas en dólares a la tasa de la factura).

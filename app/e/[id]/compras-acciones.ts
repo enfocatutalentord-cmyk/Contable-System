@@ -23,7 +23,7 @@ function texto(fd: FormData, campo: string): string {
 // ───── Proveedores ─────
 
 export async function guardarProveedor(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/proveedores");
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
   const tipoId = texto(fd, "tipo_identificacion");
@@ -99,7 +99,7 @@ function leerLineas(fd: FormData): LineaCompraEntrada[] | string {
 
 // Guarda la compra como borrador o, con accion=registrar, la guarda y la registra (asiento y, si es propio, NCF).
 export async function guardarCompra(empresaId: string, compraId: string | null, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar");
+  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar", "/compras");
   const registrarAhora = texto(fd, "accion") === "registrar";
   if (registrarAhora && !puede(permisos, "contabilizar")) return { error: "Tu perfil no permite registrar compras; guárdala como borrador." };
   const proveedorId = texto(fd, "proveedor");
@@ -141,7 +141,7 @@ export async function guardarCompra(empresaId: string, compraId: string | null, 
 }
 
 export async function registrarBorradorCompra(empresaId: string, compraId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar");
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/compras");
   try {
     await conEmpresa(empresaId, (tx) => registrarCompra(tx, { empresaId, usuarioId: usuario.id, compraId }));
   } catch (e) {
@@ -152,7 +152,7 @@ export async function registrarBorradorCompra(empresaId: string, compraId: strin
 }
 
 export async function descartarCompra(empresaId: string, compraId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar");
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/compras");
   try {
     await conEmpresa(empresaId, async (tx) => {
       await descartarBorradorCompra(tx, compraId);
@@ -166,7 +166,7 @@ export async function descartarCompra(empresaId: string, compraId: string): Prom
 }
 
 export async function anularLaCompra(empresaId: string, compraId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/compras");
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {
@@ -181,7 +181,7 @@ export async function anularLaCompra(empresaId: string, compraId: string, _: Est
 // ───── Pagos ─────
 
 export async function crearPago(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar");
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/pagos");
   const proveedorId = texto(fd, "proveedor");
   const fecha = texto(fd, "fecha");
   const moneda = texto(fd, "moneda") === "USD" ? "USD" : "DOP";
@@ -220,7 +220,7 @@ export async function crearPago(empresaId: string, _: Estado, fd: FormData): Pro
 }
 
 export async function anularElPago(empresaId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir");
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/pagos");
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {

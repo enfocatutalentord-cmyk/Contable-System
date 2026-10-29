@@ -90,6 +90,13 @@ Notas de infraestructura que costaron tiempo:
   roles para clientes no ve las pantallas de la firma ni «Todos los clientes» (`soloCliente`). «Roles y permisos» tiene la
   matriz pestaña × rol y casillas por rol; «Personas y accesos» separa equipo y usuarios de clientes y permite elegir cliente
   y rol al agregar. Recorrido: `pruebas/navegador/roles.cjs`.
+  Roles base definidos (migración 011, «sí» de Joannie del 29-oct): Administrador (todo), Contador (aprueba, corrige, cierra,
+  configura; sin reabrir ni accesos ni Usuarios), Auxiliar (prepara borradores; sin emitir, contabilizar, anular, cerrar,
+  impuestos ni configuración), **Facturación** (facturas, cobros, clientes, productos, CxC), Solo lectura (todo + historial),
+  Cliente · Consulta, Cliente · Sube documentos (solo resumen hasta la parte 3). Cada server action exige además su pestaña
+  (`exigirPermiso(id, permiso, pestana)`), y registrar cobros exige «contabilizar». Menú reordenado: Firma (Inicio,
+  Actividad) → Ventas, Compras, Contabilidad → Reportes → Impuestos → Configuración del cliente → Administración de la firma;
+  el estado de cuenta se abre desde Cuentas por cobrar/pagar.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -168,8 +175,8 @@ No se pasa a la siguiente sin su autorización expresa.
   (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
-  firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas) hecha en la rama: falta su «sí» para
-  `main`. Parte 3 pendiente: portal del cliente y «Documentos recibidos» (lo que suben los clientes, para que el equipo lo procese).
+  firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
+  reordenado) hecha en la rama: falta su «sí» para `main`. Parte 3 pendiente: portal del cliente y «Documentos recibidos» (lo que suben los clientes, para que el equipo lo procese).
 - **Revisión del 29-oct-2026** (Drive › «5. Revisión de la plataforma, roles e IA»): urgentes (1) respaldos sin funcionar
   (faltan secretos en GitHub y Actions en $0), (2) e-CF obligatorio para micro/pequeños desde el 15-nov-2026 (Aviso DGII 06-26,
   confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro. Propuestos y esperando su

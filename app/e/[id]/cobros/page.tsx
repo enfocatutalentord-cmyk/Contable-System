@@ -32,7 +32,7 @@ export default async function Cobros({ params, searchParams }: {
           <h1>Cobros</h1>
           <p className="sub">Recibos de ingreso. Un cobro puede saldar varias facturas del mismo cliente.</p>
         </div>
-        {puede(permisos, "registrar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
+        {puede(permisos, "contabilizar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
       </div>
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>

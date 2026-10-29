@@ -20,7 +20,10 @@ export default async function AntiguedadCxp({ params, searchParams }: {
 
   return (
     <>
-      <h1>Antigüedad de cuentas por pagar</h1>
+      <div className="entre">
+        <h1>Cuentas por pagar</h1>
+        <Link className="boton" href={`/e/${id}/cxp/estado`}>Estado de cuenta →</Link>
+      </div>
       <p className="sub">
         {empresa.nombre} · lo que se debe a proveedores al {verFecha(corte)}, según los días vencidos de cada compra.
         Valores en pesos (las compras en dólares a la tasa de la compra).

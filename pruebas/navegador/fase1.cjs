@@ -188,7 +188,7 @@ fs.writeFileSync(path.join(S, "falso.pdf"), "MZ esto no es pdf");
   const urlAux = aux.url().split("?")[0];
   assert((await aux.locator("button:has-text('Contabilizar')").count()) === 0, "auxiliar no aprueba");
   const r403 = await aux.request.get(base + "/historial");
-  assert((await aux.goto(base + "/historial")) && aux.url().includes("sin_permiso"), "auxiliar sin historial");
+  assert((await aux.goto(base + "/historial")) && /sin_(permiso|pestana)/.test(aux.url()), "auxiliar sin historial");
   void r403;
   paso("auxiliar: registra borrador, no contabiliza, no ve el historial");
 
