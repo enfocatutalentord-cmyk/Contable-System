@@ -170,6 +170,13 @@ No se pasa a la siguiente sin su autorización expresa.
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas) hecha en la rama: falta su «sí» para
   `main`. Parte 3 pendiente: portal del cliente y «Documentos recibidos» (lo que suben los clientes, para que el equipo lo procese).
+- **Revisión del 29-oct-2026** (Drive › «5. Revisión de la plataforma, roles e IA»): urgentes (1) respaldos sin funcionar
+  (faltan secretos en GitHub y Actions en $0), (2) e-CF obligatorio para micro/pequeños desde el 15-nov-2026 (Aviso DGII 06-26,
+  confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro. Propuestos y esperando su
+  «sí»: roles con permisos y restricciones (Administradora, Contadora, Auxiliar, Facturación opcional, Solo lectura, Cliente ·
+  Consulta, Cliente · Sube documentos), menú reordenado (diario arriba, configuración y administración abajo, sin plegables),
+  IA según el rol (dice qué rol/quién puede hacerlo; herramientas filtradas por permisos, OWASP LLM06), verificación en dos
+  pasos, Excel en todas las listas. Videos con voz: bloqueados por la red (falta permitir la API de Gemini y la llave).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local
