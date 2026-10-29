@@ -142,6 +142,14 @@ Notas de infraestructura que costaron tiempo:
   de 30 días → casillas 9 y 43); lo demás se escribe y se guarda en `declaraciones_itbis.manuales`. Valida como la Oficina
   Virtual (11 a 15 = 10; 56 ≤ ITBIS por adelantar del 606; 60 ≥ retenido del 606; coeficiente 54). «Marcar como presentado»
   guarda las casillas en `envios_dgii.casillas`; la 34 pasa a la 29 del mes siguiente. Excel/PDF `IT-1_<RNC>_<AAAAMM>`.
+- **IR-17** (Fase 6 parte 3, 30-oct-2026, migración 016, `lib/ir17.ts`, pantalla `/dgii/ir17`): formulario oficial «IR-17-2026,
+  desde julio 2026 en adelante» (subido por Joannie; sin instructivo): 24 conceptos con su código y tasa de la Ley 30-26
+  (`CONCEPTOS_IR17` en `lib/fiscal.ts`: alquileres 15 %, honorarios 15 %, otras rentas 15 %, etc.), 25–37 con sus fórmulas y
+  anexo IR-6 por beneficiario desde los pagos con retención de ISR (sujeto = retenido ÷ tasa). Cada retención de ISR tiene
+  `retenciones.codigo_ir17` (se llena solo desde el 606 cuando no hay duda: 1→1, 2→2, 7→12, 8→13, 9→21; trigger
+  `retenciones_ir17`); sin concepto, error. Los borradores de IT-1 e IR-17 están en la tabla común `declaraciones`
+  (formulario, período, manuales); `lib/declaraciones.ts` define ambos formularios y la pantalla común es
+  `app/e/[id]/dgii/declaracion.tsx`. Excel/PDF `IR-17_<RNC>_<AAAAMM>` e `IR-6_<RNC>_<AAAAMM>`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -235,7 +243,7 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); sigue IR-17, esperando su formulario e instructivo;
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 hecho en la rama (falta su «sí»); sigue ISR anual (IR-2-2026 ya subido);
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
@@ -249,7 +257,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 77 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 78 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

@@ -9,6 +9,7 @@ import {
   armarFormato, aTxt, CONSUMO_DETALLADO_DESDE, montoTxt, nombreTxt, fechaDgii, formaPago606, ncfValido, periodoAnterior, periodoDe, repartir, tipoIdentificacion,
 } from "../lib/formatos-dgii.ts";
 import { calcularIt1 } from "../lib/it1.ts";
+import { calcularIr17 } from "../lib/ir17.ts";
 import { anularFactura, emitir, guardarBorradorFactura, registrarCobro } from "../lib/ventas.ts";
 
 test("período AAAAMM: rango del mes y vencimiento el 15 del mes siguiente", () => {
@@ -261,6 +262,22 @@ test("IT-1: el saldo a favor de septiembre pasa a octubre; lo escrito a mano man
   assert.ok(mal.avisos.some((x) => x.nivel === "error" && /coeficiente/.test(x.texto)), "coeficiente que no cuadra");
   const menos = await leer((tx) => calcularIt1(tx, periodoDe("202610"), { I43: "0" }));
   assert.ok(menos.avisos.some((x) => x.nivel === "error" && /casilla 60/.test(x.texto)), "retenciones por debajo del 606");
+});
+
+test("IR-17 de octubre: la retención de ISR del pago va a su concepto con la tasa del formulario, y el IR-6 la detalla", conBase, async () => {
+  const r = await leer((tx) => calcularIr17(tx, periodoDe("202610"), { R35: "100" }));
+  const v = (k) => r.valores[k];
+  // Pago del 5 de octubre a Juan: ISR honorarios 15 % retenido 1,500 sobre 10,000 → casilla 2 (honorarios, 15 %).
+  assert.deepEqual([v("R2"), v("R2t"), v("R2i"), v("R25"), v("R27"), v("R29"), v("R33")], [1000000n, 1500n, 150000n, 150000n, 150000n, 150000n, 150000n]);
+  assert.equal(v("R37"), 160000n, "33 + recargos escritos a mano");
+  assert.equal(r.ir6.length, 1);
+  assert.deepEqual([r.ir6[0].beneficiario, r.ir6[0].codigo, r.ir6[0].sujeto, r.ir6[0].retenido, r.ir6[0].montoPago], ["Juan Pérez", 2, 1000000n, 150000n, 1180000n]);
+  assert.equal(r.avisos.filter((x) => x.nivel === "error").length, 0, JSON.stringify(r.avisos));
+  // Una retención de ISR sin concepto del IR-17 no deja presentarlo.
+  await leer((tx) => tx`UPDATE retenciones SET codigo_ir17 = NULL WHERE nombre = 'ISR honorarios a personas físicas 15 %'`);
+  const sin = await leer((tx) => calcularIr17(tx, periodoDe("202610"), {}));
+  assert.ok(sin.avisos.some((x) => x.nivel === "error" && /concepto del IR-17/.test(x.texto)));
+  await leer((tx) => tx`UPDATE retenciones SET codigo_ir17 = 2 WHERE nombre = 'ISR honorarios a personas físicas 15 %'`);
 });
 
 test("la huella cambia si cambia algo del mes y la marca de envío queda en el historial", conBase, async () => {

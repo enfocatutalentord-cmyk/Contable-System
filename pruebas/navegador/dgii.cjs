@@ -137,10 +137,29 @@ fs.mkdirSync(S, { recursive: true });
   assert(!(await page.getByRole("button", { name: "Guardar y recalcular" }).count()), "presentado: ya no se edita");
   paso("IT-1: casillas desde lo registrado (ITBIS 4,500 − 2,160), casilla escrita a mano, Excel y marcado como presentado");
 
+  // 6c. IR-17 de octubre: la retención de ISR del pago (15 % de 10,000) en la casilla 2, anexo IR-6 y presentado
+  await ir(base + "/dgii?mes=2026-10");
+  await page.getByRole("link", { name: "Abrir el IR-17 de 202610" }).click();
+  await page.waitForURL(/\/dgii\/ir17\?mes=2026-10/);
+  const cifras17 = await page.locator(".cifras-dgii").innerText();
+  assert(/OTRAS RETENCIONES \(25\)\s*1,500\.00/i.test(cifras17) && /TOTAL A PAGAR \(37\)\s*1,500\.00/i.test(cifras17), "cifras del IR-17: " + cifras17);
+  assert((await page.getByLabel("Casilla R2", { exact: true }).inputValue()) === "10000.00", "honorarios: monto imponible 10,000");
+  await page.waitForSelector("text=Anexo IR-6 · Detalle de las retenciones del mes");
+  assert((await page.locator("section", { hasText: "Anexo IR-6" }).locator("tbody").innerText()).includes("Juan Pérez"), "IR-6 con el beneficiario");
+  const [i6] = await Promise.all([page.waitForEvent("download"), page.locator("section", { hasText: "Anexo IR-6" }).locator(".descargar a", { hasText: "Excel" }).click()]);
+  assert(i6.suggestedFilename() === "IR-6_101000009_202610.xlsx", "Excel del IR-6: " + i6.suggestedFilename());
+  await page.screenshot({ path: path.join(S, "ir17.png"), fullPage: true });
+  await page.locator("input[name=referencia]").fill("IR17-555");
+  await boton("Marcar como presentado");
+  await page.waitForSelector("text=referencia IR17-555");
+  await ir(base + "/fiscal/retenciones");
+  assert((await page.locator("tr", { hasText: "ISR honorarios a personas físicas 15 %" }).innerText()).includes("\t2\t"), "concepto del IR-17 en la retención");
+  paso("IR-17: retención de ISR en la casilla 2 con la tasa del formulario, anexo IR-6 en Excel, presentado; concepto visible en Retenciones");
+
   // 7. Celular
   const movil = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await movil.context().addCookies(await page.context().cookies());
-  for (const r of ["/dgii?mes=2026-10", "/dgii/it1?mes=2026-10"]) {
+  for (const r of ["/dgii?mes=2026-10", "/dgii/it1?mes=2026-10", "/dgii/ir17?mes=2026-10"]) {
     await movil.goto(base + r, { waitUntil: "networkidle" });
     const w = await movil.evaluate(() => document.documentElement.scrollWidth);
     assert(w <= 392, `desborde en celular ${r}: ${w}`);

@@ -1,5 +1,5 @@
 import type { Cuenta } from "@/lib/cuentas";
-import { CODIGOS_606, IMPUESTOS_RETENIDOS, porcentajeTexto, leerPorcentaje, TIPOS_IMPUESTO, type Impuesto, type Retencion } from "@/lib/fiscal";
+import { CODIGOS_606, CONCEPTOS_IR17, IMPUESTOS_RETENIDOS, porcentajeTexto, leerPorcentaje, TIPOS_IMPUESTO, type Impuesto, type Retencion } from "@/lib/fiscal";
 
 const tasa = (t?: string) => (t ? porcentajeTexto(leerPorcentaje(t) ?? 0n) : "");
 const fecha = (f?: string | null) => (f && f > "2000-01-01" ? f : "");
@@ -68,6 +68,12 @@ export function CamposRetencion({ d, cuentas, edicion = false }: { d?: Retencion
           <select name="codigo_606" defaultValue={d?.codigo_606 ?? ""}>
             <option value="">—</option>
             {Object.entries(CODIGOS_606).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
+          </select>
+        </label>
+        <label style={{ flex: "2 1 320px" }}>Concepto en el IR-17 (solo ISR)
+          <select name="codigo_ir17" defaultValue={d?.codigo_ir17 ?? ""}>
+            <option value="">— Según el tipo del 606</option>
+            {CONCEPTOS_IR17.map(([t, tasa], i) => <option key={i} value={i + 1}>{i + 1} · {t} ({Number(tasa) / 100} %)</option>)}
           </select>
         </label>
       </div>

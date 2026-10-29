@@ -436,16 +436,3 @@ export async function calcularIt1(tx: Tx, p: Periodo, manuales: Record<string, s
   const huella = createHash("sha256").update(JSON.stringify(Object.entries(v).sort(), (_, x) => (typeof x === "bigint" ? x.toString() : x))).digest("hex");
   return { valores: v, sugeridos, origen, avisos, huella };
 }
-
-// Lo escrito a mano, validado (solo casillas que se pueden escribir y montos válidos).
-export function leerManuales(fd: FormData): Record<string, string> | string {
-  const salida: Record<string, string> = {};
-  for (const k of EDITABLES) {
-    const txt = String(fd.get(k) ?? "").trim();
-    if (txt === "" || fd.get(`${k}_auto`) === txt) continue; // vacío o igual a la sugerencia: se usa la sugerencia
-    const n = leerMonto(txt.replace(/%$/, ""));
-    if (n === null) return `La casilla ${k.replace(/^A/, "A-").replace(/^I/, "")} no tiene un monto válido.`;
-    salida[k] = n;
-  }
-  return salida;
-}

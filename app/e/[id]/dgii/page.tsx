@@ -70,6 +70,14 @@ export default async function ReportesDgii({ params, searchParams }: {
         <p className="sub" style={{ marginBottom: 0 }}>Se presenta después del 606 y el 607, a más tardar el día 20 del mes siguiente. El borrador toma sus cifras de lo registrado.</p>
       </section>
 
+      <section className="tarjeta formato-dgii">
+        <div className="entre">
+          <h2 style={{ margin: 0 }}>IR-17 · Otras retenciones y retribuciones complementarias</h2>
+          <Link className="boton primario" href={`/e/${id}/dgii/ir17?mes=${p.periodo.slice(0, 4)}-${p.periodo.slice(4)}`}>Abrir el IR-17 de {p.periodo}</Link>
+        </div>
+        <p className="sub" style={{ marginBottom: 0 }}>Retenciones de ISR hechas en los pagos del mes, con su anexo IR-6. Se presenta a más tardar el día 10 del mes siguiente.</p>
+      </section>
+
       <section className="tarjeta" style={{ marginTop: 16 }}>
         <h2 style={{ marginTop: 0 }}>Cómo enviarlos</h2>
         <ol className="pasos">

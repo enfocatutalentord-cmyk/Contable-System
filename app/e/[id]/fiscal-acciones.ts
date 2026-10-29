@@ -117,14 +117,16 @@ export async function guardarRetencion(empresaId: string, retencionId: string | 
   const porTerceros = texto(fd, "cuenta_por_terceros");
   const aTerceros = texto(fd, "cuenta_a_terceros");
   const codigo = impuesto === "isr" && texto(fd, "codigo_606") ? Number(texto(fd, "codigo_606")) : null;
+  const ir17 = impuesto === "isr" && texto(fd, "codigo_ir17") ? Number(texto(fd, "codigo_ir17")) : null;
   if (!nombre) return { error: "Ponle un nombre a la retención (por ejemplo, «ISR honorarios 15 %»)." };
   if (impuesto !== "itbis" && impuesto !== "isr") return { error: "Elige si la retención es de ITBIS o de ISR." };
   if (!tasa || tasa === 0n) return { error: "La tasa debe ser un porcentaje mayor que 0 y hasta 100." };
   if (typeof vigencia === "string") return { error: vigencia };
   if (!esUuid(porTerceros) || !esUuid(aTerceros)) return { error: "Elige las dos cuentas de la retención." };
   if (codigo !== null && !(codigo in CODIGOS_606)) return { error: "El tipo de retención para el 606 no es válido." };
+  if (ir17 !== null && !(Number.isInteger(ir17) && ir17 >= 1 && ir17 <= 24)) return { error: "El concepto del IR-17 no es válido." };
   const datos = {
-    nombre, impuesto, tasa: porcentajeTexto(tasa), cuenta_por_terceros_id: porTerceros, cuenta_a_terceros_id: aTerceros, codigo_606: codigo,
+    nombre, impuesto, tasa: porcentajeTexto(tasa), cuenta_por_terceros_id: porTerceros, cuenta_a_terceros_id: aTerceros, codigo_606: codigo, codigo_ir17: ir17,
     vigente_desde: vigencia.desde, vigente_hasta: vigencia.hasta, activo: retencionId ? fd.get("activo") === "on" : true,
     nota: texto(fd, "nota") || null,
   };

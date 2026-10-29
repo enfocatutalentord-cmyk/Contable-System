@@ -30,6 +30,34 @@ export const CODIGOS_606: Record<number, string> = {
   9: "Retenciones subsector ganadería de carne bovina",
 };
 
+// Conceptos del IR-17 (casillas 1 a 24) con su tasa en centésimas de porcentaje, del formulario oficial
+// «IR-17-2026, desde julio 2026 en adelante» (hoja «Check list», códigos 1 a 24; tasas de la Ley 30-26).
+export const CONCEPTOS_IR17: [string, bigint][] = [
+  ["Alquileres", 1500n],
+  ["Honorarios por servicios independientes", 1500n],
+  ["Premios (Ley 253-12)", 2500n],
+  ["Transferencia de título y propiedades", 200n],
+  ["Dividendos (Ley 253-12)", 1000n],
+  ["Intereses a personas jurídicas o entidades no residentes (Ley 253-12)", 1000n],
+  ["Intereses a personas jurídicas o entidades no residentes (Ley 57-2007)", 500n],
+  ["Intereses a personas físicas no residentes (Ley 253-12)", 1000n],
+  ["Intereses a personas físicas no residentes (Leyes 57-2007 y 253-12)", 500n],
+  ["Remesas al exterior (Ley 253-12)", 2700n],
+  ["Intereses pagados por entidades no financieras a personas físicas residentes", 1000n],
+  ["Pagos a proveedores del Estado (Ley 253-12)", 500n],
+  ["Juegos telefónicos (Norma 08-2011)", 500n],
+  ["Ganancia de capital (Norma 07-2011)", 100n],
+  ["Juegos vía internet (Ley 139-11, Art. 7)", 1000n],
+  ["Otras rentas (Ley 11-92, Art. 309 Lit. f modificado por Ley 30-26)", 1500n],
+  ["Otras rentas (Decreto 139-98, Art. 70 Lit. a y b)", 300n],
+  ["Otras retenciones (Norma 07-2007 modificado por Ley 30-26)", 300n],
+  ["Intereses pagados por entidades financieras a personas jurídicas residentes (Norma 13-2011)", 100n],
+  ["Intereses pagados por entidades financieras a personas físicas residentes (Ley 253-12)", 1000n],
+  ["Adquisición de bienes de personas físicas del subsector de ganadería de carne bovina que son proveedores informales (Norma 04-25)", 100n],
+  ["Regalías o derechos pagados a no residentes (Art. 305-1, Ley 30-26)", 1500n],
+  ["Licencias de software, publicidad en línea y almacenamiento de datos a no residentes (Art. 305-2, Ley 30-26)", 1500n],
+  ["Remesas al exterior (mayores a 1,000 millones, Ley 30-26)", 3000n],
+];
 // Tipo de ingreso del formato 607 (campo 5 del instructivo de la DGII).
 export const TIPOS_INGRESO: Record<string, string> = {
   "01": "Ingresos por operaciones (no financieros)",
@@ -158,7 +186,7 @@ export type Impuesto = {
 };
 export type Retencion = {
   id: string; nombre: string; impuesto: "itbis" | "isr"; tasa: string; cuenta_por_terceros_id: string; cuenta_a_terceros_id: string;
-  codigo_606: number | null; vigente_desde: string; vigente_hasta: string | null; activo: boolean; nota: string | null;
+  codigo_606: number | null; codigo_ir17: number | null; vigente_desde: string; vigente_hasta: string | null; activo: boolean; nota: string | null;
 };
 
 export async function listarImpuestos(tx: Tx, vigentesAl?: string): Promise<Impuesto[]> {
@@ -173,7 +201,7 @@ export async function listarImpuestos(tx: Tx, vigentesAl?: string): Promise<Impu
 
 export async function listarRetenciones(tx: Tx, vigentesAl?: string): Promise<Retencion[]> {
   return tx<Retencion[]>`
-    SELECT id, nombre, impuesto, tasa::text, cuenta_por_terceros_id, cuenta_a_terceros_id, codigo_606,
+    SELECT id, nombre, impuesto, tasa::text, cuenta_por_terceros_id, cuenta_a_terceros_id, codigo_606, codigo_ir17,
            to_char(vigente_desde, 'YYYY-MM-DD') AS vigente_desde, to_char(vigente_hasta, 'YYYY-MM-DD') AS vigente_hasta, activo, nota
       FROM retenciones
      WHERE ${vigentesAl ?? null}::date IS NULL

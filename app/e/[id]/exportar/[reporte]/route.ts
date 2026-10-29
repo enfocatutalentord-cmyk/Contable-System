@@ -9,7 +9,9 @@ import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/e
 import { FORMAS_PAGO } from "@/lib/compras";
 import { listarCuentas } from "@/lib/cuentas";
 import { armarFormato, aTxt, FORMATOS, nombreTxt, periodoDe, type Formato } from "@/lib/formatos-dgii";
-import { calcularIt1, esRelleno, SECCIONES } from "@/lib/it1";
+import { calcularDeclaracion, FORMULARIOS } from "@/lib/declaraciones";
+import { esRelleno } from "@/lib/it1";
+import { anexoIr6 } from "@/lib/ir17";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
 import {
   estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
@@ -20,7 +22,7 @@ import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -216,36 +218,55 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         filas: a.filas.map((f) => f.map((v, i) => (a.columnas[i][2] === "monto" ? deCentavos(v as bigint) : (v as string)))),
       }];
     }
-    if (reporte === "it1") {
+    if (reporte === "it1" || reporte === "ir17") {
       const per = periodoDe(sp.periodo ?? "");
       if (!per) return null;
-      const r = await conEmpresa(id, async (tx) => {
-        const [d] = await tx<{ manuales: Record<string, string> }[]>`SELECT manuales FROM declaraciones_itbis WHERE periodo = ${per.periodo}`;
-        return calcularIt1(tx, per, d?.manuales ?? {});
-      });
+      const formulario = reporte === "it1" ? "IT-1" : "IR-17";
+      const def = FORMULARIOS[formulario];
+      const r = await conEmpresa(id, (tx) => calcularDeclaracion(tx, formulario, per));
+      const val = (k: string) => {
+        const x = r.valores[k] ?? 0n;
+        return k.endsWith("c") ? String(x / 100n) : deCentavos(x);
+      };
       const filas: Celda[][] = [];
-      for (const s of SECCIONES) {
-        filas.push([s.hoja === "A" ? "Anexo A" : "IT-1", "", s.titulo, "", "", "", "", ""]);
+      for (const s of def.secciones) {
+        const hoja = def.hojas.find(([h]) => h === s.hoja)?.[1] ?? "";
+        filas.push([hoja, "", s.titulo, "", "", "", "", ""]);
         for (const f of s.renglones) {
-          const val = (k: string) => {
-            const x = r.valores[k] ?? 0n;
-            return k.endsWith("c") ? String(x / 100n) : deCentavos(x);
-          };
           const cols = f.columnas.filter((c) => !esRelleno(c.clave));
-          const fila: Celda[] = [s.hoja === "A" ? "Anexo A" : "IT-1", f.n, f.texto, "", "", "", "", ""];
+          const fila: Celda[] = [hoja, f.n, f.texto, "", "", "", "", ""];
           if (cols.length === 4) cols.forEach((c, i) => (fila[4 + i] = val(c.clave)));
+          else if (cols.length === 3) { fila[3] = val(cols[0].clave); fila[4] = val(cols[1].clave); fila[7] = val(cols[2].clave); }
           else if (cols.length === 2) { fila[3] = val(cols[0].clave); fila[7] = val(cols[1].clave); }
           else if (cols[0].tipo === "porcentaje") fila[3] = val(cols[0].clave);
           else fila[7] = val(cols[0].clave);
           filas.push(fila);
         }
       }
-      return [`IT-1_${empresa.rnc ?? ""}_${per.periodo}`, {
-        ...base, titulo: "IT-1 · Declaración jurada del ITBIS (borrador)", horizontal: true,
-        detalle: `Período ${per.periodo} · formulario IT-1 2020 y Anexo A · montos en DOP`,
-        columnas: [col("Hoja", false, 9), col("Casilla", false, 8), col("Descripción", false, 60), col("Cantidad, total facturado o %", true),
-          col("Compras locales", true), col("Servicios", true), col("Importaciones", true), col("Monto / total", true)],
+      const ir17 = formulario === "IR-17";
+      return [`${formulario}_${empresa.rnc ?? ""}_${per.periodo}`, {
+        ...base, titulo: `${def.nombre} (borrador)`, horizontal: true,
+        detalle: `Período ${per.periodo} · formulario oficial de la DGII · montos en DOP`,
+        columnas: [col("Hoja", false, 14), col("Casilla", false, 8), col("Descripción", false, 60),
+          col(ir17 ? "Monto imponible" : "Cantidad, total facturado o %", true), col(ir17 ? "Tasa %" : "Compras locales", true),
+          col("Servicios", true), col("Importaciones", true), col("Monto / total", true)],
         filas,
+      }];
+    }
+    if (reporte === "ir6") {
+      const per = periodoDe(sp.periodo ?? "");
+      if (!per) return null;
+      const filas = await conEmpresa(id, (tx) => anexoIr6(tx, per));
+      return [`IR-6_${empresa.rnc ?? ""}_${per.periodo}`, {
+        ...base, titulo: "IR-6 · Formato para el cálculo mensual de otras retenciones", horizontal: true,
+        detalle: `Período ${per.periodo} · anexo del IR-17 · montos en DOP`,
+        columnas: [col("Fecha", false, 12), col("Forma de pago", false, 20), col("Beneficiario", false, 30), col("RNC/Cédula o pasaporte", false, 16),
+          col("Dirección", false, 26), col("Código concepto", false, 9), col("Monto del pago", true), col("Monto sujeto a retención", true),
+          col("Tasa %", true), col("Impuesto retenido", true)],
+        filas: filas.map((f) => [verFecha(f.fecha), f.formaPago, f.beneficiario, f.identificacion, f.direccion, f.codigo ?? "",
+          deCentavos(f.montoPago), deCentavos(f.sujeto), deCentavos(f.tasa), deCentavos(f.retenido)]),
+        totales: ["", "", "", "", "", "Totales", deCentavos(filas.reduce((t, f) => t + f.montoPago, 0n)),
+          deCentavos(filas.reduce((t, f) => t + f.sujeto, 0n)), "", deCentavos(filas.reduce((t, f) => t + f.retenido, 0n))],
       }];
     }
     if (reporte === "catalogo") {

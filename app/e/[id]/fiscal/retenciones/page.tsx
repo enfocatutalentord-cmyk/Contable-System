@@ -3,7 +3,7 @@ import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
 import { conEmpresa } from "@/lib/db";
-import { CODIGOS_606, listarRetenciones, verPorcentaje, vigenciaTexto } from "@/lib/fiscal";
+import { CODIGOS_606, CONCEPTOS_IR17, listarRetenciones, verPorcentaje, vigenciaTexto } from "@/lib/fiscal";
 import { hoyISO, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { guardarRetencion } from "../../fiscal-acciones";
@@ -34,7 +34,7 @@ export default async function Retenciones({ params, searchParams }: {
       {sp.guardado && <p className="exito">Retención actualizada.</p>}
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Nombre</th><th>Impuesto</th><th className="num">Tasa</th><th>606</th><th>Cuando nos retienen</th><th>Cuando retenemos</th><th>Vigencia</th><th>Estado</th>{editable && <th />}</tr></thead>
+          <thead><tr><th>Nombre</th><th>Impuesto</th><th className="num">Tasa</th><th>606</th><th>IR-17</th><th>Cuando nos retienen</th><th>Cuando retenemos</th><th>Vigencia</th><th>Estado</th>{editable && <th />}</tr></thead>
           <tbody>
             {retenciones.map((r) => {
               const vigente = r.activo && r.vigente_desde <= hoy && (!r.vigente_hasta || r.vigente_hasta >= hoy);
@@ -44,6 +44,8 @@ export default async function Retenciones({ params, searchParams }: {
                   <td>{r.impuesto.toUpperCase()}</td>
                   <td className="num">{verPorcentaje(r.tasa)}</td>
                   <td title={r.codigo_606 ? CODIGOS_606[r.codigo_606] : undefined}>{r.codigo_606 ?? "—"}</td>
+                  <td title={r.codigo_ir17 ? CONCEPTOS_IR17[r.codigo_ir17 - 1][0] : undefined}
+                    className={r.impuesto === "isr" && !r.codigo_ir17 ? "error" : undefined}>{r.impuesto === "isr" ? r.codigo_ir17 ?? "Falta" : "—"}</td>
                   <td>{nombreCuenta.get(r.cuenta_por_terceros_id)}</td>
                   <td>{nombreCuenta.get(r.cuenta_a_terceros_id)}</td>
                   <td>{vigenciaTexto(r.vigente_desde, r.vigente_hasta, verFecha)}</td>
