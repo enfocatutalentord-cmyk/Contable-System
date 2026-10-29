@@ -129,8 +129,7 @@ Notas de infraestructura que costaron tiempo:
   `DGII_F_6xx_<RNC>_<AAAAMM>` con las columnas del instructivo; «Marcar como enviado» (permiso «impuestos», sin errores) en
   `envios_dgii` con referencia y huella: si cambia algo del mes avisa «Cambió después del envío». Pruebas
   `pruebas/formatos-dgii.test.mjs`; recorrido `pruebas/navegador/dgii.cjs` (con `node --experimental-strip-types`).
-  Falta: generar el TXT directo (necesita las herramientas .xlsm de la DGII para ver el formato exacto que arma su macro) y
-  confirmar con la contadora: notas de crédito B04 en «Venta a Crédito», reenvío del 607 por retenciones, umbral de 250,000 sobre
+  Falta confirmar con la contadora: notas de crédito B04 en «Venta a Crédito», reenvío del 607 por retenciones, umbral de 250,000 sobre
   el total con impuestos.
 - **TXT de la DGII** (29-oct-2026): `aTxt` en `lib/formatos-dgii.ts` copia la macro «Generar Archivo» de las herramientas
   oficiales que subió Joannie (606 v2025, 607 v2023.1.1, 608 v2018.2.1; leídas sin ejecutar): encabezado `606|RNC|AAAAMM|n`,
