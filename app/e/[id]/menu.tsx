@@ -12,7 +12,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
   const base = empresaId ? `/e/${empresaId}` : null;
-  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/actividad`, "Actividad"]];
+  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/actividad`, "Actividad"]];
   const administracion: [string, string][] = admin
     ? [[`${firma}/clientes`, "Clientes de la firma"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]]
     : [];
@@ -39,7 +39,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
           {s.grupo && <div className={`grupo${s.grupo === "Configuración del cliente" ? " separada" : ""}`}>{s.grupo}</div>}
           {s.enlaces.map(([r, nombre]) => (
             <Link key={r} href={base ? base + r : `${firma}/elegir?a=${encodeURIComponent(r || "/")}`}
-              aria-current={activoCliente(r) ? "page" : undefined}>{nombre}</Link>
+              aria-current={activoCliente(r) ? "page" : undefined}>{soloCliente && r === "/recepcion" ? "Mis documentos" : nombre}</Link>
           ))}
         </div>
       ))}

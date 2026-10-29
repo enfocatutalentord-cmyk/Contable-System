@@ -22,7 +22,7 @@ export default async function InicioFirma({ params, searchParams }: {
     r.borradores && `${r.borradores} asiento${r.borradores > 1 ? "s" : ""} en borrador`,
     r.facturasBorrador && `${r.facturasBorrador} factura${r.facturasBorrador > 1 ? "s" : ""} sin emitir`,
     r.comprasBorrador && `${r.comprasBorrador} compra${r.comprasBorrador > 1 ? "s" : ""} sin registrar`,
-    r.documentosSemana && `${r.documentosSemana} documento${r.documentosSemana > 1 ? "s" : ""} nuevo${r.documentosSemana > 1 ? "s" : ""}`,
+    r.documentosPorProcesar && `${r.documentosPorProcesar} documento${r.documentosPorProcesar > 1 ? "s" : ""} por procesar`,
   ].filter(Boolean) as string[];
 
   return (
@@ -43,7 +43,9 @@ export default async function InicioFirma({ params, searchParams }: {
           <div className="valor" style={{ color: suma((r) => r.vencido) > 0n ? "var(--peligro)" : undefined }}>{verMonto(suma((r) => r.vencido))}</div></div>
         <div className="tarjeta cifra"><div className="etiqueta">Pendiente por procesar</div>
           <div className="valor">{suma((r) => r.borradores + r.facturasBorrador + r.comprasBorrador).toString()}</div></div>
-        <div className="tarjeta cifra"><div className="etiqueta">Documentos subidos esta semana</div><div className="valor">{suma((r) => r.documentosSemana).toString()}</div></div>
+        <a className="tarjeta cifra" href={`/firma/${fid}/documentos`} style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Documentos por procesar</div><div className="valor">{suma((r) => r.documentosPorProcesar).toString()}</div>
+        </a>
       </div>
 
       <div className="inicio-firma">

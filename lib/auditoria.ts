@@ -13,7 +13,7 @@ export const TABLAS: Record<string, string> = {
   aplicaciones_cobro: "Aplicación de cobro", impuestos: "Impuesto", retenciones: "Retención", obligaciones_empresa: "Obligación fiscal",
   impuestos_linea_factura: "Impuesto de línea", retenciones_cobro: "Retención del cobro", proveedores: "Proveedor", compras: "Compra",
   lineas_compra: "Línea de compra", impuestos_linea_compra: "Impuesto de línea de compra", pagos: "Pago", aplicaciones_pago: "Aplicación de pago",
-  retenciones_pago: "Retención del pago",
+  retenciones_pago: "Retención del pago", recepciones: "Documento recibido",
 };
 
 export const ACCIONES = { insert: "Creó", update: "Modificó", delete: "Eliminó" } as const;

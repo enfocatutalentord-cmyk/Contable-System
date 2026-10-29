@@ -127,6 +127,18 @@ export async function guardarCompra(empresaId: string, compraId: string | null, 
         tipoGasto: texto(fd, "tipo_gasto"), itbisAlCosto: fd.get("itbis_al_costo") === "on", notas: texto(fd, "notas") || null,
         compraOrigenId: esNotaProveedor(tipo) ? origen : null, lineas,
       });
+      // Compra hecha desde un documento recibido: el archivo pasa a ser su soporte y el documento queda procesado.
+      const recepcion = texto(fd, "recepcion");
+      if (!compraId && esUuid(recepcion)) {
+        const [r] = await tx<{ nombre: string; tipo: string; tamano: number; sha256: string; contenido: Buffer; nota: string | null }[]>`
+          SELECT nombre, tipo, tamano, sha256, contenido, nota FROM recepciones WHERE id = ${recepcion} AND estado IN ('nuevo', 'en_proceso')`;
+        if (!r) throw new ErrorContable("Ese documento ya se procesó");
+        await tx`INSERT INTO documentos (empresa_id, entidad, entidad_id, nombre, tipo, tamano, sha256, contenido, descripcion, subido_por)
+                 VALUES (${empresaId}, 'compra', ${id}, ${r.nombre}, ${r.tipo}, ${r.tamano}, ${r.sha256}, ${r.contenido}, ${r.nota ?? "Documento recibido del cliente"}, ${usuario.id})`;
+        await tx`UPDATE recepciones SET estado = 'procesado', compra_id = ${id}, procesado_por = ${usuario.id}, procesado_en = now(),
+                                        respuesta = COALESCE(respuesta, 'Registrado como compra')
+                  WHERE id = ${recepcion}`;
+      }
       if (registrarAhora) {
         await registrarCompra(tx, { empresaId, usuarioId: usuario.id, compraId: id });
         registrada = true;
@@ -138,6 +150,12 @@ export async function guardarCompra(empresaId: string, compraId: string | null, 
   }
   revalidatePath(`/e/${empresaId}`, "layout");
   redirect(`/e/${empresaId}/compras/${id}?${registrada ? "registrada" : "guardada"}=1`);
+}
+
+// Igual que guardarCompra, pero con el documento recibido que se está registrando.
+export async function guardarCompraConDocumento(empresaId: string, recepcionId: string, estado: Estado, fd: FormData): Promise<Estado> {
+  fd.set("recepcion", recepcionId);
+  return guardarCompra(empresaId, null, estado, fd);
 }
 
 export async function registrarBorradorCompra(empresaId: string, compraId: string): Promise<Estado> {

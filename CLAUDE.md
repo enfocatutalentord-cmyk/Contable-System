@@ -97,6 +97,14 @@ Notas de infraestructura que costaron tiempo:
   (`exigirPermiso(id, permiso, pestana)`), y registrar cobros exige «contabilizar». Menú reordenado: Firma (Inicio,
   Actividad) → Ventas, Compras, Contabilidad → Reportes → Impuestos → Configuración del cliente → Administración de la firma;
   el estado de cuenta se abre desde Cuentas por cobrar/pagar.
+- **Documentos recibidos** (parte 3, migración 012): tabla `recepciones` (bandeja por empresa, RLS, auditada; PDF/JPG/PNG
+  ≤ 4 MB, sin repetir el mismo archivo; categoría, nota, estado nuevo/en proceso/procesado/descartado, respuesta, compra).
+  Pestaña `/recepcion` («Documentos del cliente»; para usuarios de clientes «Mis documentos»): subir varios archivos desde el
+  celular (permiso «adjuntar») y procesar (permiso «registrar»): «Registrar compra con este documento» abre
+  `/compras/nueva?recepcion=` y al guardar el archivo pasa a soporte de la compra y el documento a Procesado
+  (`guardarCompraConDocumento`). Aviso por correo al responsable del cliente. Firma: «Documentos recibidos»
+  (`/firma/[fid]/documentos`, todos los clientes), cifra «Documentos por procesar» en el Inicio y frases en Actividad.
+  Recorrido: `pruebas/navegador/documentos.cjs`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -176,7 +184,7 @@ No se pasa a la siguiente sin su autorización expresa.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
-  reordenado) hecha en la rama: falta su «sí» para `main`. Parte 3 pendiente: portal del cliente y «Documentos recibidos» (lo que suben los clientes, para que el equipo lo procese).
+  reordenado) en `main` (`3b752a1`). Parte 3 (documentos recibidos y portal del cliente) hecha en la rama: falta su «sí».
 - **Revisión del 29-oct-2026** (Drive › «5. Revisión de la plataforma, roles e IA»): urgentes (1) respaldos sin funcionar
   (faltan secretos en GitHub y Actions en $0), (2) e-CF obligatorio para micro/pequeños desde el 15-nov-2026 (Aviso DGII 06-26,
   confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro. Propuestos y esperando su
@@ -185,6 +193,9 @@ No se pasa a la siguiente sin su autorización expresa.
   IA según el rol (dice qué rol/quién puede hacerlo; herramientas filtradas por permisos, OWASP LLM06), verificación en dos
   pasos, Excel en todas las listas. Videos con voz: bloqueados por la red (falta permitir la API de Gemini y la llave); herramientas
   y plan en `herramientas/videos/README.md`. El 29-oct Joannie aprobó todo eso, incluido el rol Facturación, y adelantar la e-CF.
+  Parte 2 en `main` (`3b752a1`, 29-oct). Voz elegida: **Aoede** (Gemini TTS, ya funciona en el entorno). Joannie pidió **terminar
+  primero los pendientes de la plataforma** y grabar los videos al final, con la versión definitiva. Correo a proveedores PSFE
+  redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local

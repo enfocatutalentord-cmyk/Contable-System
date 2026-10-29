@@ -4,18 +4,22 @@ import { TIPOS_GASTO } from "@/lib/compras";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { guardarCompra } from "../../compras-acciones";
+import { guardarCompra, guardarCompraConDocumento } from "../../compras-acciones";
 import { datosFormularioCompra } from "../datos-formulario";
 import { FormularioCompra, type OrigenNota } from "./formulario-compra";
 
 export default async function NuevaCompra({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ origen?: string }>;
+  params: Promise<{ id: string }>; searchParams: Promise<{ origen?: string; recepcion?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const { empresa, permisos } = await exigirPermiso(id, "registrar");
   const hoy = hoyISO();
-  const { datos, origen } = await conEmpresa(id, async (tx) => {
+  const { datos, origen, recepcion } = await conEmpresa(id, async (tx) => {
+    const [recepcion] = esUuid(sp.recepcion ?? "")
+      ? await tx<{ id: string; nombre: string; nota: string | null }[]>`
+          SELECT id, nombre, nota FROM recepciones WHERE id = ${sp.recepcion!} AND estado IN ('nuevo', 'en_proceso')`
+      : [];
     let origen: OrigenNota | undefined;
     if (esUuid(sp.origen ?? "")) {
       const [o] = await tx<{ id: string; ncf: string; proveedor_id: string; moneda: string; tasa: string; tipo_gasto: string }[]>`
@@ -23,7 +27,7 @@ export default async function NuevaCompra({ params, searchParams }: {
          WHERE id = ${sp.origen!} AND estado = 'registrada' AND NOT anulada AND tipo_comprobante NOT IN ('B04', 'E34')`;
       if (o) origen = { id: o.id, ncf: o.ncf, proveedor: o.proveedor_id, moneda: o.moneda, tasa: String(Number(o.tasa)), tipoGasto: o.tipo_gasto, tipo: o.ncf.startsWith("E") ? "E34" : "B04" };
     }
-    return { datos: await datosFormularioCompra(tx, hoy), origen };
+    return { datos: await datosFormularioCompra(tx, hoy), origen, recepcion };
   });
   return (
     <>
@@ -35,7 +39,13 @@ export default async function NuevaCompra({ params, searchParams }: {
         {empresa.requiere_aprobacion && <> En esta empresa las compras las registra otra persona: guárdala como borrador.</>}
         {datos.proveedores.length === 0 && <> Primero <Link href={`/e/${id}/proveedores`}>crea un proveedor</Link>.</>}
       </p>
-      <FormularioCompra accion={guardarCompra.bind(null, id, null)} {...datos} tiposGasto={TIPOS_GASTO} hoy={hoy} origen={origen}
+      {recepcion && (
+        <p className="aviso">
+          Registrando el documento <a href={`/e/${id}/recepcion/${recepcion.id}`} target="_blank" rel="noopener">{recepcion.nombre}</a> (ábrelo para copiar los datos)
+          {recepcion.nota && <> · nota del cliente: «{recepcion.nota}»</>}. Al guardar queda como soporte de la compra y el documento pasa a «Procesado».
+        </p>
+      )}
+      <FormularioCompra accion={recepcion ? guardarCompraConDocumento.bind(null, id, recepcion.id) : guardarCompra.bind(null, id, null)} {...datos} tiposGasto={TIPOS_GASTO} hoy={hoy} origen={origen}
         puedeRegistrar={puede(permisos, "contabilizar") && !empresa.requiere_aprobacion} />
     </>
   );

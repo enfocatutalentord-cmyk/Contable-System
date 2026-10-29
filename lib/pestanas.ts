@@ -5,7 +5,7 @@ export type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][
 // abajo, como recomienda Material Design). La ruta es también la clave con la que cada rol guarda qué pestañas ve
 // (`perfiles.pestanas`; vacío = todas).
 export const PESTANAS_CLIENTE: Seccion[] = [
-  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"]] },
+  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"], ["/recepcion", "Documentos del cliente"]] },
   { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/cxc", "Cuentas por cobrar"], ["/cxc/estado", "Estado de cuenta de clientes"],
                                ["/clientes", "Clientes y contactos"], ["/servicios", "Productos y servicios"]] },
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
@@ -23,9 +23,6 @@ export const PESTANAS_CLIENTE: Seccion[] = [
 
 // Pestañas que no van en el menú porque se abren desde otra (el estado de cuenta, desde Cuentas por cobrar o por pagar).
 export const FUERA_DEL_MENU = ["/cxc/estado", "/cxp/estado"];
-
-// Las de trabajo (sin el resumen ni la configuración), para «Elige un cliente».
-export const PESTANAS: Seccion[] = PESTANAS_CLIENTE.slice(1, -1);
 
 export const TODAS_LAS_PESTANAS = PESTANAS_CLIENTE.flatMap((s) => s.enlaces.map(([r]) => r));
 

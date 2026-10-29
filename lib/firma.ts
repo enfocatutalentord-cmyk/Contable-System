@@ -22,7 +22,7 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
 }
 
 export type Resumen = {
-  borradores: number; facturasBorrador: number; comprasBorrador: number; documentosSemana: number;
+  borradores: number; facturasBorrador: number; comprasBorrador: number; documentosPorProcesar: number;
   porCobrar: bigint; vencido: bigint; porPagar: bigint; ultimo: string | null;
 };
 
@@ -33,12 +33,12 @@ export async function resumenCliente(empresaId: string): Promise<Resumen> {
       SELECT (SELECT count(*)::int FROM asientos WHERE estado = 'borrador') AS borradores,
              (SELECT count(*)::int FROM facturas WHERE estado = 'borrador') AS facturas,
              (SELECT count(*)::int FROM compras WHERE estado = 'borrador') AS compras,
-             (SELECT count(*)::int FROM documentos WHERE NOT eliminado AND subido_en > now() - interval '7 days') AS documentos,
+             (SELECT count(*)::int FROM recepciones WHERE estado IN ('nuevo', 'en_proceso')) AS documentos,
              (SELECT to_char(max(fecha), 'YYYY-MM-DD') FROM asientos WHERE estado = 'contabilizado') AS ultimo`;
     const cxc = await antiguedad(tx, hoy);
     const cxp = await antiguedadCxp(tx, hoy);
     return {
-      borradores: r.borradores, facturasBorrador: r.facturas, comprasBorrador: r.compras, documentosSemana: r.documentos,
+      borradores: r.borradores, facturasBorrador: r.facturas, comprasBorrador: r.compras, documentosPorProcesar: r.documentos,
       porCobrar: cxc.total, vencido: cxc.totales.slice(1).reduce((s, t) => s + t, 0n), porPagar: cxp.total, ultimo: r.ultimo,
     };
   });
@@ -96,6 +96,11 @@ function frase(eid: string, f: Fila): { texto: string; enlace: string | null } |
           : { texto: "reabrió el período", enlace: `${base}/cierres` };
       }
       return null;
+    case "recepciones":
+      if (f.accion === "insert") return { texto: `subió «${d.nombre}»`, enlace: `${base}/recepcion` };
+      if (cambio("estado") && d.estado === "procesado") return { texto: `procesó «${d.nombre}»`, enlace: `${base}/recepcion?estado=procesado` };
+      if (cambio("estado") && d.estado === "descartado") return { texto: `descartó «${d.nombre}»`, enlace: `${base}/recepcion?estado=descartado` };
+      return null;
     case "clientes":
       return f.accion === "insert" ? { texto: `agregó al cliente ${d.nombre}`, enlace: `${base}/clientes` } : null;
     case "proveedores":
@@ -110,7 +115,7 @@ export async function actividad(clientes: { id: string; nombre: string }[], limi
     const filas = await tx<Fila[]>`
       SELECT h.tabla, h.registro_id, h.accion, h.antes, h.despues, h.fecha, u.nombre AS usuario
         FROM auditoria h LEFT JOIN usuarios u ON u.id = h.usuario_id
-       WHERE h.tabla IN ('facturas', 'compras', 'cobros', 'pagos', 'asientos', 'documentos', 'empresas', 'clientes', 'proveedores')
+       WHERE h.tabla IN ('facturas', 'compras', 'cobros', 'pagos', 'asientos', 'documentos', 'empresas', 'clientes', 'proveedores', 'recepciones')
          AND (h.accion = 'insert' OR (h.accion = 'update' AND (
                h.antes->'estado' IS DISTINCT FROM h.despues->'estado' OR h.antes->'anulada' IS DISTINCT FROM h.despues->'anulada'
                OR h.antes->'anulado' IS DISTINCT FROM h.despues->'anulado' OR h.antes->'fecha_bloqueo' IS DISTINCT FROM h.despues->'fecha_bloqueo')))

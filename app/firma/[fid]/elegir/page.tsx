@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { accesoFirma } from "@/lib/acceso";
 import { clientesDeFirma } from "@/lib/firma";
-import { PESTANAS } from "@/lib/pestanas";
+import { PESTANAS_CLIENTE } from "@/lib/pestanas";
 
 export const metadata = { title: "Elige un cliente · Empire Tax’N Legal" };
 
@@ -11,9 +11,8 @@ export default async function Elegir({ params, searchParams }: { params: Promise
   const { a } = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
   const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
-  const extra: [string, string][] = [["/", "Resumen del cliente"], ["/historial", "Historial de cambios"], ["/empresa", "Ficha de la empresa"],
-    ["/configuracion", "Configuración de cuentas"], ["/usuarios", "Usuarios y permisos"]];
-  const pestanas = [...PESTANAS.flatMap((s) => s.enlaces), ...extra];
+  // El resumen («») llega como «/» en la dirección.
+  const pestanas = PESTANAS_CLIENTE.flatMap((s) => s.enlaces).map(([r, n]) => [r || "/", n] as const);
   const pestana = pestanas.find(([r]) => r === a);
   const ruta = pestana && pestana[0] !== "/" ? pestana[0] : "";
   return (
