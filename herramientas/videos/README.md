@@ -10,7 +10,9 @@ Sistema contable y web» › «Videos tutoriales» (una subcarpeta por tema; los
   recorridos (`pruebas/navegador/ventas.cjs` crea el usuario `ventas-…@firma.do`, clave `clave-segura-123`; cambiar el correo
   en el guion): `PLAYWRIGHT=/opt/node-tools/node_modules/playwright node herramientas/videos/08-crear-factura.cjs <carpeta>`.
 - Numeración: la del manual en PDF. Rehacer los videos y el manual después de la nueva navegación (partes 2 y 3).
-- **Voz:** pendiente. Plan: generar el audio de cada subtítulo con la API de Gemini (texto a voz, voz femenina, español
+- **Voz:** funciona desde el 29-oct-2026 (secreto en el entorno). `voz.py` genera cada frase; muestras con las voces
+  Kore, Aoede y Leda (modelo `gemini-3.8-flash-tts`). El plan gratis responde 429 si se piden muchas seguidas: esperar o
+  activar la facturación en AI Studio. Antes: Plan: generar el audio de cada subtítulo con la API de Gemini (texto a voz, voz femenina, español
   latinoamericano, tono suave) y mezclarlo con ffmpeg, alargando cada paso a lo que dure su frase. Requiere en el entorno de
   la sesión el dominio `generativelanguage.googleapis.com` permitido y la variable `GEMINI_API_KEY` (la pone Joannie; nunca
   por el chat).
