@@ -62,6 +62,14 @@ export default async function ReportesDgii({ params, searchParams }: {
         <Seccion key={a.formato} id={id} a={a} periodo={p.periodo} envio={envios.find((e) => e.formato === a.formato)} puedeMarcar={puedeMarcar} />
       ))}
 
+      <section className="tarjeta formato-dgii">
+        <div className="entre">
+          <h2 style={{ margin: 0 }}>IT-1 · Declaración del ITBIS</h2>
+          <Link className="boton primario" href={`/e/${id}/dgii/it1?mes=${p.periodo.slice(0, 4)}-${p.periodo.slice(4)}`}>Abrir el IT-1 de {p.periodo}</Link>
+        </div>
+        <p className="sub" style={{ marginBottom: 0 }}>Se presenta después del 606 y el 607, a más tardar el día 20 del mes siguiente. El borrador toma sus cifras de lo registrado.</p>
+      </section>
+
       <section className="tarjeta" style={{ marginTop: 16 }}>
         <h2 style={{ marginTop: 0 }}>Cómo enviarlos</h2>
         <ol className="pasos">

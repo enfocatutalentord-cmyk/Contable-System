@@ -112,12 +112,39 @@ fs.mkdirSync(S, { recursive: true });
   await seccion("607").getByText("Listo para enviar").waitFor();
   paso("una factura emitida después del envío avisa «Cambió después del envío»; el tipo de ingreso elegido sale en el 607");
 
+  // 6b. IT-1 de octubre: borrador con las casillas de lo registrado, lo escrito a mano manda, Excel y presentado
+  await seccion("607").getByText("Listo para enviar").waitFor();
+  await page.getByRole("link", { name: "Abrir el IT-1 de 202610" }).click();
+  await page.waitForURL(/\/dgii\/it1\?mes=2026-10/);
+  await page.waitForSelector("text=IT-1 · Declaración del ITBIS");
+  const cifrasIt1 = await page.locator(".cifras-dgii").innerText();
+  // Ventas gravadas 5,000 + 20,000 → ITBIS 4,500; compras con crédito 1,800 + 360 = 2,160; diferencia 2,340.
+  assert(/ITBIS COBRADO \(21\)\s*4,500\.00/i.test(cifrasIt1) && /ITBIS DEDUCIBLE \(25\)\s*2,160\.00/i.test(cifrasIt1)
+    && /DIFERENCIA A PAGAR \(33\)\s*2,340\.00/i.test(cifrasIt1), "cifras del IT-1: " + cifrasIt1);
+  assert((await page.getByLabel("Casilla I43").inputValue()) === "10000.00", "base de la retención del 30 %");
+  await page.getByLabel("Casilla I31").fill("340");
+  await boton("Guardar y recalcular");
+  await page.waitForSelector("text=Borrador del IT-1 guardado y recalculado.");
+  await page.waitForFunction(() => /DIFERENCIA A PAGAR \(33\)\s*2,000\.00/i.test(document.querySelector(".cifras-dgii").innerText));
+  await page.waitForSelector("text=Sugerido: 0.00");
+  await page.screenshot({ path: path.join(S, "it1.png"), fullPage: true });
+  const [x] = await Promise.all([page.waitForEvent("download"), page.locator(".descargar a", { hasText: "Excel" }).click()]);
+  assert(x.suggestedFilename() === "IT-1_101000009_202610.xlsx", "Excel del IT-1: " + x.suggestedFilename());
+  await page.locator("input[name=referencia]").fill("IT1-777");
+  await boton("Marcar como presentado");
+  await page.waitForSelector("text=referencia IT1-777");
+  await page.locator(".estado-envio", { hasText: "Presentado" }).waitFor();
+  assert(!(await page.getByRole("button", { name: "Guardar y recalcular" }).count()), "presentado: ya no se edita");
+  paso("IT-1: casillas desde lo registrado (ITBIS 4,500 − 2,160), casilla escrita a mano, Excel y marcado como presentado");
+
   // 7. Celular
   const movil = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await movil.context().addCookies(await page.context().cookies());
-  await movil.goto(base + "/dgii?mes=2026-10", { waitUntil: "networkidle" });
-  const w = await movil.evaluate(() => document.documentElement.scrollWidth);
-  assert(w <= 392, "desborde en celular: " + w);
+  for (const r of ["/dgii?mes=2026-10", "/dgii/it1?mes=2026-10"]) {
+    await movil.goto(base + r, { waitUntil: "networkidle" });
+    const w = await movil.evaluate(() => document.documentElement.scrollWidth);
+    assert(w <= 392, `desborde en celular ${r}: ${w}`);
+  }
   await movil.screenshot({ path: path.join(S, "dgii-celular.png"), fullPage: true });
   paso("sin desborde en celular");
 

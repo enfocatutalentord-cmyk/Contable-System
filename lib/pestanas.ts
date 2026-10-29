@@ -32,7 +32,7 @@ export const esPestana = (v: string) => TODAS_LAS_PESTANAS.includes(v);
 const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
   antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
-  "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii",
+  "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii", it1: "/dgii",
   facturas: "/facturas", cobros: "/cobros", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo",
 };
 

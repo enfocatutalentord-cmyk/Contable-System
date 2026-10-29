@@ -132,6 +132,17 @@ Notas de infraestructura que costaron tiempo:
   Falta: generar el TXT directo (necesita las herramientas .xlsm de la DGII para ver el formato exacto que arma su macro) y
   confirmar con la contadora: notas de crédito B04 en «Venta a Crédito», reenvío del 607 por retenciones, umbral de 250,000 sobre
   el total con impuestos.
+- **TXT de la DGII** (29-oct-2026): `aTxt` en `lib/formatos-dgii.ts` copia la macro «Generar Archivo» de las herramientas
+  oficiales que subió Joannie (606 v2025, 607 v2023.1.1, 608 v2018.2.1; leídas sin ejecutar): encabezado `606|RNC|AAAAMM|n`,
+  campos con «|», CRLF y sin salto final; códigos de dos dígitos salvo el tipo de ingreso del 607 (un dígito); montos sin
+  ceros de más; opcionales en cero vacíos; B13 y B17 con el RNC de la empresa. Botón «Archivo TXT» solo sin errores.
+- **IT-1** (Fase 6 parte 2, 29-oct-2026, migración 015, `lib/it1.ts`, pantalla `/dgii/it1`): formulario IT-1 2020 y Anexo A
+  con las casillas, nombres y fórmulas del Excel oficial y su instructivo. Sugiere desde lo registrado (ventas por NCF, forma
+  de venta y tipo de ingreso; gravado por tasa y exento; retenciones sufridas, B15 → 31 y demás → 29; ITBIS de compras de
+  bienes/servicios deducible o al costo; retenciones hechas: B11 → 47/39, 30 % → 43, 100 % → 39/42; notas de crédito de más
+  de 30 días → casillas 9 y 43); lo demás se escribe y se guarda en `declaraciones_itbis.manuales`. Valida como la Oficina
+  Virtual (11 a 15 = 10; 56 ≤ ITBIS por adelantar del 606; 60 ≥ retenido del 606; coeficiente 54). «Marcar como presentado»
+  guarda las casillas en `envios_dgii.casillas`; la 34 pasa a la 29 del mes siguiente. Excel/PDF `IT-1_<RNC>_<AAAAMM>`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -225,7 +236,7 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); sigue IT-1, esperando el formulario e instructivo oficiales;
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 hechos en la rama (falta su «sí» para `main`); sigue IR-17;
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
@@ -239,7 +250,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 73 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 77 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

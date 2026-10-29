@@ -9,6 +9,7 @@ import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/e
 import { FORMAS_PAGO } from "@/lib/compras";
 import { listarCuentas } from "@/lib/cuentas";
 import { armarFormato, aTxt, FORMATOS, nombreTxt, periodoDe, type Formato } from "@/lib/formatos-dgii";
+import { calcularIt1, esRelleno, SECCIONES } from "@/lib/it1";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
 import {
   estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
@@ -19,7 +20,7 @@ import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678])$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -213,6 +214,38 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         detalle: `Encabezado: RNC o Cédula ${rnc || "(falta en la ficha)"} · Período ${per.periodo} · Cantidad de registros ${a.filas.length}`,
         columnas: a.columnas.map(([, t, tipo], i) => col(`${i + 1}. ${t}`, tipo === "monto", tipo === "monto" ? 14 : Math.max(10, Math.min(28, t.length)))),
         filas: a.filas.map((f) => f.map((v, i) => (a.columnas[i][2] === "monto" ? deCentavos(v as bigint) : (v as string)))),
+      }];
+    }
+    if (reporte === "it1") {
+      const per = periodoDe(sp.periodo ?? "");
+      if (!per) return null;
+      const r = await conEmpresa(id, async (tx) => {
+        const [d] = await tx<{ manuales: Record<string, string> }[]>`SELECT manuales FROM declaraciones_itbis WHERE periodo = ${per.periodo}`;
+        return calcularIt1(tx, per, d?.manuales ?? {});
+      });
+      const filas: Celda[][] = [];
+      for (const s of SECCIONES) {
+        filas.push([s.hoja === "A" ? "Anexo A" : "IT-1", "", s.titulo, "", "", "", "", ""]);
+        for (const f of s.renglones) {
+          const val = (k: string) => {
+            const x = r.valores[k] ?? 0n;
+            return k.endsWith("c") ? String(x / 100n) : deCentavos(x);
+          };
+          const cols = f.columnas.filter((c) => !esRelleno(c.clave));
+          const fila: Celda[] = [s.hoja === "A" ? "Anexo A" : "IT-1", f.n, f.texto, "", "", "", "", ""];
+          if (cols.length === 4) cols.forEach((c, i) => (fila[4 + i] = val(c.clave)));
+          else if (cols.length === 2) { fila[3] = val(cols[0].clave); fila[7] = val(cols[1].clave); }
+          else if (cols[0].tipo === "porcentaje") fila[3] = val(cols[0].clave);
+          else fila[7] = val(cols[0].clave);
+          filas.push(fila);
+        }
+      }
+      return [`IT-1_${empresa.rnc ?? ""}_${per.periodo}`, {
+        ...base, titulo: "IT-1 · Declaración jurada del ITBIS (borrador)", horizontal: true,
+        detalle: `Período ${per.periodo} · formulario IT-1 2020 y Anexo A · montos en DOP`,
+        columnas: [col("Hoja", false, 9), col("Casilla", false, 8), col("Descripción", false, 60), col("Cantidad, total facturado o %", true),
+          col("Compras locales", true), col("Servicios", true), col("Importaciones", true), col("Monto / total", true)],
+        filas,
       }];
     }
     if (reporte === "catalogo") {

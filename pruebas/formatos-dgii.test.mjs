@@ -8,6 +8,7 @@ import { anularCompra, guardarBorradorCompra, registrarCompra, registrarPago } f
 import {
   armarFormato, aTxt, CONSUMO_DETALLADO_DESDE, montoTxt, nombreTxt, fechaDgii, formaPago606, ncfValido, periodoAnterior, periodoDe, repartir, tipoIdentificacion,
 } from "../lib/formatos-dgii.ts";
+import { calcularIt1 } from "../lib/it1.ts";
 import { anularFactura, emitir, guardarBorradorFactura, registrarCobro } from "../lib/ventas.ts";
 
 test("período AAAAMM: rango del mes y vencimiento el 15 del mes siguiente", () => {
@@ -229,6 +230,39 @@ test("608: facturas y comprobantes propios anulados con su tipo de anulación", 
   assert.equal(a.avisos.length, 0);
 });
 
+test("IT-1 de octubre: casillas del Anexo A y del IT-1 con lo registrado, cuadradas con el 606 y el 607", conBase, async () => {
+  const r = await leer((tx) => calcularIt1(tx, periodoDe("202610"), {}));
+  const v = (k) => r.valores[k];
+  // Anexo A, II: por tipo de NCF (la B01 anulada no cuenta); III: formas de venta; IV: tipo de ingreso.
+  assert.deepEqual([v("A1c"), v("A1"), v("A2c"), v("A2"), v("A11")], [100n, 1100000n, 200n, 25100000n, 26200000n]);
+  assert.deepEqual([v("A12"), v("A15"), v("A19")], [500000n, 30398000n, 30898000n], "efectivo 5,000; el resto a crédito");
+  assert.deepEqual([v("A23"), v("A20"), v("A26")], [1100000n, 25100000n, 26200000n], "arrendamientos 11,000 (tipo 04)");
+  // IT-1: exento 1,000 (casilla 4), gravado al 18% 261,000 (casilla 11) = casilla 10; ITBIS cobrado igual al facturado.
+  assert.deepEqual([v("I1"), v("I4"), v("I10"), v("I11"), v("I16")], [26200000n, 100000n, 26100000n, 26100000n, 4698000n]);
+  // Anexo A, IX: ITBIS de la compra de octubre, bienes 360 (compras locales) y servicios 540, deducible.
+  assert.deepEqual([v("A50l"), v("A51s"), v("A56l"), v("A56s"), v("I25")], [36000n, 54000n, 36000n, 54000n, 90000n]);
+  assert.deepEqual([v("I26"), v("I33")], [4608000n, 4608000n]);
+  // Retención del 30 % a Juan en octubre: casilla 43 (10,000) → 52 = 18% × 10,000 × 0.30 = 540, igual al 606.
+  assert.deepEqual([v("I43"), v("I52"), v("I60"), v("I68")], [1000000n, 54000n, 54000n, 4662000n]);
+  assert.equal(r.avisos.filter((x) => x.nivel === "error").length, 0, JSON.stringify(r.avisos));
+});
+
+test("IT-1: el saldo a favor de septiembre pasa a octubre; lo escrito a mano manda y se valida", conBase, async () => {
+  const sep = await leer((tx) => calcularIt1(tx, periodoDe("202609"), {}));
+  assert.deepEqual([sep.valores.I25, sep.valores.I27, sep.valores.I34], [180000n, 180000n, 180000n], "ITBIS de la compra de septiembre: saldo a favor");
+  await leer((tx) => tx`INSERT INTO envios_dgii (empresa_id, formato, periodo, huella, registros, enviado_por, casillas)
+                        VALUES (${empresa}, 'IT-1', '202609', ${sep.huella}, 0, ${ana}, ${tx.json({ I34: "1800.00" })})`);
+  const oct = await leer((tx) => calcularIt1(tx, periodoDe("202610"), { I31: "1000" }));
+  assert.equal(oct.valores.I29, 180000n, "saldo a favor anterior");
+  assert.equal(oct.valores.I33, 4608000n - 180000n - 100000n, "26 − 29 − 31");
+  assert.equal(oct.sugeridos.I31, 0n);
+  const mal = await leer((tx) => calcularIt1(tx, periodoDe("202610"), { I11: "1000", A54: "50" }));
+  assert.ok(mal.avisos.some((x) => x.nivel === "error" && /casillas 11 a 15/.test(x.texto)), "11 a 15 deben sumar la 10");
+  assert.ok(mal.avisos.some((x) => x.nivel === "error" && /coeficiente/.test(x.texto)), "coeficiente que no cuadra");
+  const menos = await leer((tx) => calcularIt1(tx, periodoDe("202610"), { I43: "0" }));
+  assert.ok(menos.avisos.some((x) => x.nivel === "error" && /casilla 60/.test(x.texto)), "retenciones por debajo del 606");
+});
+
 test("la huella cambia si cambia algo del mes y la marca de envío queda en el historial", conBase, async () => {
   const p = periodoDe("202609");
   const antes = await leer((tx) => armarFormato(tx, "606", p));
@@ -248,5 +282,5 @@ test("la huella cambia si cambia algo del mes y la marca de envío queda en el h
   const tarde = fila(despues, "B0100000999");
   assert.deepEqual([tarde.itbisCosto, tarde.itbisAdelantar], [18000n, 0n], "ITBIS llevado al costo");
   const [h] = await leer((tx) => tx`SELECT count(*)::int AS n FROM auditoria WHERE tabla = 'envios_dgii'`);
-  assert.equal(h.n, 1);
+  assert.equal(h.n, 2, "el 606 y el IT-1 de septiembre marcados como enviados");
 });

@@ -87,7 +87,7 @@ export const huella = (filas: unknown[]) => createHash("sha256").update(JSON.str
 type Movimiento = { documento: string; pago: string; fecha: string; forma: string; aplicado: bigint; itbis: bigint; isr: bigint; codigoIsr: number | null; repartido: boolean };
 
 // Une cada pago (o cobro) con los documentos a los que se aplicó y reparte sus retenciones entre ellos según lo aplicado.
-function movimientos(filas: { documento: string; pago: string; fecha: string; forma: string; aplicado: string; ret_itbis: string; ret_isr: string; codigo_isr: number | null }[]): Movimiento[] {
+export function movimientos(filas: { documento: string; pago: string; fecha: string; forma: string; aplicado: string; ret_itbis: string; ret_isr: string; codigo_isr: number | null }[]): Movimiento[] {
   const porPago = new Map<string, typeof filas>();
   for (const f of filas) porPago.set(f.pago, [...(porPago.get(f.pago) ?? []), f]);
   const salida: Movimiento[] = [];
@@ -127,7 +127,7 @@ export const COLUMNAS_606: [keyof Fila606, string, "texto" | "monto"][] = [
   ["propina", "Monto Propina Legal", "monto"], ["formaPago", "Forma de Pago", "texto"],
 ];
 
-type Empresa = { rnc: string | null; contribuye_itbis: boolean };
+export type Empresa = { rnc: string | null; contribuye_itbis: boolean };
 
 export async function formato606(tx: Tx, p: Periodo, empresa: Empresa): Promise<{ filas: Detalle606[]; avisos: Aviso[] }> {
   // Compras del mes y, además, las de meses anteriores a las que este mes se les hizo una retención al pagarlas: el
@@ -236,7 +236,7 @@ export const COLUMNAS_607: [keyof Fila607, string, "texto" | "monto"][] = [
 ];
 
 // Forma de cobro registrada → columna del 607.
-const COLUMNA_COBRO: Record<string, "efectivo" | "cheque" | "tarjeta" | "otrasFormas"> = {
+export const COLUMNA_COBRO: Record<string, "efectivo" | "cheque" | "tarjeta" | "otrasFormas"> = {
   efectivo: "efectivo", transferencia: "cheque", cheque: "cheque", tarjeta: "tarjeta", otro: "otrasFormas",
 };
 
