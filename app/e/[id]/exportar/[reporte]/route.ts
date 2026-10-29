@@ -8,7 +8,7 @@ import { conEmpresa } from "@/lib/db";
 import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/exportar";
 import { FORMAS_PAGO } from "@/lib/compras";
 import { listarCuentas } from "@/lib/cuentas";
-import { armarFormato, FORMATOS, periodoDe, type Formato } from "@/lib/formatos-dgii";
+import { armarFormato, aTxt, FORMATOS, nombreTxt, periodoDe, type Formato } from "@/lib/formatos-dgii";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
 import {
   estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
@@ -227,6 +227,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return null;
   };
 
+  // Archivo de texto para subir en la Oficina Virtual (606, 607 y 608), como el que genera la herramienta de la DGII.
+  const txt = /^dgii-(606|607|608)$/.exec(reporte)?.[1] as Formato | undefined;
+  if (txt && sp.formato === "txt") {
+    const per = periodoDe(sp.periodo ?? "");
+    if (!per || !empresa.rnc) return new Response("Falta el período o el RNC de la empresa", { status: 404 });
+    const a = await conEmpresa(id, (tx) => armarFormato(tx, txt, per));
+    if (a.avisos.some((x) => x.nivel === "error")) return new Response("Corrige primero los errores del formato", { status: 409 });
+    await conEmpresa(id, (tx) => bitacora(tx, id, usuario.id, "reporte_descargado", { reporte, formato: "txt" }));
+    return new Response(aTxt(a, empresa.rnc, per.periodo), {
+      headers: {
+        "Content-Type": "text/plain; charset=us-ascii",
+        "Content-Disposition": `attachment; filename="${nombreTxt(txt, empresa.rnc, per.periodo)}"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
   const armado = await armar();
   if (!armado) return new Response("Reporte no encontrado", { status: 404 });
   const [nombre, tabla] = armado;

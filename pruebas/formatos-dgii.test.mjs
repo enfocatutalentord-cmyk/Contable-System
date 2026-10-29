@@ -6,7 +6,7 @@ import postgres from "postgres";
 import { CATALOGO_RD, nivelDeCodigo, TIPO_POR_CLASE } from "../lib/catalogo-rd.ts";
 import { anularCompra, guardarBorradorCompra, registrarCompra, registrarPago } from "../lib/compras.ts";
 import {
-  armarFormato, CONSUMO_DETALLADO_DESDE, fechaDgii, formaPago606, ncfValido, periodoAnterior, periodoDe, repartir, tipoIdentificacion,
+  armarFormato, aTxt, CONSUMO_DETALLADO_DESDE, montoTxt, nombreTxt, fechaDgii, formaPago606, ncfValido, periodoAnterior, periodoDe, repartir, tipoIdentificacion,
 } from "../lib/formatos-dgii.ts";
 import { anularFactura, emitir, guardarBorradorFactura, registrarCobro } from "../lib/ventas.ts";
 
@@ -37,6 +37,16 @@ test("códigos del instructivo: identificación, NCF y forma de pago", () => {
   assert.equal(formaPago606([], true), "06");
   assert.equal(formaPago606(["02", "02"], false), "02");
   assert.equal(formaPago606(["01", "02"], false), "07");
+});
+
+test("TXT: montos como los escribe la herramienta de la DGII", () => {
+  assert.equal(montoTxt(180000n, true), "1800");
+  assert.equal(montoTxt(180050n, true), "1800.5");
+  assert.equal(montoTxt(180005n, true), "1800.05");
+  assert.equal(montoTxt(0n, false), "");
+  assert.equal(montoTxt(0n, true), "0");
+  assert.equal(nombreTxt("606", "101000009", "202610"), "DGII_F_606_101000009_202610.TXT");
+  assert.equal(nombreTxt("608", "101000009", "202610"), "DGII_F_608_101000009_202610.txt");
 });
 
 // ───── Con la base ─────
@@ -178,7 +188,7 @@ test("606 de octubre: reenvío con la fecha original para reportar las retencion
   const r = fila(a, "B0100000777");
   assert.equal(r.fechaComprobante, "20260910");
   assert.equal(r.fechaPago, "20261005");
-  assert.deepEqual([r.itbisRetenido, r.retencionRenta, r.tipoRetencionIsr, r.formaPago], [54000n, 150000n, "2", "02"]);
+  assert.deepEqual([r.itbisRetenido, r.retencionRenta, r.tipoRetencionIsr, r.formaPago], [54000n, 150000n, "02", "02"]);
   const o = fila(a, "B0100000888");
   assert.deepEqual([o.tipoBienes, o.servicios, o.bienes, o.totalFacturado, o.itbisFacturado, o.formaPago, o.fechaPago],
     ["09", 300000n, 200000n, 500000n, 90000n, "04", ""]);
@@ -195,6 +205,21 @@ test("607: tipo de ingreso, formas de cobro que suman el total y facturas de con
   assert.deepEqual([a.consumo.cantidad, a.consumo.montoFacturado, a.consumo.itbis, a.consumo.total], [1, 100000n, 18000n, 118000n]);
   assert.ok(fila(a, ids.f3.ncf), "la B02 desde RD$250,000 sí va");
   assert.ok(a.avisos.some((x) => x.nivel === "error" && x.texto.includes(ids.f3.ncf)), "y pide la identificación del comprador");
+});
+
+test("TXT del 606 y del 607: encabezado, campos con «|», códigos y saltos de Windows", conBase, async () => {
+  const a606 = await leer((tx) => armarFormato(tx, "606", periodoDe("202610")));
+  const t606 = aTxt(a606, "130000001", "202610").split("\r\n");
+  assert.equal(t606[0], "606|130000001|202610|2");
+  assert.ok(t606.slice(1).every((l) => l.split("|").length === 23), "23 campos por registro");
+  assert.ok(t606.includes("00100000001|2|02|B0100000777||20260910|20261005|10000||10000|1800|540|||1800||02|1500|||||02"), t606.join("\n"));
+  assert.ok(t606.includes("101000002|1|09|B0100000888||20261003||3000|2000|5000|900||||900||||||||04"), t606.join("\n"));
+  const a607 = await leer((tx) => armarFormato(tx, "607", periodoDe("202610")));
+  const t607 = aTxt(a607, "130000001", "202610");
+  assert.ok(!t607.endsWith("\r\n"), "sin salto después del último registro");
+  const f1 = t607.split("\r\n").find((l) => l.includes(ids.f1.ncf)).split("|");
+  assert.equal(f1.length, 23);
+  assert.deepEqual([f1[4], f1[7], f1[8], f1[16], f1[19]], ["4", "11000", "1800", "5000", "7800"], "tipo de ingreso con un dígito, como la macro");
 });
 
 test("608: facturas y comprobantes propios anulados con su tipo de anulación", conBase, async () => {

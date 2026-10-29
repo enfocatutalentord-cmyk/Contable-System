@@ -76,6 +76,16 @@ fs.mkdirSync(S, { recursive: true });
   assert(filas.some((r) => String(r[0]).includes("Cantidad de registros 1")), "encabezado con la cantidad de registros");
   paso("Excel del 607: 23 columnas en el orden del instructivo, cobro por transferencia en su columna");
 
+  // 4b. Archivo TXT del 607 como el de la herramienta de la DGII; el 606 con errores no ofrece TXT
+  assert(!(await seccion("606").getByRole("link", { name: "Archivo TXT" }).count()), "con errores no hay TXT");
+  const [t] = await Promise.all([page.waitForEvent("download"), seccion("607").getByRole("link", { name: "Archivo TXT" }).click()]);
+  assert(t.suggestedFilename() === "DGII_F_607_101000009_202610.txt", "nombre del TXT: " + t.suggestedFilename());
+  const lineas = fs.readFileSync(await t.path(), "latin1").split("\r\n");
+  assert(lineas[0] === "607|101000009|202610|1", "encabezado: " + lineas[0]);
+  assert(lineas[1].split("|").length === 23, "23 campos");
+  assert(lineas[1] === `101000001|1|${ncfFactura}||1|20261006||5000|900|||||||||5900|||||`, "registro: " + lineas[1]);
+  paso("Archivo TXT del 607 con el encabezado y los campos de la herramienta de la DGII");
+
   // 5. Marcar el 607 como enviado con la referencia de la Oficina Virtual
   await seccion("607").locator("input[name=referencia]").fill("OFV-12345");
   await boton("Marcar como enviado", seccion("607"));

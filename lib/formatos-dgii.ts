@@ -174,8 +174,9 @@ export async function formato606(tx: Tx, p: Periodo, empresa: Empresa): Promise<
     const pesos = (m: string) => aPesos(aCentavos(m), tasa);
     const suyos = pagos.filter((m) => m.documento === c.id);
     const delMes = suyos.filter((m) => m.fecha >= p.inicio);
-    const b17 = c.tipo === "B17";
-    // B17 (pagos al exterior): se usa el RNC o cédula de la propia empresa (instructivo del 606).
+    // B13 (gastos menores) y B17 (pagos al exterior): van con el RNC o cédula de la propia empresa (instructivo del 606
+    // y validación de la herramienta de la DGII).
+    const b17 = c.tipo === "B17" || c.tipo === "B13";
     const rnc = b17 ? empresa.rnc ?? "" : c.rnc ?? "";
     const tipoId = tipoIdentificacion(b17 ? null : c.tipo_identificacion, rnc);
     if (!tipoId || tipoId === "3") avisos.push({ nivel: "error", texto: `${c.ncf} (${c.proveedor}): el 606 pide RNC (9 dígitos) o cédula (11 dígitos) ${b17 ? "de la empresa" : "del proveedor"}.`, enlace: b17 ? "/empresa" : "/proveedores" });
@@ -199,7 +200,7 @@ export async function formato606(tx: Tx, p: Periodo, empresa: Empresa): Promise<
       fechaPago: fechaDgii(suyos.map((m) => m.fecha).sort().at(-1)),
       servicios, bienes, totalFacturado: servicios + bienes, itbisFacturado: itbis, itbisRetenido, itbisProporcionalidad: 0n,
       itbisCosto: costo, itbisAdelantar: itbis - costo, itbisPercibido: 0n,
-      tipoRetencionIsr: retencionRenta > 0n && codigos[0] != null ? String(codigos[0]) : "", retencionRenta, isrPercibido: 0n,
+      tipoRetencionIsr: retencionRenta > 0n && codigos[0] != null ? String(codigos[0]).padStart(2, "0") : "", retencionRenta, isrPercibido: 0n,
       isc: pesos(c.isc), otros: pesos(c.otro), propina: pesos(c.propina),
       formaPago: formaPago606(suyos.map((m) => m.forma), conNota.has(c.id)),
     });
@@ -390,3 +391,38 @@ export async function armarFormato(tx: Tx, formato: Formato, p: Periodo): Promis
 }
 
 export const esFormato = (f: string): f is Formato => f in LIMITE_REGISTROS;
+
+// ───── Archivo TXT para la Oficina Virtual ─────
+// Igual que lo escribe la macro «Generar Archivo» de las herramientas de la DGII (606 versión 2025, 607 versión 2023.1.1,
+// 608 versión 2018.2.1): encabezado «606|RNC|AAAAMM|registros», un registro por línea con los campos separados por «|»,
+// saltos de línea de Windows y sin salto después del último registro. Los montos van sin separador de miles ni ceros de
+// más (1800, 1800.5); los opcionales en cero van vacíos, como los deja la herramienta.
+
+const SIEMPRE: Record<Formato, string[]> = {
+  "606": ["totalFacturado", "itbisFacturado", "itbisAdelantar"],
+  "607": ["montoFacturado", "itbisFacturado"],
+  "608": [],
+};
+
+export function montoTxt(c: bigint, siempre: boolean): string {
+  if (c === 0n && !siempre) return "";
+  const signo = c < 0n ? "-" : "";
+  const a = c < 0n ? -c : c;
+  const centavos = (a % 100n).toString().padStart(2, "0").replace(/0+$/, "");
+  return `${signo}${a / 100n}${centavos ? `.${centavos}` : ""}`;
+}
+
+export function nombreTxt(formato: Formato, rnc: string, periodo: string): string {
+  return `DGII_F_${formato}_${rnc}_${periodo}.${formato === "606" ? "TXT" : "txt"}`;
+}
+
+export function aTxt(a: Armado, rnc: string, periodo: string): string {
+  const lineas = a.filas.map((f) => f.map((v, i) => {
+    const [clave, , tipo] = a.columnas[i];
+    if (tipo === "monto") return montoTxt(v as bigint, SIEMPRE[a.formato].includes(clave));
+    // En el 607 la macro toma solo el segundo carácter del tipo de ingreso («01» → «1»).
+    if (a.formato === "607" && clave === "tipoIngreso") return String(v).slice(1, 2);
+    return String(v);
+  }).join("|"));
+  return [`${a.formato}|${rnc}|${periodo}|${a.filas.length}`, ...lineas].join("\r\n");
+}

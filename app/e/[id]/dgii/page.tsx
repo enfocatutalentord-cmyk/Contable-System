@@ -66,9 +66,9 @@ export default async function ReportesDgii({ params, searchParams }: {
         <h2 style={{ marginTop: 0 }}>Cómo enviarlos</h2>
         <ol className="pasos">
           <li>Revisa que ningún formato tenga errores (en rojo). Cada error lleva al documento que hay que corregir.</li>
-          <li>Descarga el Excel: trae las columnas en el mismo orden que la herramienta de la DGII («Herramienta de Envío Formato 606/607/608»).</li>
-          <li>En la herramienta de la DGII completa el encabezado (RNC, período {p.periodo} y cantidad de registros), pulsa «Inicio», pega las filas, pulsa «Validar» y luego «Generar Archivo».</li>
-          <li>Prevalida el TXT con la herramienta de prevalidación y envíalo en la Oficina Virtual › Formatos de Envíos › Enviar Archivos. En el 607 completa también el «Resumen General de Facturas de Consumo».</li>
+          <li>Descarga el «Archivo TXT»: es el mismo archivo que genera la herramienta de la DGII con «Generar Archivo». El Excel y el PDF son para revisarlo.</li>
+          <li>Si quieres, prevalídalo con la «Herramienta de Pre-validación de Envío de Datos» de la DGII.</li>
+          <li>Envíalo en la Oficina Virtual › Formatos de Envíos › Enviar Archivos, con el período {p.periodo}. En el 607 completa también el «Resumen General de Facturas de Consumo» con las cifras de arriba.</li>
           <li>Vuelve aquí y marca el formato como enviado con la referencia que te da la Oficina Virtual.</li>
         </ol>
       </section>
@@ -101,6 +101,9 @@ function Seccion({ id, a, periodo, envio, puedeMarcar }: { id: string; a: Armado
         </ul>
       )}
       <div className="fila" style={{ alignItems: "center", marginTop: 8 }}>
+        {!sinDatos && errores.length === 0 && a.filas.length > 0 && (
+          <a className="boton primario" href={`/e/${id}/exportar/dgii-${a.formato}?periodo=${periodo}&formato=txt`}>Archivo TXT</a>
+        )}
         {!sinDatos && <Descargar href={`/e/${id}/exportar/dgii-${a.formato}?periodo=${periodo}`} />}
         {sinDatos && <p className="sub" style={{ margin: 0 }}>Sin operaciones este mes: se envía en cero (Oficina Virtual › Declaraciones Juradas › Declaraciones en Cero).</p>}
       </div>
