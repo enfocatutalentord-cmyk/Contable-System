@@ -183,7 +183,8 @@ No se pasa a la siguiente sin su autorización expresa.
   «sí»: roles con permisos y restricciones (Administradora, Contadora, Auxiliar, Facturación opcional, Solo lectura, Cliente ·
   Consulta, Cliente · Sube documentos), menú reordenado (diario arriba, configuración y administración abajo, sin plegables),
   IA según el rol (dice qué rol/quién puede hacerlo; herramientas filtradas por permisos, OWASP LLM06), verificación en dos
-  pasos, Excel en todas las listas. Videos con voz: bloqueados por la red (falta permitir la API de Gemini y la llave).
+  pasos, Excel en todas las listas. Videos con voz: bloqueados por la red (falta permitir la API de Gemini y la llave); herramientas
+  y plan en `herramientas/videos/README.md`. El 29-oct Joannie aprobó todo eso, incluido el rol Facturación, y adelantar la e-CF.
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local
