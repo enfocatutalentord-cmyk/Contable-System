@@ -19,7 +19,7 @@ export async function sembrar(empresa, correo) {
       const imp = Object.fromEntries((await tx`SELECT id, nombre FROM impuestos`).map((r) => [r.nombre, r.id]));
       const ret = Object.fromEntries((await tx`SELECT id, nombre FROM retenciones`).map((r) => [r.nombre, r.id]));
       const [{ id: juan }] = await tx`INSERT INTO proveedores (empresa_id, nombre, tipo_identificacion, rnc) VALUES (${empresa}, 'Juan Pérez', 'cedula', '00100000001') RETURNING id`;
-      const [{ id: sinRnc }] = await tx`INSERT INTO proveedores (empresa_id, nombre) VALUES (${empresa}, 'Ferretería sin RNC') RETURNING id`;
+      const [{ id: sinRnc }] = await tx`INSERT INTO proveedores (empresa_id, nombre, tipo_identificacion, rnc) VALUES (${empresa}, 'Ferretería sin RNC', 'rnc', '101000003') RETURNING id`;
       const [{ id: cli }] = await tx`INSERT INTO clientes (empresa_id, nombre, tipo_identificacion, rnc) VALUES (${empresa}, 'Cliente SRL', 'rnc', '101000001') RETURNING id`;
       for (const t of ["B01", "B02", "B11"]) {
         await tx`INSERT INTO secuencias_ncf (empresa_id, tipo, desde, hasta, siguiente, vence) VALUES (${empresa}, ${t}, 1, 100, 1, '2027-12-31')`;
@@ -35,7 +35,9 @@ export async function sembrar(empresa, correo) {
         return id;
       };
       const c1 = await compra(juan, "B0100000777", "2026-10-02", 1000000n);
-      await compra(sinRnc, "B0100000555", "2026-10-04", 200000n); // le falta el RNC: error en el 606
+      await compra(sinRnc, "B0100000555", "2026-10-04", 200000n);
+      // Después se le borró el RNC al proveedor: el 606 lo marca como error.
+      await tx`UPDATE proveedores SET rnc = NULL, tipo_identificacion = NULL WHERE id = ${sinRnc}`;
       await registrarPago(tx, {
         empresaId: empresa, usuarioId: ana, proveedorId: juan, fecha: "2026-10-05", moneda: "DOP", tasa: 10000n, cuentaOrigenId: await cuenta("110103"),
         formaPago: "02", referencia: null, notas: null, pagado: 1180000n - 54000n - 150000n,

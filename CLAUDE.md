@@ -117,6 +117,21 @@ Notas de infraestructura que costaron tiempo:
   contraseña y código. La firma puede exigirla (`firmas.exigir_dos_pasos`, en Clientes de la firma › Datos de la firma;
   quien no la tiene va a /cuenta antes de ver nada). Un administrador la quita a quien perdió el celular (Personas y accesos;
   cierra sus sesiones). Cada cambio avisa por correo. Recorrido: `pruebas/navegador/dos-pasos.cjs`.
+- **Reportes DGII 606/607/608** (Fase 6 parte 1, 29-oct-2026, migración 014, `lib/formatos-dgii.ts`, pestaña `/dgii` en
+  Impuestos; la ven Administrador, Contador y Solo lectura): campos, orden, códigos y límites de los instructivos oficiales que
+  Joannie subió (606 feb-2026, 607 dic-2025, 608 mar-2026). 606: compras registradas
+  del mes (servicios/bienes por línea, ITBIS al costo, ISC/propina/otros por tipo de impuesto, fecha y forma del último pago,
+  retenciones del pago repartidas por lo aplicado) y **reenvío** con fecha original de compras de meses anteriores pagadas con
+  retención en el mes; B17 con el RNC de la empresa. 607: facturas emitidas no anuladas (sin e-CF), `facturas.tipo_ingreso`
+  (01–06, habitual en `clientes.tipo_ingreso`), formas de cobro hasta el cierre y el resto «venta a crédito»; B02 menores de
+  RD$250,000 (Norma 10-18) van al «Resumen General de Facturas de Consumo». 608: facturas y comprobantes propios de compras
+  (B11/B13/B17, `compras.motivo_608`) anulados en el mes. Revisión con errores (enlace para corregir) y avisos; Excel/PDF
+  `DGII_F_6xx_<RNC>_<AAAAMM>` con las columnas del instructivo; «Marcar como enviado» (permiso «impuestos», sin errores) en
+  `envios_dgii` con referencia y huella: si cambia algo del mes avisa «Cambió después del envío». Pruebas
+  `pruebas/formatos-dgii.test.mjs`; recorrido `pruebas/navegador/dgii.cjs` (con `node --experimental-strip-types`).
+  Falta: generar el TXT directo (necesita las herramientas .xlsm de la DGII para ver el formato exacto que arma su macro) y
+  confirmar con la contadora: notas de crédito B04 en «Venta a Crédito», reenvío del 607 por retenciones, umbral de 250,000 sobre
+  el total con impuestos.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -210,8 +225,8 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal (estructura presentada el 29-oct, espera su «sí»; la red de la nube
-  no llega a dgii.gov.do: pedir que la permita o que envíe los instructivos 606/607/608) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 hecha en la rama, falta su «sí» para `main`;
+  dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
   su «sí»: Consola de la plataforma.
@@ -224,13 +239,13 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 65 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 73 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
-# también: acceso, firma, roles, documentos y dos-pasos (cada uno crea su propia firma)
+# también: acceso, firma, roles, documentos, dos-pasos y dgii (cada uno crea su propia firma; dgii con --experimental-strip-types)
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes

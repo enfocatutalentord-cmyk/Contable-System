@@ -178,7 +178,7 @@ export async function formato606(tx: Tx, p: Periodo, empresa: Empresa): Promise<
     // B17 (pagos al exterior): se usa el RNC o cédula de la propia empresa (instructivo del 606).
     const rnc = b17 ? empresa.rnc ?? "" : c.rnc ?? "";
     const tipoId = tipoIdentificacion(b17 ? null : c.tipo_identificacion, rnc);
-    if (!tipoId || tipoId === "3") avisos.push({ nivel: "error", texto: `${c.ncf} (${c.proveedor}): el 606 pide RNC (9 dígitos) o cédula (11 dígitos) ${b17 ? "de la empresa" : "del proveedor"}.`, enlace: b17 ? "/empresa" : enlace });
+    if (!tipoId || tipoId === "3") avisos.push({ nivel: "error", texto: `${c.ncf} (${c.proveedor}): el 606 pide RNC (9 dígitos) o cédula (11 dígitos) ${b17 ? "de la empresa" : "del proveedor"}.`, enlace: b17 ? "/empresa" : "/proveedores" });
     if (!ncfValido(c.ncf)) avisos.push({ nivel: "error", texto: `${c.ncf}: el NCF debe tener 11 posiciones (serie B) o 13 (serie E).`, enlace });
     const itbis = pesos(c.itbis);
     const costo = c.al_costo || !empresa.contribuye_itbis ? itbis : 0n;

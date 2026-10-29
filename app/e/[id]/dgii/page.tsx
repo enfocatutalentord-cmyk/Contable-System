@@ -86,7 +86,7 @@ function Seccion({ id, a, periodo, envio, puedeMarcar }: { id: string; a: Armado
       <div className="entre">
         <h2 style={{ margin: 0 }}>{a.formato} · {FORMATOS[a.formato]}</h2>
         <span className={`estado-envio ${envio ? (cambio ? "cambio" : "enviado") : errores.length ? "con-errores" : "listo"}`}>
-          {envio ? (cambio ? "Cambió después del envío" : envio.en_cero ? "Enviado en cero" : "Enviado") : errores.length ? `${errores.length} por corregir` : "Listo para enviar"}
+          {envio ? (cambio ? "Cambió después del envío" : envio.en_cero ? "Enviado en cero" : "Enviado") : errores.length ? `${errores.length} por corregir` : sinDatos ? "Se envía en cero" : "Listo para enviar"}
         </span>
       </div>
       <Resumen a={a} />
@@ -120,7 +120,7 @@ function Seccion({ id, a, periodo, envio, puedeMarcar }: { id: string; a: Armado
       )}
       {a.detalle.length > 0 && (
         <details style={{ marginTop: 10 }}>
-          <summary>Ver los {a.detalle.length} registros</summary>
+          <summary>{a.detalle.length === 1 ? "Ver el registro" : `Ver los ${a.detalle.length} registros`}</summary>
           <Detalle id={id} a={a} />
         </details>
       )}
