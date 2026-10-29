@@ -3,17 +3,19 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { puedeVer } from "@/lib/pestanas";
 import { antiguedad } from "@/lib/cxc";
 import { antiguedadCxp } from "@/lib/cxp";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
 
 export default async function InicioEmpresa({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sin_permiso?: string }>;
+  searchParams: Promise<{ sin_permiso?: string; sin_pestana?: string }>;
 }) {
   const { id } = await params;
-  const { sin_permiso } = await searchParams;
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { sin_permiso, sin_pestana } = await searchParams;
+  const { empresa, permisos, pestanas } = await accesoEmpresa(id);
+  const ve = (r: string) => puedeVer(pestanas, r);
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;
 
@@ -45,6 +47,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
 
   return (
     <>
+      {sin_pestana && <p className="aviso">Tu rol no incluye esa pestaña. Pídele a un administrador de la firma que te la agregue.</p>}
       {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
       <h1>Inicio</h1>
       <p className="sub">
@@ -60,36 +63,40 @@ export default async function InicioEmpresa({ params, searchParams }: {
         </div>
         {cxc && (
           <>
-            <Link href={`/e/${id}/cxc`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+            {ve("/cxc") && <Link href={`/e/${id}/cxc`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
               <div className="etiqueta">Por cobrar</div><div className="valor">{verMonto(cxc.total)}</div>
-            </Link>
-            <Link href={`/e/${id}/cxc?detalle=1`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+            </Link>}
+            {ve("/cxc") && <Link href={`/e/${id}/cxc?detalle=1`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
               <div className="etiqueta">Por cobrar vencido</div>
               <div className="valor" style={{ color: cxc.total - cxc.totales[0] > 0n ? "var(--peligro)" : undefined }}>{verMonto(cxc.total - cxc.totales[0])}</div>
-            </Link>
-            <Link href={`/e/${id}/cxp`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+            </Link>}
+            {ve("/cxp") && <Link href={`/e/${id}/cxp`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
               <div className="etiqueta">Por pagar</div><div className="valor">{verMonto(cxp.total)}</div>
+            </Link>}
+          </>
+        )}
+        {ve("/asientos") && (
+          <>
+            <div className="tarjeta cifra"><div className="etiqueta">Asientos contabilizados este mes</div><div className="valor">{delMes}</div></div>
+            <Link href={`/e/${id}/asientos?estado=borrador`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+              <div className="etiqueta">Borradores por contabilizar</div>
+              <div className="valor" style={{ color: borradores ? "var(--aviso-texto)" : undefined }}>{borradores}</div>
             </Link>
           </>
         )}
-        <div className="tarjeta cifra"><div className="etiqueta">Asientos contabilizados este mes</div><div className="valor">{delMes}</div></div>
-        <Link href={`/e/${id}/asientos?estado=borrador`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
-          <div className="etiqueta">Borradores por contabilizar</div>
-          <div className="valor" style={{ color: borradores ? "var(--aviso-texto)" : undefined }}>{borradores}</div>
-        </Link>
       </div>
 
       <div className="entre">
-        <h2 style={{ marginTop: 0 }}>Últimos movimientos</h2>
+        {ve("/asientos") && <h2 style={{ marginTop: 0 }}>Últimos movimientos</h2>}
         {puede(permisos, "registrar") && (
           <div className="fila">
-            <Link className="boton primario" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>
-            <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>
-            <Link className="boton" href={`/e/${id}/compras/nueva`}>+ Nueva compra</Link>
+            {ve("/asientos") && <Link className="boton primario" href={`/e/${id}/asientos/nuevo`}>+ Nuevo asiento</Link>}
+            {ve("/facturas") && <Link className="boton" href={`/e/${id}/facturas/nueva`}>+ Nueva factura</Link>}
+            {ve("/compras") && <Link className="boton" href={`/e/${id}/compras/nueva`}>+ Nueva compra</Link>}
           </div>
         )}
       </div>
-      <div className="tabla-envoltura" style={{ marginTop: 8 }}>
+      {ve("/asientos") && <div className="tabla-envoltura" style={{ marginTop: 8 }}>
         <table>
           <thead><tr><th>N.º</th><th>Fecha</th><th>Concepto</th><th>Estado</th><th className="num">Total</th></tr></thead>
           <tbody>
@@ -105,7 +112,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
             {recientes.length === 0 && <tr><td colSpan={5}>Todavía no hay asientos. Empieza con el asiento de apertura.</td></tr>}
           </tbody>
         </table>
-      </div>
+      </div>}
     </>
   );
 }

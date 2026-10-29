@@ -97,6 +97,14 @@ h3 { color: var(--titulo); }
 .actividad li { padding: 9px 0; border-bottom: 1px solid var(--borde); }
 .actividad li:last-child { border-bottom: 0; }
 .actividad .sub { margin: 2px 0 0; font-size: 0.82rem; }
+.rol-columnas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; margin: 10px 0; }
+.pestanas-rol { border: 1px solid var(--borde); border-radius: 8px; padding: 8px 14px 12px; margin: 0; min-width: 0; }
+.pestanas-rol legend { font-weight: 600; color: var(--verde); padding: 0 6px; }
+.grupo-pestanas { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--borde); }
+.grupo-pestanas:last-child { border-bottom: 0; }
+.grupo-pestanas strong { width: 100%; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dorado); }
+.matriz-roles td.num, .matriz-roles th.num { text-align: center; }
+@media (max-width: 900px) { .rol-columnas { grid-template-columns: minmax(0, 1fr); } }
 .elegir-cliente { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .elegir-cliente a { display: flex; flex-direction: column; gap: 4px; color: inherit; }
 .elegir-cliente a:hover { border-color: var(--dorado); text-decoration: none; }

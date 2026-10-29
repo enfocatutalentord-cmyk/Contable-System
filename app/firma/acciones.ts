@@ -8,6 +8,7 @@ import { enviarCorreo } from "@/lib/correo";
 import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
+import { esPestana, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
 import type { Estado } from "../acciones-cuenta";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -17,18 +18,28 @@ export async function agregarPersona(firmaId: string, _: Estado, fd: FormData): 
   const email = texto(fd, "email").toLowerCase();
   const nombre = texto(fd, "nombre");
   const administrador = fd.get("administrador") === "on";
+  const empresaId = texto(fd, "empresa");
+  const perfilId = texto(fd, "perfil");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "El correo no es válido." };
+  if (!administrador && (!!empresaId !== !!perfilId)) return { error: "Elige el cliente y el rol que tendrá en ese cliente." };
+  if ((empresaId && !esUuid(empresaId)) || (perfilId && !esUuid(perfilId))) return { error: "Datos no válidos." };
   try {
     const r = await conUsuario(usuario.id, async (tx) => {
       const u = await asegurarUsuario(tx, email, nombre);
       const x = await tx`INSERT INTO miembros_firma (firma_id, usuario_id, administrador) VALUES (${firmaId}, ${u.id}, ${administrador}) ON CONFLICT DO NOTHING`;
       if (x.count === 0) throw new ErrorContable("Esa persona ya es parte de la firma");
+      if (!administrador && empresaId) {
+        const [ok] = await tx`SELECT 1 FROM empresas e JOIN perfiles p ON p.firma_id = e.firma_id
+                               WHERE e.id = ${empresaId} AND e.firma_id = ${firmaId} AND p.id = ${perfilId}`;
+        if (!ok) throw new ErrorContable("Cliente o rol no válido");
+        await tx`INSERT INTO miembros (empresa_id, usuario_id, perfil_id) VALUES (${empresaId}, ${u.id}, ${perfilId})`;
+      }
       return { ...u, url: u.nuevo ? await crearEnlace(tx, u.id, "invitacion", usuario.id) : null };
     });
     revalidatePath(`/firma/${firmaId}/equipo`);
     if (r.url) {
       const enviado = await enviarEnlace({ para: email, nombre: r.nombre, url: r.url, tipo: "invitacion", firma: firma.nombre, quien: usuario.nombre });
-      return { ok: `${avisoEnlace(email, enviado, r.url)} Asígnale clientes abajo.` };
+      return { ok: `${avisoEnlace(email, enviado, r.url)}${empresaId || administrador ? "" : " Asígnale clientes abajo."}` };
     }
     // Ya tenía cuenta: solo se le avisa, entra con su contraseña de siempre.
     await enviarCorreo({
@@ -112,26 +123,32 @@ export async function guardarPerfil(firmaId: string, _: Estado, fd: FormData): P
   const id = texto(fd, "id");
   const nombre = texto(fd, "nombre");
   const permisos = fd.getAll("permisos").map(String).filter(esPermiso);
-  if (!nombre) return { error: "Escribe el nombre del perfil." };
+  const marcadas = fd.getAll("pestanas").map(String).filter(esPestana);
+  const paraClientes = fd.get("para_clientes") === "on";
+  if (!nombre) return { error: "Escribe el nombre del rol." };
+  if (marcadas.length === 0) return { error: "Marca al menos una pestaña." };
   if (!permisos.includes("ver")) permisos.unshift("ver");
+  // Todas marcadas se guarda como «todas» (NULL), así las pestañas que se agreguen después también las ve.
+  const pestanas = TODAS_LAS_PESTANAS.every((r) => marcadas.includes(r)) ? null : TODAS_LAS_PESTANAS.filter((r) => marcadas.includes(r));
   try {
     await conUsuario(usuario.id, async (tx) => {
       if (id) {
         const [p] = await tx<{ nombre: string; sistema: boolean }[]>`SELECT nombre, sistema FROM perfiles WHERE id = ${id} AND firma_id = ${firmaId}`;
-        if (!p) throw new ErrorContable("El perfil no existe");
-        // El perfil Administrador siempre tiene todos los permisos.
-        const finales = p.sistema && p.nombre === "Administrador" ? TODOS_LOS_PERMISOS : permisos;
-        await tx`UPDATE perfiles SET nombre = ${p.sistema ? p.nombre : nombre}, permisos = ${finales} WHERE id = ${id}`;
+        if (!p) throw new ErrorContable("El rol no existe");
+        // El rol Administrador siempre ve todo y tiene todos los permisos.
+        const admin = p.sistema && p.nombre === "Administrador";
+        await tx`UPDATE perfiles SET nombre = ${p.sistema ? p.nombre : nombre}, permisos = ${admin ? TODOS_LOS_PERMISOS : permisos},
+                 pestanas = ${admin ? null : pestanas}, para_clientes = ${admin ? false : paraClientes} WHERE id = ${id}`;
       } else {
-        await tx`INSERT INTO perfiles (firma_id, nombre, permisos) VALUES (${firmaId}, ${nombre}, ${permisos})`;
+        await tx`INSERT INTO perfiles (firma_id, nombre, permisos, pestanas, para_clientes) VALUES (${firmaId}, ${nombre}, ${permisos}, ${pestanas}, ${paraClientes})`;
       }
     });
   } catch (e) {
     const err = e as { code?: string };
-    return { error: err.code === "23505" ? "Ya hay un perfil con ese nombre." : mensajeError(e) };
+    return { error: err.code === "23505" ? "Ya hay un rol con ese nombre." : mensajeError(e) };
   }
-  revalidatePath(`/firma/${firmaId}/perfiles`);
-  return { ok: id ? "Perfil actualizado." : `Perfil «${nombre}» creado.` };
+  revalidatePath(`/firma/${firmaId}`, "layout");
+  return { ok: id ? "Rol actualizado." : `Rol «${nombre}» creado.` };
 }
 
 export async function eliminarPerfil(firmaId: string, perfilId: string, _: Estado): Promise<Estado> {

@@ -83,6 +83,13 @@ Notas de infraestructura que costaron tiempo:
   (frases a partir de `auditoria`, `lib/firma.ts`), **Clientes de la firma** (responsable `empresas.responsable_id`,
   migración 009; nombre y RNC de la firma), Personas y accesos, Roles y permisos; una pestaña de cliente pide elegirlo
   (`/firma/[fid]/elegir`). `/empresas` redirige a la firma si hay una sola. Recorrido: `pruebas/navegador/firma.cjs`.
+- **Roles con pestañas** (29-oct-2026, migración 010): cada rol (`perfiles`) guarda `pestanas` (rutas de `lib/pestanas.ts`;
+  NULL = todas) y `para_clientes`. El menú muestra solo las del rol y `accesoEmpresa` lo revisa en el servidor con la
+  dirección que pasa `proxy.ts` (encabezado `x-ruta`; también las descargas `/exportar/<reporte>`); si no la ve, lleva a la
+  primera que sí con «sin_pestana». Roles base nuevos: «Cliente · Consulta» y «Cliente · Sube documentos». Quien solo tiene
+  roles para clientes no ve las pantallas de la firma ni «Todos los clientes» (`soloCliente`). «Roles y permisos» tiene la
+  matriz pestaña × rol y casillas por rol; «Personas y accesos» separa equipo y usuarios de clientes y permite elegir cliente
+  y rol al agregar. Recorrido: `pruebas/navegador/roles.cjs`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -159,6 +166,10 @@ No se pasa a la siguiente sin su autorización expresa.
   (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
   primer ingreso: hecho y en `main` (ver Seguridad). Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
   (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
+- **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
+  lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
+  firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas) hecha en la rama: falta su «sí» para
+  `main`. Parte 3 pendiente: portal del cliente y «Documentos recibidos» (lo que suben los clientes, para que el equipo lo procese).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 
 ## Cómo trabajar en local
