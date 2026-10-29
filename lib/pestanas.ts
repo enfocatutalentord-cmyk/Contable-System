@@ -12,7 +12,7 @@ export const PESTANAS_CLIENTE: Seccion[] = [
                                 ["/proveedores", "Proveedores"]] },
   { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/cierres", "Cierre del mes"]] },
   { grupo: "Reportes", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
-  { grupo: "Impuestos", enlaces: [["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
+  { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
   {
     grupo: "Configuración del cliente",
     enlaces: [["/empresa", "Ficha de la empresa"], ["/catalogo", "Catálogo de cuentas"], ["/configuracion", "Configuración de cuentas"],
@@ -32,6 +32,7 @@ export const esPestana = (v: string) => TODAS_LAS_PESTANAS.includes(v);
 const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
   antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
+  "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii",
   facturas: "/facturas", cobros: "/cobros", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo",
 };
 

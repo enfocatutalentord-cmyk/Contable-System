@@ -4,12 +4,12 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { listarRetenciones } from "@/lib/fiscal";
+import { listarRetenciones, TIPOS_INGRESO } from "@/lib/fiscal";
 import { TIPOS_IDENTIFICACION } from "@/lib/permisos";
 import { NOMBRE_NCF, TIPOS_FACTURA } from "@/lib/ventas";
 import { guardarCliente } from "../ventas-acciones";
 
-type Cliente = { id: string; nombre: string; rnc: string | null; tipo_identificacion: string | null; ncf_predeterminado: string | null; retenciones: string[]; email: string | null; telefono: string | null; direccion: string | null; dias_credito: number; activo: boolean; saldo: string };
+type Cliente = { id: string; nombre: string; rnc: string | null; tipo_identificacion: string | null; ncf_predeterminado: string | null; tipo_ingreso: string; retenciones: string[]; email: string | null; telefono: string | null; direccion: string | null; dias_credito: number; activo: boolean; saldo: string };
 
 export default async function Clientes({ params, searchParams }: {
   params: Promise<{ id: string }>;
@@ -55,6 +55,11 @@ export default async function Clientes({ params, searchParams }: {
               <select name="ncf_predeterminado" defaultValue={enEdicion?.ncf_predeterminado ?? ""}>
                 <option value="">Según tenga RNC o no</option>
                 {TIPOS_FACTURA.map((t) => <option key={t} value={t}>{t} · {NOMBRE_NCF[t]}</option>)}
+              </select>
+            </label>
+            <label>Tipo de ingreso (607)
+              <select name="tipo_ingreso" defaultValue={enEdicion?.tipo_ingreso ?? "01"}>
+                {Object.entries(TIPOS_INGRESO).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
               </select>
             </label>
             <label style={{ width: 130 }}>Días de crédito<input name="dias_credito" type="number" min={0} max={365} defaultValue={enEdicion?.dias_credito ?? 30} /></label>

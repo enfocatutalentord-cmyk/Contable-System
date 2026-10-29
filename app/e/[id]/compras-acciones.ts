@@ -188,7 +188,7 @@ export async function anularLaCompra(empresaId: string, compraId: string, _: Est
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {
-    await conEmpresa(empresaId, (tx) => anularCompra(tx, { empresaId, usuarioId: usuario.id, compraId, motivo }));
+    await conEmpresa(empresaId, (tx) => anularCompra(tx, { empresaId, usuarioId: usuario.id, compraId, motivo, motivo608: texto(fd, "motivo_608") || null }));
   } catch (e) {
     return { error: mensajeError(e) };
   }

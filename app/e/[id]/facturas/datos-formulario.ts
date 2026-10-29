@@ -16,7 +16,7 @@ export async function datosFormulario(tx: Tx, hoy: string) {
     impuestos,
     impuestoPorDefecto: porDefecto?.id ?? impuestos.find((i) => i.tipo === "exento")?.id ?? "",
     clientes: await tx<ClienteFactura[]>`
-      SELECT id, nombre, rnc, dias_credito, ncf_predeterminado FROM clientes WHERE activo ORDER BY nombre`,
+      SELECT id, nombre, rnc, dias_credito, ncf_predeterminado, tipo_ingreso FROM clientes WHERE activo ORDER BY nombre`,
     servicios: await tx<ServicioFactura[]>`
       SELECT id, nombre, precio::text, impuesto_id, impuesto_adicional_id FROM servicios WHERE activo ORDER BY nombre`,
     disponibles: Object.fromEntries((await tx<{ tipo: string; n: number }[]>`

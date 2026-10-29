@@ -27,6 +27,17 @@ export const CODIGOS_606: Record<number, string> = {
   6: "Intereses pagados a personas físicas",
   7: "Retención por proveedores del Estado",
   8: "Juegos telefónicos",
+  9: "Retenciones subsector ganadería de carne bovina",
+};
+
+// Tipo de ingreso del formato 607 (campo 5 del instructivo de la DGII).
+export const TIPOS_INGRESO: Record<string, string> = {
+  "01": "Ingresos por operaciones (no financieros)",
+  "02": "Ingresos financieros",
+  "03": "Ingresos extraordinarios",
+  "04": "Ingresos por arrendamientos",
+  "05": "Ingresos por venta de activo depreciable",
+  "06": "Otros ingresos",
 };
 
 export type Uso = "venta" | "compra";

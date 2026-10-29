@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
-import { esNotaProveedor, nombreComprobante, TIPOS_GASTO } from "@/lib/compras";
+import { esNotaProveedor, esPropio, nombreComprobante, TIPOS_GASTO } from "@/lib/compras";
 import { conEmpresa } from "@/lib/db";
 import { verFecha, verMonto } from "@/lib/montos";
+import { MOTIVOS_608 } from "@/lib/ventas";
 import { puede } from "@/lib/permisos";
 import { anularLaCompra, descartarCompra, registrarBorradorCompra } from "../../compras-acciones";
 import { DocumentosSoporte } from "../../documentos/soporte";
@@ -169,6 +170,14 @@ export default async function VerCompra({ params, searchParams }: {
             <>
               <p className="sub">Para una compra mal registrada. Su asiento también queda anulado. {esNota ? "" : "Solo si no tiene pagos ni notas de crédito vigentes."}</p>
               <Formulario accion={anularLaCompra.bind(null, id, c.id)} boton="Anular compra" className="fila">
+                {esPropio(c.tipo_comprobante) && (
+                  <label style={{ flex: "1 1 240px" }}>Tipo de anulación (formato 608)
+                    <select name="motivo_608" required defaultValue="">
+                      <option value="" disabled>Elige…</option>
+                      {Object.entries(MOTIVOS_608).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
+                    </select>
+                  </label>
+                )}
                 <label style={{ flex: "1 1 320px" }}>Motivo<input name="motivo" required /></label>
               </Formulario>
             </>

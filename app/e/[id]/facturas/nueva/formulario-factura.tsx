@@ -3,14 +3,15 @@
 import { alEnviar } from "@/app/enviar";
 import { useActionState, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
+import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { verMonto } from "@/lib/montos";
 
-export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null };
+export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string };
 export type ServicioFactura = { id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null };
 export type ImpuestoFactura = { id: string; nombre: string; tipo: string; tasa: string; vigente_desde: string; vigente_hasta: string | null };
 export type Linea = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string };
 export type InicialFactura = {
-  cliente: string; tipo: string; fecha: string; vence: string; moneda: string; tasa: string; notas: string; lineas: Linea[];
+  cliente: string; tipo: string; fecha: string; vence: string; moneda: string; tasa: string; notas: string; lineas: Linea[]; tipoIngreso: string;
 };
 
 const TIPOS: [string, string][] = [
@@ -49,6 +50,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
   const [fecha, setFecha] = useState(inicial?.fecha ?? hoy);
   const [vence, setVence] = useState(inicial?.vence ?? hoy);
   const [moneda, setMoneda] = useState(inicial?.moneda ?? "DOP");
+  const [tipoIngreso, setTipoIngreso] = useState(inicial?.tipoIngreso ?? "01");
   const [lineas, setLineas] = useState<Linea[]>(inicial?.lineas.length ? inicial.lineas : [vacia()]);
   const cliente = clientes.find((c) => c.id === clienteId);
   // Solo los impuestos vigentes en la fecha de la factura.
@@ -63,6 +65,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
     if (c) {
       setVence(sumarDias(fecha, c.dias_credito));
       setTipo(c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02"));
+      setTipoIngreso(c.tipo_ingreso);
     }
   };
   const cambiar = (i: number, campo: keyof Linea, valor: string) =>
@@ -107,6 +110,11 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
         <label>Moneda
           <select name="moneda" value={moneda} onChange={(e) => setMoneda(e.target.value)}>
             <option value="DOP">Pesos (DOP)</option><option value="USD">Dólares (USD)</option>
+          </select>
+        </label>
+        <label>Tipo de ingreso (607)
+          <select name="tipo_ingreso" value={tipoIngreso} onChange={(e) => setTipoIngreso(e.target.value)}>
+            {Object.entries(TIPOS_INGRESO).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
           </select>
         </label>
         {moneda === "USD" && <label style={{ width: 120 }}>Tasa<input name="tasa" inputMode="decimal" placeholder="60.50" defaultValue={inicial?.tasa} required /></label>}

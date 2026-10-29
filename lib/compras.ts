@@ -6,7 +6,7 @@ import { aPesos, cantidadTexto, redondearDiv, tasaDeTexto, tasaTexto } from "./c
 import type { Tx } from "./db";
 import { aplicarTasa, COMPROBANTES, leerPorcentaje, listarImpuestos, listarRetenciones } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
-import { tomarNcf, type TipoNcf } from "./ventas.ts";
+import { MOTIVOS_608, tomarNcf, type TipoNcf } from "./ventas.ts";
 
 // Tipo de bienes y servicios comprados (formato 606).
 export const TIPOS_GASTO: Record<string, string> = {
@@ -274,12 +274,15 @@ export async function registrarCompra(
   return { ncf, asiento: asiento.numero! };
 }
 
-export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: string; compraId: string; motivo: string }) {
+// Con comprobante propio (B11, B13, B17) el NCF es nuestro: va al formato 608 con su «Tipo de Anulación» (MOTIVOS_608).
+export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: string; compraId: string; motivo: string; motivo608?: string | null }) {
   const [c] = await tx<{ ncf: string; estado: string; anulada: boolean; asiento_id: string; tipo_comprobante: string }[]>`
     SELECT ncf, estado, anulada, asiento_id, tipo_comprobante FROM compras WHERE id = ${d.compraId} FOR UPDATE`;
   if (!c) throw new ErrorContable("La compra no existe");
   if (c.estado !== "registrada") throw new ErrorContable("Un borrador no se anula; se descarta");
   if (c.anulada) throw new ErrorContable("La compra ya está anulada");
+  const motivo608 = esPropio(c.tipo_comprobante) ? d.motivo608 ?? null : null;
+  if (esPropio(c.tipo_comprobante) && !(motivo608 && motivo608 in MOTIVOS_608)) throw new ErrorContable("Elige el tipo de anulación del formato 608");
   if (!esNotaProveedor(c.tipo_comprobante)) {
     const [{ n }] = await tx<{ n: number }[]>`
       SELECT (SELECT count(*) FROM aplicaciones_pago a JOIN pagos p ON p.id = a.pago_id WHERE a.compra_id = ${d.compraId} AND NOT p.anulado)
@@ -287,7 +290,7 @@ export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: st
     if (n > 0) throw new ErrorContable("La compra tiene pagos o notas de crédito vigentes; anúlalos primero");
   }
   await anularAsientoDeDocumento(tx, c.asiento_id, d.usuarioId, `Anulación de la compra ${c.ncf}: ${d.motivo}`);
-  await tx`UPDATE compras SET anulada = true, motivo_anulacion = ${d.motivo}, anulada_por = ${d.usuarioId}, anulada_en = now() WHERE id = ${d.compraId}`;
+  await tx`UPDATE compras SET anulada = true, motivo_anulacion = ${d.motivo}, motivo_608 = ${motivo608}, anulada_por = ${d.usuarioId}, anulada_en = now() WHERE id = ${d.compraId}`;
   await bitacora(tx, d.empresaId, d.usuarioId, "compra_anulada", { ncf: c.ncf, motivo: d.motivo });
 }
 

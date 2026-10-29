@@ -1,5 +1,6 @@
 "use server";
 
+import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { esUuid, exigirPermiso } from "@/lib/acceso";
@@ -42,10 +43,12 @@ export async function guardarCliente(empresaId: string, _: Estado, fd: FormData)
   if (ident && !["rnc", "cedula", "pasaporte"].includes(tipoId)) return { error: "Elige el tipo de identificación." };
   if (ncf && !esTipoFactura(ncf)) return { error: "El comprobante habitual no es válido." };
   if (!Number.isInteger(dias) || dias < 0 || dias > 365) return { error: "Los días de crédito van de 0 a 365." };
+  const tipoIngreso = texto(fd, "tipo_ingreso") || "01";
+  if (!(tipoIngreso in TIPOS_INGRESO)) return { error: "Elige el tipo de ingreso." };
   const datos = {
     nombre, rnc: ident || null, tipo_identificacion: ident ? tipoId : null, email: texto(fd, "email") || null,
     telefono: texto(fd, "telefono") || null, direccion: texto(fd, "direccion") || null, dias_credito: dias,
-    ncf_predeterminado: ncf || null, retenciones, activo: id ? fd.get("activo") === "on" : true,
+    ncf_predeterminado: ncf || null, tipo_ingreso: tipoIngreso, retenciones, activo: id ? fd.get("activo") === "on" : true,
   };
   try {
     await conEmpresa(empresaId, async (tx) => {
@@ -168,6 +171,7 @@ export async function guardarFactura(empresaId: string, facturaId: string | null
     ({ id, ncf } = await conEmpresa(empresaId, async (tx) => {
       const id = await guardarBorradorFactura(tx, {
         facturaId, empresaId, usuarioId: usuario.id, clienteId, tipo, fecha, vence, moneda, tasa, notas: texto(fd, "notas") || null, lineas,
+        tipoIngreso: texto(fd, "tipo_ingreso") || "01",
       });
       return { id, ncf: emitirAhora ? (await emitir(tx, { empresaId, usuarioId: usuario.id, facturaId: id })).ncf : null };
     }));

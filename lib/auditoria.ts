@@ -13,7 +13,7 @@ export const TABLAS: Record<string, string> = {
   aplicaciones_cobro: "Aplicación de cobro", impuestos: "Impuesto", retenciones: "Retención", obligaciones_empresa: "Obligación fiscal",
   impuestos_linea_factura: "Impuesto de línea", retenciones_cobro: "Retención del cobro", proveedores: "Proveedor", compras: "Compra",
   lineas_compra: "Línea de compra", impuestos_linea_compra: "Impuesto de línea de compra", pagos: "Pago", aplicaciones_pago: "Aplicación de pago",
-  retenciones_pago: "Retención del pago", recepciones: "Documento recibido",
+  retenciones_pago: "Retención del pago", recepciones: "Documento recibido", envios_dgii: "Envío a la DGII",
 };
 
 export const ACCIONES = { insert: "Creó", update: "Modificó", delete: "Eliminó" } as const;
@@ -25,7 +25,7 @@ const CAMPOS: Record<string, string> = {
   telefono: "Teléfono", correo: "Correo", mes_cierre: "Mes de cierre", requiere_aprobacion: "Requiere aprobación",
   nombre_comercial: "Nombre comercial", perfil_id: "Perfil", eliminado: "Eliminado", motivo_anulacion: "Motivo de anulación",
   tipo_identificacion: "Tipo de identificación", inicio_operaciones: "Inicio de operaciones", total: "Total", anulada: "Anulada",
-  origen: "Origen", responsable_id: "Responsable", nombre_comercial_firma: "Firma", administrador: "Administrador",
+  origen: "Origen", responsable_id: "Responsable", tipo_ingreso: "Tipo de ingreso", formato: "Formato", periodo: "Período", nombre_comercial_firma: "Firma", administrador: "Administrador",
   tasa: "Tasa", impuesto: "Impuesto", activo: "Activo", nota: "Nota", vigente_desde: "Vigente desde", vigente_hasta: "Vigente hasta",
   cuenta_ventas_id: "Cuenta en ventas", cuenta_compras_id: "Cuenta en compras", cuenta_por_terceros_id: "Cuenta cuando nos retienen",
   cuenta_a_terceros_id: "Cuenta cuando retenemos", codigo_606: "Tipo en el 606", clave: "Obligación", tipo_persona: "Tipo de contribuyente",

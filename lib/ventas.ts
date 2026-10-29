@@ -3,7 +3,7 @@
 import { anularAsientoDeDocumento, bitacora, ErrorContable, insertarAsiento, type LineaAsiento } from "./asientos.ts";
 import { aPesos, cantidadTexto, redondearDiv, tasaDeTexto, tasaTexto } from "./calculos.ts";
 import type { Tx } from "./db";
-import { aplicarTasa, COMPROBANTES, leerPorcentaje, listarImpuestos, listarRetenciones } from "./fiscal.ts";
+import { aplicarTasa, COMPROBANTES, leerPorcentaje, listarImpuestos, listarRetenciones, TIPOS_INGRESO } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
 
 export { aPesos, calcularLinea, cantidadTexto, leerCantidad, leerTasa, redondearDiv, tasaDeTexto, tasaTexto } from "./calculos.ts";
@@ -143,7 +143,7 @@ async function escribirLineas(tx: Tx, empresaId: string, facturaId: string, line
 
 export type DatosFactura = {
   empresaId: string; usuarioId: string; clienteId: string; tipo: TipoFactura; fecha: string; vence: string;
-  moneda: "DOP" | "USD"; tasa: bigint; notas: string | null; lineas: LineaEntrada[];
+  moneda: "DOP" | "USD"; tasa: bigint; notas: string | null; lineas: LineaEntrada[]; tipoIngreso?: string;
 };
 
 // Crea o reemplaza un borrador de factura. Devuelve su id.
@@ -152,13 +152,15 @@ export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { factura
   if (!cliente?.activo) throw new ErrorContable("El cliente no existe o está inactivo");
   if (!esTipoFactura(d.tipo)) throw new ErrorContable("Elige el tipo de comprobante");
   if (d.vence < d.fecha) throw new ErrorContable("El vencimiento no puede ser antes de la fecha de la factura");
+  const tipoIngreso = d.tipoIngreso ?? "01";
+  if (!(tipoIngreso in TIPOS_INGRESO)) throw new ErrorContable("Elige el tipo de ingreso");
   const lineas = await calcularLineas(tx, d.fecha, d.lineas);
   const t = totales(lineas);
   if (t.total <= 0n) throw new ErrorContable("El total de la factura debe ser mayor que cero");
   const cabecera = {
     tipo_ncf: d.tipo, cliente_id: d.clienteId, fecha: d.fecha, vence: d.vence, moneda: d.moneda, tasa: tasaTexto(d.tasa),
     subtotal: deCentavos(t.subtotal), itbis: deCentavos(t.itbis), otros_impuestos: deCentavos(t.otros), total: deCentavos(t.total),
-    notas: d.notas,
+    notas: d.notas, tipo_ingreso: tipoIngreso,
   };
   let id = d.facturaId ?? null;
   if (id) {
@@ -258,8 +260,8 @@ export async function emitirNotaCredito(
   tx: Tx,
   d: { empresaId: string; usuarioId: string; facturaId: string; fecha: string; subtotal: bigint; impuestoId: string; motivo: string },
 ): Promise<string> {
-  const [f] = await tx<{ cliente_id: string; moneda: "DOP" | "USD"; tasa: string; anulada: boolean; estado: string; tipo_ncf: string }[]>`
-    SELECT cliente_id, moneda, tasa::text, anulada, estado, tipo_ncf FROM facturas WHERE id = ${d.facturaId}`;
+  const [f] = await tx<{ cliente_id: string; moneda: "DOP" | "USD"; tasa: string; anulada: boolean; estado: string; tipo_ncf: string; tipo_ingreso: string }[]>`
+    SELECT cliente_id, moneda, tasa::text, anulada, estado, tipo_ncf, tipo_ingreso FROM facturas WHERE id = ${d.facturaId}`;
   if (!f || f.tipo_ncf === "B04" || f.estado !== "emitida") throw new ErrorContable("La factura no existe o no está emitida");
   if (f.anulada) throw new ErrorContable("La factura está anulada");
   const [usado] = await tx`SELECT 1 FROM impuestos_linea_factura WHERE factura_id = ${d.facturaId} AND impuesto_id = ${d.impuestoId} LIMIT 1`;
@@ -275,9 +277,10 @@ export async function emitirNotaCredito(
   const cuentas = await cuentasVentas(tx);
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO facturas (empresa_id, estado, tipo_ncf, cliente_id, factura_origen_id, fecha, vence, moneda, tasa,
-                          subtotal, itbis, otros_impuestos, total, notas, creado_por)
+                          subtotal, itbis, otros_impuestos, total, notas, creado_por, tipo_ingreso)
     VALUES (${d.empresaId}, 'borrador', 'B04', ${f.cliente_id}, ${d.facturaId}, ${d.fecha}, ${d.fecha}, ${f.moneda}, ${f.tasa},
-            ${deCentavos(d.subtotal)}, ${deCentavos(itbis)}, ${deCentavos(otros)}, ${deCentavos(d.subtotal + monto)}, ${d.motivo}, ${d.usuarioId})
+            ${deCentavos(d.subtotal)}, ${deCentavos(itbis)}, ${deCentavos(otros)}, ${deCentavos(d.subtotal + monto)}, ${d.motivo}, ${d.usuarioId},
+            ${f.tipo_ingreso})
     RETURNING id`;
   const [{ id: lineaId }] = await tx<{ id: string }[]>`
     INSERT INTO lineas_factura (factura_id, empresa_id, orden, descripcion, cantidad, precio, cuenta_ingreso_id, subtotal, itbis, otros)

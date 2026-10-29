@@ -8,6 +8,7 @@ import { conEmpresa } from "@/lib/db";
 import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/exportar";
 import { FORMAS_PAGO } from "@/lib/compras";
 import { listarCuentas } from "@/lib/cuentas";
+import { armarFormato, FORMATOS, periodoDe, type Formato } from "@/lib/formatos-dgii";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
 import {
   estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
@@ -18,7 +19,7 @@ import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678])$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -199,6 +200,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           col(ventas ? "Facturas" : "Compras", false, 26), col("Forma de pago", false, 18), col("Referencia", false, 16), col("Moneda", false, 8),
           col(ventas ? "Recibido" : "Pagado", true), col(ventas ? "Retenciones" : "Retenido", true), col("Estado", false, 10)],
         filas, totales: ["Totales", "", "", "", "", "", "DOP", deCentavos(monto), deCentavos(retenido), ""],
+      }];
+    }
+    const dgii = /^dgii-(606|607|608)$/.exec(reporte)?.[1] as Formato | undefined;
+    if (dgii) {
+      const per = periodoDe(sp.periodo ?? "");
+      if (!per) return null;
+      const a = await conEmpresa(id, (tx) => armarFormato(tx, dgii, per));
+      const rnc = empresa.rnc ?? "";
+      return [`DGII_F_${dgii}_${rnc}_${per.periodo}`, {
+        ...base, titulo: `Formato ${dgii} · ${FORMATOS[dgii]}`, horizontal: true,
+        detalle: `Encabezado: RNC o Cédula ${rnc || "(falta en la ficha)"} · Período ${per.periodo} · Cantidad de registros ${a.filas.length}`,
+        columnas: a.columnas.map(([, t, tipo], i) => col(`${i + 1}. ${t}`, tipo === "monto", tipo === "monto" ? 14 : Math.max(10, Math.min(28, t.length)))),
+        filas: a.filas.map((f) => f.map((v, i) => (a.columnas[i][2] === "monto" ? deCentavos(v as bigint) : (v as string)))),
       }];
     }
     if (reporte === "catalogo") {
