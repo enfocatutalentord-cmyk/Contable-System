@@ -58,6 +58,10 @@ export default async function Clientes({ params }: { params: Promise<{ fid: stri
         <Formulario accion={guardarFirma.bind(null, fid)} boton="Guardar datos de la firma" className="fila">
           <label style={{ flex: "2 1 260px" }}>Nombre<input name="nombre" defaultValue={firma.nombre} required /></label>
           <label style={{ flex: "1 1 160px" }}>RNC<input name="rnc" defaultValue={firma.rnc ?? ""} inputMode="numeric" /></label>
+          <label style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: "1 1 100%" }}>
+            <input type="checkbox" name="exigir_dos_pasos" defaultChecked={firma.exigir_dos_pasos} style={{ minHeight: 0 }} />
+            Exigir verificación en dos pasos a todo el equipo y a los usuarios de los clientes (quien no la tenga, la activa al entrar)
+          </label>
         </Formulario>
       </div>
     </>

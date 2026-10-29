@@ -6,12 +6,19 @@ import { antiguedad, estadoCuenta, TRAMOS } from "@/lib/cxc";
 import { antiguedadCxp, estadoCuentaProveedor } from "@/lib/cxp";
 import { conEmpresa } from "@/lib/db";
 import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/exportar";
+import { FORMAS_PAGO } from "@/lib/compras";
+import { listarCuentas } from "@/lib/cuentas";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
-import { deCentavos, verFecha } from "@/lib/montos";
+import {
+  estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
+  listarCobros, listarCompras, listarFacturas, listarPagos,
+} from "@/lib/listas";
+import { aCentavos, deCentavos, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { leerPeriodo } from "../../periodo";
 
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -148,6 +155,61 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           ...datos.e.movimientos.map((m) => [verFecha(m.fecha), m.documento, m.detalle, deCentavos(m.cargo), deCentavos(m.abono), deCentavos(m.saldo)] as Celda[])],
       }];
     }
+    if (reporte === "facturas" || reporte === "compras") {
+      const ventas = reporte === "facturas";
+      const estados = ventas ? ESTADOS_FACTURA : ESTADOS_COMPRA;
+      const f = leerFiltrosDocumentos(sp, estados);
+      const lista = ventas
+        ? (await conEmpresa(id, (tx) => listarFacturas(tx, f))).map((d) => ({ ...d, tipo: d.tipo_ncf, nombre: d.cliente, nota: d.tipo_ncf === "B04", texto: estadoFactura(d, f.hoy) }))
+        : (await conEmpresa(id, (tx) => listarCompras(tx, f))).map((d) => ({ ...d, tipo: d.tipo_comprobante, nombre: d.proveedor, nota: d.origen !== null, texto: estadoCompra(d, f.hoy) }));
+      const filas: Celda[][] = [];
+      const t = [0n, 0n, 0n, 0n, 0n];
+      for (const d of lista) {
+        const vigente = d.estado !== "borrador" && !d.anulada;
+        const montos = [d.subtotal, d.itbis, d.otros, d.total].map((m) => (d.nota ? -aCentavos(m) : aCentavos(m)));
+        const saldo = vigente && !d.nota ? aCentavos(d.saldo ?? "0") : 0n;
+        if (vigente && d.moneda === "DOP") { montos.forEach((m, i) => (t[i] += m)); t[4] += saldo; }
+        filas.push([d.ncf ?? `Borrador ${d.tipo}`, verFecha(d.fecha), d.nombre, d.rnc ?? "", d.nota ? "" : verFecha(d.vence), d.moneda,
+          ...montos.map(deCentavos), vigente && !d.nota ? deCentavos(saldo) : "", d.texto]);
+      }
+      const detalle = [f.mes ? `Mes ${f.mes.slice(5)}/${f.mes.slice(0, 4)}` : "Todos los meses", f.estado !== "todas" && estados[f.estado], f.q && `búsqueda: «${f.q}»`]
+        .filter(Boolean).join(" · ");
+      return [`${reporte}-${f.mes || "todos-los-meses"}`, {
+        ...base, titulo: ventas ? "Facturas y notas de crédito" : "Compras y gastos", detalle: `${detalle} · totales de lo vigente en DOP`, horizontal: true,
+        columnas: [col("NCF", false, 16), col("Fecha", false, 12), col(ventas ? "Cliente" : "Proveedor", false, 30), col("RNC/Cédula", false, 14),
+          col("Vence", false, 12), col("Moneda", false, 8), col("Subtotal", true), col("ITBIS", true), col("Otros impuestos", true), col("Total", true), col("Saldo", true), col("Estado", false, 16)],
+        filas, totales: ["Totales", "", "", "", "", "DOP", ...t.map(deCentavos), ""],
+      }];
+    }
+    if (reporte === "cobros" || reporte === "pagos") {
+      const ventas = reporte === "cobros";
+      const f = leerFiltrosPagos(sp);
+      const lista = ventas
+        ? (await conEmpresa(id, (tx) => listarCobros(tx, f))).map((p) => ({ ...p, nombre: p.cliente, monto: p.recibido, documentos: p.facturas, forma: p.forma_pago.charAt(0).toUpperCase() + p.forma_pago.slice(1) }))
+        : (await conEmpresa(id, (tx) => listarPagos(tx, f))).map((p) => ({ ...p, nombre: p.proveedor, monto: p.pagado, documentos: p.compras, forma: FORMAS_PAGO[p.forma_pago] ?? p.forma_pago }));
+      let monto = 0n, retenido = 0n;
+      const filas = lista.map((p): Celda[] => {
+        if (!p.anulado && p.moneda === "DOP") { monto += aCentavos(p.monto); retenido += aCentavos(p.retenciones); }
+        return [p.numero, verFecha(p.fecha), p.nombre, p.documentos ?? "", p.forma, p.referencia ?? "", p.moneda, p.monto, p.retenciones, p.anulado ? "Anulado" : "Vigente"];
+      });
+      return [`${reporte}-${f.mes}`, {
+        ...base, titulo: ventas ? "Cobros (recibos de ingreso)" : "Pagos a proveedores",
+        detalle: `Mes ${f.mes.slice(5)}/${f.mes.slice(0, 4)}${f.q ? ` · búsqueda: «${f.q}»` : ""} · totales de lo vigente en DOP`, horizontal: true,
+        columnas: [col(ventas ? "Recibo" : "Pago", false, 8), col("Fecha", false, 12), col(ventas ? "Cliente" : "Proveedor", false, 30),
+          col(ventas ? "Facturas" : "Compras", false, 26), col("Forma de pago", false, 18), col("Referencia", false, 16), col("Moneda", false, 8),
+          col(ventas ? "Recibido" : "Pagado", true), col(ventas ? "Retenciones" : "Retenido", true), col("Estado", false, 10)],
+        filas, totales: ["Totales", "", "", "", "", "", "DOP", deCentavos(monto), deCentavos(retenido), ""],
+      }];
+    }
+    if (reporte === "catalogo") {
+      const cuentas = await conEmpresa(id, listarCuentas);
+      const tipos: Record<string, string> = { activo: "Activo", pasivo: "Pasivo", patrimonio: "Patrimonio", ingreso: "Ingreso", costo: "Costo", gasto: "Gasto" };
+      return ["catalogo-de-cuentas", {
+        ...base, titulo: "Catálogo de cuentas", detalle: `${cuentas.length} cuentas`,
+        columnas: [col("Código", false, 12), col("Cuenta", false, 46), col("Tipo", false, 12), col("Nivel", false, 7), col("Uso", false, 10), col("Estado", false, 10)],
+        filas: cuentas.map((c) => [c.codigo, `${"  ".repeat(c.nivel - 1)}${c.nombre}`, tipos[c.tipo] ?? c.tipo, c.nivel, c.de_detalle ? "Detalle" : "Grupo", c.activa ? "Activa" : "Inactiva"]),
+      }];
+    }
     return null;
   };
 
@@ -155,7 +217,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!armado) return new Response("Reporte no encontrado", { status: 404 });
   const [nombre, tabla] = armado;
   await conEmpresa(id, (tx) => bitacora(tx, id, usuario.id, "reporte_descargado", { reporte, formato }));
-  const archivo = `${nombre}-${desde}-a-${hasta}`;
+  // Las listas y el catálogo llevan su propio mes (o ninguno) en el nombre; los reportes, el período.
+  const archivo = SIN_PERIODO.test(reporte) ? nombre : `${nombre}-${desde}-a-${hasta}`;
   const cabeceras = (tipo: string, ext: string) => ({
     "Content-Type": tipo,
     "Content-Disposition": `attachment; filename="${archivo}.${ext}"`,

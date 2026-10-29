@@ -10,6 +10,11 @@ export type Empresa = {
   id: string; nombre: string; rnc: string | null; moneda: string; fecha_bloqueo: string | null;
   firma_id: string; firma: string; requiere_aprobacion: boolean; activa: boolean;
 };
+
+// Si la firma exige la verificación en dos pasos y la persona no la tiene, se la lleva a activarla antes de seguir.
+const exigirDosPasos = (usuario: Usuario, exigida: boolean) => {
+  if (exigida && !usuario.dosPasos) redirect("/cuenta?exigido=1#dos-pasos");
+};
 export type Acceso = {
   usuario: Usuario; empresa: Empresa; permisos: Permiso[]; perfil: string; adminFirma: boolean;
   pestanas: string[] | null; // pestañas que ve su rol; null = todas
@@ -24,9 +29,9 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null })[]>`
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
-           f.nombre AS firma, e.requiere_aprobacion, e.activa, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes
+           f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes
       FROM empresas e
       JOIN firmas f ON f.id = e.firma_id
       JOIN miembros_firma mf ON mf.firma_id = e.firma_id AND mf.usuario_id = ${usuario.id}
@@ -34,7 +39,8 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
       LEFT JOIN perfiles p ON p.id = m.perfil_id
      WHERE e.id = ${empresaId}`;
   if (!fila || (!fila.administrador && !fila.permisos)) notFound();
-  const { administrador, perfil, permisos, pestanas, para_clientes, ...empresa } = fila;
+  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, ...empresa } = fila;
+  exigirDosPasos(usuario, exigir_dos_pasos);
   const visibles = administrador || !pestanas ? null : pestanas.filter((p) => TODAS_LAS_PESTANAS.includes(p));
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
@@ -66,11 +72,11 @@ export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana
   return acceso;
 }
 
-export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean };
+export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean };
 
 export const misFirmas = cache(async (usuarioId: string): Promise<Firma[]> => {
   return db()<Firma[]>`
-    SELECT f.id, f.nombre, f.rnc, mf.administrador FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
+    SELECT f.id, f.nombre, f.rnc, mf.administrador, f.exigir_dos_pasos FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
      WHERE mf.usuario_id = ${usuarioId} ORDER BY f.nombre`;
 });
 
@@ -79,6 +85,7 @@ export async function accesoFirma(firmaId: string, soloAdministrador = true): Pr
   if (!UUID.test(firmaId)) notFound();
   const firma = (await misFirmas(usuario.id)).find((f) => f.id === firmaId);
   if (!firma) notFound();
+  exigirDosPasos(usuario, firma.exigir_dos_pasos);
   if (soloAdministrador && !firma.administrador) redirect("/empresas?sin_permiso=1");
   return { usuario, firma };
 }

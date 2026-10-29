@@ -2,14 +2,15 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { cerrarSesion, cifrarClave, claveCorrecta, iniciarSesion, exigirUsuario } from "@/lib/auth";
+import { cerrarPendiente, cerrarSesion, cifrarClave, claveCorrecta, continuarEntrada, entradaPendiente, exigirUsuario, iniciarSesion, MAX_FALLOS_CODIGO } from "@/lib/auth";
+import { avisarCambio, comprobarSegundoPaso } from "@/lib/cuenta-dos-pasos";
 import { db, mensajeError } from "@/lib/db";
 import { accesoFirma } from "@/lib/acceso";
 import { crearEmpresa, crearFirma, leerFicha, limpiarRnc, rncValido } from "@/lib/empresas";
 import { crearEnlace, enviarEnlace, recuperacionesRecientes, usarEnlace } from "@/lib/enlaces";
 import { anotarIntento, entradaBloqueada, MINUTOS } from "@/lib/intentos";
 
-export type Estado = { error?: string; ok?: string };
+export type Estado = { error?: string; ok?: string; codigos?: string[] };
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -56,8 +57,33 @@ export async function entrar(_: Estado, fd: FormData): Promise<Estado> {
   const correcta = !!u && (await claveCorrecta(clave, u.clave_hash));
   await anotarIntento(db(), email, ip, correcta);
   if (!correcta) return { error: "Correo o contraseña incorrectos." };
-  await iniciarSesion(u.id);
-  redirect("/empresas");
+  return continuarEntrada(u.id, "/empresas");
+}
+
+// Segundo paso: el código de 6 dígitos de la app o un código de recuperación. Cinco códigos errados anulan el paso
+// (hay que volver a poner la contraseña) y cuentan para el límite de intentos del correo.
+export async function verificarEntrada(_: Estado, fd: FormData): Promise<Estado> {
+  const p = await entradaPendiente();
+  if (!p) return { error: "Pasaron más de 10 minutos o ya no es válido. Vuelve a entrar con tu correo y contraseña." };
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() || null;
+  if (p.fallos >= MAX_FALLOS_CODIGO || (await entradaBloqueada(db(), p.email, ip))) {
+    await cerrarPendiente(p.token_hash);
+    return { error: `Demasiados códigos incorrectos. Espera ${MINUTOS} minutos y vuelve a entrar.` };
+  }
+  const r = await comprobarSegundoPaso(p.usuario_id, texto(fd, "codigo"));
+  await anotarIntento(db(), p.email, ip, r !== null);
+  if (r === null) {
+    await db()`UPDATE entradas_pendientes SET fallos = fallos + 1 WHERE token_hash = ${p.token_hash}`;
+    const quedan = MAX_FALLOS_CODIGO - p.fallos - 1;
+    return { error: `El código no es correcto.${quedan > 0 ? ` Te quedan ${quedan} intentos.` : ""} Revisa que la hora del celular esté en automático.` };
+  }
+  await cerrarPendiente(p.token_hash);
+  if (r !== "app") {
+    await avisarCambio(p.email, p.nombre, "se entró con un código de recuperación",
+      r > 0 ? `Te quedan ${r} códigos. Si perdiste el celular, configura la app de nuevo en Mi cuenta.` : "Ya no te quedan códigos: genera nuevos en Mi cuenta.");
+  }
+  await iniciarSesion(p.usuario_id);
+  redirect(p.destino);
 }
 
 export async function salir(): Promise<void> {
@@ -104,8 +130,8 @@ export async function crearClaveConEnlace(token: string, _: Estado, fd: FormData
   if (clave !== repetida) return { error: "Las dos contraseñas no coinciden." };
   const usuarioId = await usarEnlace(token, clave);
   if (!usuarioId) return { error: "Este enlace ya se usó o venció. Pide uno nuevo en «¿Olvidaste tu contraseña?» o al administrador de tu firma." };
-  await iniciarSesion(usuarioId);
-  redirect("/empresas?bienvenida=1");
+  // Recuperar la contraseña por correo no se salta la verificación en dos pasos.
+  return continuarEntrada(usuarioId, "/empresas?bienvenida=1");
 }
 
 // Siempre responde lo mismo, exista o no la cuenta, para no revelar qué correos están registrados.

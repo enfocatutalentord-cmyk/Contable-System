@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
-import { hoyISO, verFecha, verMonto } from "@/lib/montos";
+import { Descargar } from "@/app/descargar";
+import { consultaFiltros, leerFiltrosPagos, listarPagos } from "@/lib/listas";
+import { verFecha, verMonto } from "@/lib/montos";
 import { FORMAS_PAGO } from "@/lib/compras";
 import { puede } from "@/lib/permisos";
-
-type Fila = { numero: number; fecha: string; proveedor: string; moneda: string; pagado: string; retenciones: string; forma_pago: string; anulado: boolean; compras: string };
 
 export default async function Pagos({ params, searchParams }: {
   params: Promise<{ id: string }>;
@@ -14,16 +14,9 @@ export default async function Pagos({ params, searchParams }: {
   const { id } = await params;
   const sp = await searchParams;
   const { permisos } = await accesoEmpresa(id);
-  const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : hoyISO().slice(0, 7);
-  const q = (sp.q ?? "").trim();
-  const filas = await conEmpresa(id, (tx) => tx<Fila[]>`
-    SELECT c.numero, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, pr.nombre AS proveedor, c.moneda, c.pagado::text,
-           (c.retencion_itbis + c.retencion_isr)::text AS retenciones, c.forma_pago, c.anulado,
-           (SELECT string_agg(co.ncf, ', ' ORDER BY co.ncf) FROM aplicaciones_pago a JOIN compras co ON co.id = a.compra_id WHERE a.pago_id = c.id) AS compras
-      FROM pagos c JOIN proveedores pr ON pr.id = c.proveedor_id
-     WHERE to_char(c.fecha, 'YYYY-MM') = ${mes}
-       AND (${q} = '' OR pr.nombre ILIKE ${"%" + q + "%"} OR c.referencia ILIKE ${"%" + q + "%"} OR c.numero::text = ${q})
-     ORDER BY c.fecha DESC, c.numero DESC`);
+  const filtros = leerFiltrosPagos(sp);
+  const { mes, q } = filtros;
+  const filas = await conEmpresa(id, (tx) => listarPagos(tx, filtros));
   const vigentes = filas.filter((f) => !f.anulado && f.moneda === "DOP");
 
   return (
@@ -33,7 +26,10 @@ export default async function Pagos({ params, searchParams }: {
           <h1>Pagos a proveedores</h1>
           <p className="sub">Un pago puede saldar varias compras del mismo proveedor, con las retenciones que le hagas.</p>
         </div>
-        {puede(permisos, "contabilizar") && <Link className="boton primario" href={`/e/${id}/pagos/nuevo`}>+ Registrar pago</Link>}
+        <div className="acciones">
+          {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/pagos?${consultaFiltros(filtros)}`} />}
+          {puede(permisos, "contabilizar") && <Link className="boton primario" href={`/e/${id}/pagos/nuevo`}>+ Registrar pago</Link>}
+        </div>
       </div>
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>

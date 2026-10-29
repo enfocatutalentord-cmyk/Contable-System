@@ -32,6 +32,7 @@ export const esPestana = (v: string) => TODAS_LAS_PESTANAS.includes(v);
 const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
   antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
+  facturas: "/facturas", cobros: "/cobros", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo",
 };
 
 // Pestaña a la que pertenece una dirección dentro del cliente (/facturas/nueva → /facturas; /cxc/estado → /cxc/estado;

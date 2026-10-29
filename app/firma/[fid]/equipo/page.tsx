@@ -1,7 +1,7 @@
 import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
-import { agregarPersona, enviarAcceso, guardarAccesos, quitarDeFirma } from "../../acciones";
+import { agregarPersona, enviarAcceso, guardarAccesos, quitarDeFirma, reiniciarDosPasos } from "../../acciones";
 
 export const metadata = { title: "Personas y accesos · Empire Tax’N Legal" };
 
@@ -9,8 +9,9 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
   const { fid } = await params;
   const { firma, usuario } = await accesoFirma(fid);
   const [personas, empresas, perfiles, accesos] = await Promise.all([
-    db()<{ id: string; nombre: string; email: string; administrador: boolean; verificado: boolean }[]>`
-      SELECT u.id, u.nombre, u.email, mf.administrador, u.correo_verificado IS NOT NULL AS verificado FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+    db()<{ id: string; nombre: string; email: string; administrador: boolean; verificado: boolean; dos_pasos: boolean }[]>`
+      SELECT u.id, u.nombre, u.email, mf.administrador, u.correo_verificado IS NOT NULL AS verificado,
+             u.dos_pasos_desde IS NOT NULL AS dos_pasos FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
        WHERE mf.firma_id = ${fid} ORDER BY mf.administrador DESC, u.nombre`,
     db()<{ id: string; nombre: string }[]>`SELECT id, nombre FROM empresas WHERE firma_id = ${fid} AND activa ORDER BY nombre`,
     db()<{ id: string; nombre: string; para_clientes: boolean }[]>`
@@ -76,11 +77,13 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
               <strong>{p.nombre}</strong>{p.id === usuario.id && " (tú)"}
               <div className="sub" style={{ margin: 0 }}>
                 {p.email} · {p.verificado ? "correo verificado" : <span className="error">correo sin verificar</span>}
+                {" · "}{p.dos_pasos ? "verificación en dos pasos activa" : firma.exigir_dos_pasos ? <span className="error">sin verificación en dos pasos</span> : "sin verificación en dos pasos"}
               </div>
             </div>
             {p.id !== usuario.id && (
               <div className="fila" style={{ alignItems: "flex-start" }}>
                 <Formulario accion={enviarAcceso.bind(null, fid, p.id)} boton={p.verificado ? "Enviar enlace para nueva contraseña" : "Reenviar invitación"} className="fila"><span /></Formulario>
+                {p.dos_pasos && <Formulario accion={reiniciarDosPasos.bind(null, fid, p.id)} boton="Quitar verificación en dos pasos" className="fila"><span /></Formulario>}
                 <Formulario accion={quitarDeFirma.bind(null, fid, p.id)} boton="Quitar de la firma" className="fila"><span /></Formulario>
               </div>
             )}

@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 23-oct-2026 (Fases 1 a 4 aprobadas y en `main`).
+Última actualización: 29-oct-2026 (Fases 1 a 4 y nueva navegación en `main`; Excel en listas y verificación en dos pasos en la rama).
 
 ## Con quién y cómo
 
@@ -105,6 +105,18 @@ Notas de infraestructura que costaron tiempo:
   (`guardarCompraConDocumento`). Aviso por correo al responsable del cliente. Firma: «Documentos recibidos»
   (`/firma/[fid]/documentos`, todos los clientes), cifra «Documentos por procesar» en el Inicio y frases en Actividad.
   Recorrido: `pruebas/navegador/documentos.cjs`.
+- **Excel/PDF en todas las listas** (29-oct-2026): facturas, cobros, compras, pagos y catálogo se descargan con los mismos
+  filtros de la pantalla (`lib/listas.ts` tiene las consultas que usan la lista y la descarga; botones `app/descargar.tsx`;
+  reportes en `app/e/[id]/exportar/[reporte]/route.ts`, mapeados a su pestaña en `REPORTES` de `lib/pestanas.ts`).
+  Facturas y compras llevan subtotal, ITBIS y otros impuestos por separado; totales en centavos de lo vigente en DOP.
+- **Verificación en dos pasos** (29-oct-2026, migración 013, `lib/dos-pasos.ts`, `lib/cuenta-dos-pasos.ts`): código TOTP
+  (RFC 6238) de Google/Microsoft Authenticator o Authy, como exige Xero; guía OWASP MFA y NIST SP 800-63B. Se configura en
+  Mi cuenta con QR (paquete `qrcode`) y da 10 códigos de recuperación de un solo uso (hash). Al entrar, la contraseña correcta
+  solo da un paso pendiente de 10 min (`entradas_pendientes`, cookie en /entrar) y 5 códigos errados lo anulan; el mismo
+  código no sirve dos veces (`dos_pasos_ultimo`). Recuperar la contraseña por correo no se la salta. Desactivar pide
+  contraseña y código. La firma puede exigirla (`firmas.exigir_dos_pasos`, en Clientes de la firma › Datos de la firma;
+  quien no la tiene va a /cuenta antes de ver nada). Un administrador la quita a quien perdió el celular (Personas y accesos;
+  cierra sus sesiones). Cada cambio avisa por correo. Recorrido: `pruebas/navegador/dos-pasos.cjs`.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -184,7 +196,7 @@ No se pasa a la siguiente sin su autorización expresa.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
-  reordenado) en `main` (`3b752a1`). Parte 3 (documentos recibidos y portal del cliente) hecha en la rama: falta su «sí».
+  reordenado) en `main` (`3b752a1`). Parte 3 (documentos recibidos y portal del cliente) en `main` (`a9aa3f5`, 29-oct).
 - **Revisión del 29-oct-2026** (Drive › «5. Revisión de la plataforma, roles e IA»): urgentes (1) respaldos sin funcionar
   (faltan secretos en GitHub y Actions en $0), (2) e-CF obligatorio para micro/pequeños desde el 15-nov-2026 (Aviso DGII 06-26,
   confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro. Propuestos y esperando su
@@ -197,6 +209,11 @@ No se pasa a la siguiente sin su autorización expresa.
   primero los pendientes de la plataforma** y grabar los videos al final, con la versión definitiva. Correo a proveedores PSFE
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
+- **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
+  (hechos en la rama, falta su «sí» para `main`); 3) Fase 6 Fiscal (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
+  antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
+  Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
+  su «sí»: Consola de la plataforma.
 
 ## Cómo trabajar en local
 
@@ -206,12 +223,13 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 60 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 65 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
+# también: acceso, firma, roles, documentos y dos-pasos (cada uno crea su propia firma)
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes

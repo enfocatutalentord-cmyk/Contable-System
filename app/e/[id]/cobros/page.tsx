@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
-import { hoyISO, verFecha, verMonto } from "@/lib/montos";
+import { Descargar } from "@/app/descargar";
+import { consultaFiltros, leerFiltrosPagos, listarCobros } from "@/lib/listas";
+import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-
-type Fila = { numero: number; fecha: string; cliente: string; moneda: string; recibido: string; retenciones: string; forma_pago: string; anulado: boolean; facturas: string };
 
 export default async function Cobros({ params, searchParams }: {
   params: Promise<{ id: string }>;
@@ -13,16 +13,9 @@ export default async function Cobros({ params, searchParams }: {
   const { id } = await params;
   const sp = await searchParams;
   const { permisos } = await accesoEmpresa(id);
-  const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : hoyISO().slice(0, 7);
-  const q = (sp.q ?? "").trim();
-  const filas = await conEmpresa(id, (tx) => tx<Fila[]>`
-    SELECT c.numero, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, cl.nombre AS cliente, c.moneda, c.recibido::text,
-           (c.retencion_itbis + c.retencion_isr)::text AS retenciones, c.forma_pago, c.anulado,
-           (SELECT string_agg(f.ncf, ', ' ORDER BY f.ncf) FROM aplicaciones_cobro a JOIN facturas f ON f.id = a.factura_id WHERE a.cobro_id = c.id) AS facturas
-      FROM cobros c JOIN clientes cl ON cl.id = c.cliente_id
-     WHERE to_char(c.fecha, 'YYYY-MM') = ${mes}
-       AND (${q} = '' OR cl.nombre ILIKE ${"%" + q + "%"} OR c.referencia ILIKE ${"%" + q + "%"} OR c.numero::text = ${q})
-     ORDER BY c.fecha DESC, c.numero DESC`);
+  const filtros = leerFiltrosPagos(sp);
+  const { mes, q } = filtros;
+  const filas = await conEmpresa(id, (tx) => listarCobros(tx, filtros));
   const vigentes = filas.filter((f) => !f.anulado && f.moneda === "DOP");
 
   return (
@@ -32,7 +25,10 @@ export default async function Cobros({ params, searchParams }: {
           <h1>Cobros</h1>
           <p className="sub">Recibos de ingreso. Un cobro puede saldar varias facturas del mismo cliente.</p>
         </div>
-        {puede(permisos, "contabilizar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
+        <div className="acciones">
+          {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/cobros?${consultaFiltros(filtros)}`} />}
+          {puede(permisos, "contabilizar") && <Link className="boton primario" href={`/e/${id}/cobros/nuevo`}>+ Registrar cobro</Link>}
+        </div>
       </div>
       <form className="fila" style={{ marginBottom: 12 }}>
         <label>Mes<input type="month" name="mes" defaultValue={mes} /></label>

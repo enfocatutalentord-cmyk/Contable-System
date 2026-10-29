@@ -6,6 +6,7 @@ import { ErrorContable } from "@/lib/asientos";
 import { conUsuario, mensajeError } from "@/lib/db";
 import { enviarCorreo } from "@/lib/correo";
 import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
+import { avisarCambio, quitarDosPasos } from "@/lib/cuenta-dos-pasos";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
 import { esPestana, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
@@ -177,8 +178,10 @@ export async function guardarFirma(firmaId: string, _: Estado, fd: FormData): Pr
   const rnc = texto(fd, "rnc").replace(/[-\s]/g, "");
   if (!nombre) return { error: "Escribe el nombre de la firma." };
   if (rnc && !/^(\d{9}|\d{11})$/.test(rnc)) return { error: "El RNC debe tener 9 dígitos (o 11 si es cédula)." };
+  const exigir = fd.get("exigir_dos_pasos") === "on";
+  if (exigir && !usuario.dosPasos) return { error: "Para exigir la verificación en dos pasos, actívala primero en tu cuenta (Mi cuenta)." };
   try {
-    await conUsuario(usuario.id, (tx) => tx`UPDATE firmas SET nombre = ${nombre}, rnc = ${rnc || null} WHERE id = ${firmaId}`);
+    await conUsuario(usuario.id, (tx) => tx`UPDATE firmas SET nombre = ${nombre}, rnc = ${rnc || null}, exigir_dos_pasos = ${exigir} WHERE id = ${firmaId}`);
   } catch (e) {
     return { error: mensajeError(e) };
   }
@@ -206,4 +209,29 @@ export async function asignarResponsable(firmaId: string, empresaId: string, _: 
   }
   revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Responsable guardado." };
+}
+
+// Para quien perdió el celular y sus códigos de recuperación: el administrador le quita la verificación en dos pasos
+// (se cierran sus sesiones y se le avisa por correo). La vuelve a configurar en Mi cuenta al entrar.
+export async function reiniciarDosPasos(firmaId: string, personaId: string, _: Estado): Promise<Estado> {
+  const { usuario, firma } = await accesoFirma(firmaId);
+  if (!esUuid(personaId) || personaId === usuario.id) return { error: "Persona no válida." };
+  let persona: { email: string; nombre: string } | undefined;
+  try {
+    persona = await conUsuario(usuario.id, async (tx) => {
+      const [p] = await tx<{ email: string; nombre: string }[]>`
+        SELECT u.email, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+         WHERE mf.firma_id = ${firmaId} AND mf.usuario_id = ${personaId} AND u.dos_pasos_desde IS NOT NULL`;
+      if (!p) throw new ErrorContable("Esa persona no tiene la verificación en dos pasos activa");
+      await quitarDosPasos(tx, personaId);
+      await tx`DELETE FROM sesiones WHERE usuario_id = ${personaId}`;
+      return p;
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  await avisarCambio(persona!.email, persona!.nombre, `${usuario.nombre} (${firma.nombre}) quitó tu verificación en dos pasos`,
+    "Se cerraron tus sesiones. Al entrar, configúrala de nuevo en Mi cuenta con tu celular.");
+  revalidatePath(`/firma/${firmaId}/equipo`);
+  return { ok: "Verificación en dos pasos quitada. La persona la configura de nuevo al entrar." };
 }

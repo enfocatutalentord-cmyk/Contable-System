@@ -19,6 +19,17 @@ fs.writeFileSync(path.join(S, "factura-proveedor.pdf"), "%PDF-1.4\n1 0 obj<<>>en
   const ver = (texto) => page.waitForSelector(`text=${texto}`, { timeout: 15000 });
   const ir = (url) => page.goto(url, { waitUntil: "networkidle" });
   const boton = (nombre) => page.getByRole("button", { name: nombre, exact: true }).click();
+  // Descarga el Excel de una lista con su botón y devuelve las filas de la hoja (exceljs del proyecto).
+  const excelDe = async (url) => {
+    await ir(url);
+    const [d] = await Promise.all([page.waitForEvent("download"), page.locator(".descargar a", { hasText: "Excel" }).click()]);
+    const ExcelJS = require(path.join(process.cwd(), "node_modules/exceljs"));
+    const libro = new ExcelJS.Workbook();
+    await libro.xlsx.readFile(await d.path());
+    const filas = [];
+    libro.worksheets[0].eachRow((r) => filas.push(r.values.slice(1)));
+    return { nombre: d.suggestedFilename(), filas };
+  };
   const captura = (n) => page.screenshot({ path: path.join(S, n), fullPage: true });
   const asiento = async () => {
     await page.click("text=Ver asiento");
@@ -210,6 +221,16 @@ fs.writeFileSync(path.join(S, "factura-proveedor.pdf"), "%PDF-1.4\n1 0 obj<<>>en
   await ir(urlCompra);
   assert((await page.locator("tr", { hasText: "Saldo pendiente" }).innerText()).includes("10,620.00"), "saldo de nuevo");
   paso("pago anulado: la compra vuelve a deber 10,620");
+
+  // 10b. Excel de las listas (mismo filtro que la pantalla)
+  {
+    const fx = await excelDe(base + "/compras?mes=&estado=todas");
+    assert(fx.filas.at(-1)[0] === "Totales", "fila de totales en compras");
+    assert(fx.filas.some((r) => r.includes("ITBIS")), "columna ITBIS en compras");
+    const px = await excelDe(base + "/pagos");
+    assert(px.filas.some((r) => r[0] === "Pago") && px.filas.some((r) => r.includes("Anulado")), "pagos con el anulado en el Excel");
+  }
+  paso("Excel de compras y pagos");
 
   // 11. Inicio y celular
   await ir(base);

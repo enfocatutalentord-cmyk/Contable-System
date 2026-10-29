@@ -1,3 +1,4 @@
+import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
@@ -22,7 +23,10 @@ export default async function Catalogo({ params, searchParams }: {
 
   return (
     <>
-      <h1>Catálogo de cuentas</h1>
+      <div className="entre">
+        <h1>Catálogo de cuentas</h1>
+        {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/catalogo`} />}
+      </div>
       <p className="sub">
         Catálogo por niveles: clase, grupo, subgrupo y cuenta de detalle. Solo las cuentas de detalle reciben asientos;
         las de grupo suman a sus subcuentas.

@@ -27,7 +27,14 @@ export function Formulario({
       {children}
       {estado.error && <p className="error" role="alert">{estado.error}</p>}
       {estado.ok && <p className="exito" role="status">{estado.ok}</p>}
-      {boton && (
+      {estado.codigos && (
+        <div className="codigos-recuperacion">
+          <ol>{estado.codigos.map((c) => <li key={c}><code>{c}</code></li>)}</ol>
+          <p className="sub">Cada código sirve una sola vez para entrar si no tienes el celular. Cópialos o imprímelos y guárdalos en un lugar seguro: no se vuelven a mostrar.</p>
+          <a className="boton primario" href="">Ya los guardé</a>
+        </div>
+      )}
+      {boton && !estado.codigos && (
         <div>
           <button className="primario" disabled={enviando}>{enviando ? "Guardando…" : boton}</button>
         </div>

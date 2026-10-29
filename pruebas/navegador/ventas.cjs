@@ -19,6 +19,17 @@ fs.writeFileSync(path.join(S, "orden.pdf"), "%PDF-1.4\n1 0 obj<<>>endobj\ntraile
   const ver = (texto) => page.waitForSelector(`text=${texto}`, { timeout: 15000 });
   const ir = (url) => page.goto(url, { waitUntil: "networkidle" });
   const boton = (nombre) => page.getByRole("button", { name: nombre, exact: true }).click();
+  // Descarga el Excel de una lista con su botón y devuelve las filas de la hoja (exceljs del proyecto).
+  const excelDe = async (url) => {
+    await ir(url);
+    const [d] = await Promise.all([page.waitForEvent("download"), page.locator(".descargar a", { hasText: "Excel" }).click()]);
+    const ExcelJS = require(path.join(process.cwd(), "node_modules/exceljs"));
+    const libro = new ExcelJS.Workbook();
+    await libro.xlsx.readFile(await d.path());
+    const filas = [];
+    libro.worksheets[0].eachRow((r) => filas.push(r.values.slice(1)));
+    return { nombre: d.suggestedFilename(), filas };
+  };
   const captura = (n) => page.screenshot({ path: path.join(S, n), fullPage: true });
 
   // 1. Firma y cliente (empresa)
@@ -254,6 +265,21 @@ fs.writeFileSync(path.join(S, "orden.pdf"), "%PDF-1.4\n1 0 obj<<>>endobj\ntraile
   await page.uncheck("input[name=requiere_aprobacion]");
   await boton("Guardar cambios");
   paso("con aprobación obligatoria, quien registra solo guarda borradores");
+
+  // 12b. Excel de las listas (mismo filtro que la pantalla)
+  {
+    const fx = await excelDe(base + "/facturas?mes=&estado=todas");
+    assert(/^facturas-todos-los-meses\.xlsx$/.test(fx.nombre), "nombre del Excel de facturas: " + fx.nombre);
+    assert(fx.filas.some((r) => r.includes("Banco Caribe SA")), "facturas en el Excel");
+    assert(fx.filas.at(-1)[0] === "Totales", "fila de totales en facturas");
+    const cx = await excelDe(base + "/cobros");
+    assert(cx.filas.some((r) => r[0] === "Recibo") && cx.filas.length >= 7, "cobros en el Excel");
+    const ct = await excelDe(base + "/catalogo");
+    assert(ct.filas.some((r) => String(r[1]).includes("Caja")), "catálogo en el Excel");
+    const pdf = await page.request.get(base + "/exportar/facturas?mes=&formato=pdf");
+    assert(pdf.ok() && (await pdf.body()).subarray(0, 4).toString() === "%PDF", "PDF de facturas");
+  }
+  paso("Excel y PDF de facturas, cobros y catálogo");
 
   // 13. Celular
   const movil = await browser.newPage({ viewport: { width: 390, height: 844 } });

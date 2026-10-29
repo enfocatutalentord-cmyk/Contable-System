@@ -9,7 +9,7 @@ const scrypt = promisify(scryptCb) as (clave: string, sal: Buffer, largo: number
 const COOKIE = "sesion";
 const DURACION_MS = 30 * 24 * 3600_000;
 
-export type Usuario = { id: string; email: string; nombre: string };
+export type Usuario = { id: string; email: string; nombre: string; dosPasos: boolean };
 
 export async function cifrarClave(clave: string): Promise<string> {
   const sal = randomBytes(16);
@@ -42,6 +42,45 @@ export async function iniciarSesion(usuarioId: string): Promise<void> {
   });
 }
 
+// ───── Verificación en dos pasos al entrar (lib/dos-pasos.ts) ─────
+// Con la contraseña correcta, quien tiene la verificación activa no recibe sesión todavía: recibe un permiso de 10 minutos
+// (cookie aparte, solo para /entrar) para escribir el código de su app. Sin la verificación, entra directo.
+const PENDIENTE = "verificacion";
+export const MAX_FALLOS_CODIGO = 5;
+
+export async function continuarEntrada(usuarioId: string, destino: string): Promise<never> {
+  const [u] = await db()<{ activa: boolean }[]>`SELECT dos_pasos_desde IS NOT NULL AS activa FROM usuarios WHERE id = ${usuarioId}`;
+  if (!u?.activa) {
+    await iniciarSesion(usuarioId);
+    redirect(destino);
+  }
+  const token = randomBytes(32).toString("base64url");
+  await db()`DELETE FROM entradas_pendientes WHERE usuario_id = ${usuarioId} OR expira < now()`;
+  await db()`INSERT INTO entradas_pendientes (token_hash, usuario_id, destino, expira)
+             VALUES (${hashToken(token)}, ${usuarioId}, ${destino}, now() + interval '10 minutes')`;
+  (await cookies()).set(PENDIENTE, token, {
+    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/entrar", maxAge: 600,
+  });
+  redirect("/entrar/codigo");
+}
+
+export type EntradaPendiente = { token_hash: string; usuario_id: string; email: string; nombre: string; destino: string; fallos: number };
+
+export async function entradaPendiente(): Promise<EntradaPendiente | null> {
+  const token = (await cookies()).get(PENDIENTE)?.value;
+  if (!token) return null;
+  const [p] = await db()<EntradaPendiente[]>`
+    SELECT p.token_hash, p.usuario_id, u.email, u.nombre, p.destino, p.fallos
+      FROM entradas_pendientes p JOIN usuarios u ON u.id = p.usuario_id
+     WHERE p.token_hash = ${hashToken(token)} AND p.expira > now()`;
+  return p ?? null;
+}
+
+export async function cerrarPendiente(tokenHash: string): Promise<void> {
+  await db()`DELETE FROM entradas_pendientes WHERE token_hash = ${tokenHash}`;
+  (await cookies()).delete({ name: PENDIENTE, path: "/entrar" });
+}
+
 export async function cerrarSesion(): Promise<void> {
   const almacen = await cookies();
   const token = almacen.get(COOKIE)?.value;
@@ -53,7 +92,7 @@ export const usuarioActual = cache(async (): Promise<Usuario | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const [u] = await db()<Usuario[]>`
-    SELECT u.id, u.email, u.nombre FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+    SELECT u.id, u.email, u.nombre, u.dos_pasos_desde IS NOT NULL AS "dosPasos" FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
      WHERE s.token_hash = ${hashToken(token)} AND s.expira > now()`;
   return u ?? null;
 });
