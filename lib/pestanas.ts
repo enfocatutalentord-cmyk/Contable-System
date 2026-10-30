@@ -11,7 +11,7 @@ export const PESTANAS_CLIENTE: Seccion[] = [
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
                                 ["/proveedores", "Proveedores"]] },
   { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/bancos", "Bancos"], ["/cierres", "Cierre del mes"]] },
-  { grupo: "Reportes", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"]] },
+  { grupo: "Reportes", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"], ["/estados", "Estados financieros"]] },
   { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
   {
     grupo: "Configuración del cliente",
@@ -33,7 +33,7 @@ const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
   antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
   "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii", it1: "/dgii", ir17: "/dgii", ir6: "/dgii",
-  facturas: "/facturas", cobros: "/cobros", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo", "conciliacion-banco": "/bancos",
+  facturas: "/facturas", cobros: "/cobros", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo", "conciliacion-banco": "/bancos", "estado-financiero": "/estados",
 };
 
 // Pestaña a la que pertenece una dirección dentro del cliente (/facturas/nueva → /facturas; /cxc/estado → /cxc/estado;

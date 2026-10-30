@@ -1,6 +1,6 @@
-import { esDeudora, type TipoCuenta } from "./catalogo-rd";
+import { esDeudora, type TipoCuenta } from "./catalogo-rd.ts";
 import type { Tx } from "./db";
-import { aCentavos } from "./montos";
+import { aCentavos } from "./montos.ts";
 
 export type CuentaSaldo = {
   id: string;

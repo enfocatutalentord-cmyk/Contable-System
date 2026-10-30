@@ -13,6 +13,8 @@ export type Tabla = {
   filas: Celda[][];
   totales?: Celda[];
   horizontal?: boolean;
+  negritas?: number[]; // filas que van en negrita (títulos y totales de los estados financieros)
+  firmas?: { rol: string; nombre: string; detalle?: string }[]; // línea de firmas al pie
 };
 
 // Colores de la marca Empire Tax’N Legal (manual de identidad 1.0).
@@ -37,7 +39,10 @@ export async function aXlsx(t: Tabla): Promise<Buffer> {
     c.border = { bottom: { style: "medium", color: { argb: "FF" + DORADO } } };
   });
   const inicio = hoja.rowCount + 1;
-  for (const f of t.filas) hoja.addRow(f.map((v, i) => (t.columnas[i]?.num ? numero(v) : v)));
+  t.filas.forEach((f, n) => {
+    const r = hoja.addRow(f.map((v, i) => (t.columnas[i]?.num ? numero(v) : v)));
+    if (t.negritas?.includes(n)) r.font = { bold: true };
+  });
   if (t.totales) {
     const r = hoja.addRow(t.totales.map((v, i) => (t.columnas[i]?.num ? numero(v) : v)));
     r.font = { bold: true };
@@ -51,6 +56,12 @@ export async function aXlsx(t: Tabla): Promise<Buffer> {
       col.alignment = { horizontal: "right" };
     }
   });
+  if (t.firmas?.length) {
+    hoja.addRow([]); hoja.addRow([]);
+    hoja.addRow(t.firmas.flatMap(() => ["____________________________", ""]));
+    hoja.addRow(t.firmas.flatMap((f) => [f.nombre || " ", ""])).font = { bold: true };
+    hoja.addRow(t.firmas.flatMap((f) => [[f.rol, f.detalle].filter(Boolean).join(" · "), ""]));
+  }
   hoja.views = [{ state: "frozen", ySplit: inicio - 1 }];
   hoja.autoFilter = { from: { row: inicio - 1, column: 1 }, to: { row: inicio - 1, column: t.columnas.length } };
   return Buffer.from(await libro.xlsx.writeBuffer());
@@ -79,7 +90,7 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
   });
   const cuerpo = [
     t.columnas.map((c) => ({ text: c.titulo, bold: true, color: "#ffffff", fillColor: `#${VERDE}`, alignment: c.num ? "right" : "left" })),
-    ...t.filas.map((f) => f.map((v, i) => celda(v, i))),
+    ...t.filas.map((f, n) => f.map((v, i) => celda(v, i, t.negritas?.includes(n)))),
     ...(t.totales ? [t.totales.map((v, i) => celda(v, i, true))] : []),
   ];
   const doc = {
@@ -101,6 +112,17 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
         },
         layout: { hLineWidth: (i: number) => (i === 1 ? 0.8 : 0.3), vLineWidth: () => 0, hLineColor: (i: number) => (i === 1 ? `#${DORADO}` : "#cccccc"), paddingTop: () => 3, paddingBottom: () => 3 },
       },
+      ...(t.firmas?.length ? [{
+        columns: t.firmas.map((f) => ({
+          stack: [
+            { text: "", margin: [0, 48, 0, 0] },
+            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 0.6 }] },
+            { text: f.nombre || " ", bold: true, margin: [0, 4, 0, 0] },
+            { text: [f.rol, f.detalle].filter(Boolean).join(" · "), color: "#444444" },
+          ],
+        })),
+        columnGap: 40, unbreakable: true,
+      }] : []),
     ],
     footer: (actual: number, total: number) => ({
       columns: [{ text: PRODUCTO, color: `#${VERDE}` }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }],

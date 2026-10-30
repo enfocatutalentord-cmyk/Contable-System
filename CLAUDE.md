@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 30-oct-2026 (Fase 5 Bancos parte 1 y retención de alquileres en `main`; sigue la conciliación).
+Última actualización: 30-oct-2026 (Fase 5 Bancos completa en `main`; Fase 7 parte 1 en la rama).
 
 ## Con quién y cómo
 
@@ -185,6 +185,19 @@ Notas de infraestructura que costaron tiempo:
   mes). Inicio de la firma: cifra y pendiente «movimientos del banco por conciliar». Pruebas `pruebas/reporte-conciliacion.test.mjs`
   (y el recorrido `conciliacion.cjs` llega hasta el cierre). Vercel ya está en plan **Pro** (captura del 30-oct). **Pendiente:** Joannie aún no tiene estados de cuenta reales de los bancos de los
   clientes (30-oct); cuando los mande, probar que cada formato se lea bien (hasta ahora solo con archivos de ejemplo).
+- **Estados financieros** (Fase 7, «sí» de Joannie el 30-oct-2026 a la estructura en 3 partes, al flujo por método indirecto y a
+  la línea de firmas; NIIF para PYMES adoptada por el ICPARD). **Parte 1** (migración 021, `lib/estados.ts`, `lib/estados-pantalla.ts`,
+  pestaña `/estados` en Reportes; la ven Administrador, Contador, Auxiliar y Solo lectura): estado de resultados (ingresos
+  operacionales 41, costo 5, utilidad bruta, gastos operacionales 61, utilidad en operaciones, otros ingresos 4x, gastos financieros
+  62, otros gastos, utilidad antes de ISR, ISR 63, utilidad neta; % de ingresos con una columna) y estado de situación financiera
+  (activos corrientes 11 / no corrientes, pasivos corrientes 21 / no corrientes, patrimonio + «resultados de ejercicios anteriores
+  sin cerrar» + «resultado del ejercicio en curso» según `empresas.mes_cierre`; avisa si no cuadra). Comparar: período anterior,
+  mismo período del año pasado o mes por mes (hasta 12 + total); variación en monto y % con dos columnas; detalle por cuenta o
+  por subgrupo de 4 dígitos; cada cuenta abre su libro mayor. Excel/PDF (`/exportar/estado-financiero`) con filas en negrita y
+  firmas «Preparado por» (contador, N.º ICPARD) y «Aprobado por» (cargo) de `empresas.firma_*` (permiso «empresa»; `Tabla.firmas`
+  y `Tabla.negritas` en `lib/exportar.ts`). Pruebas `pruebas/estados.test.mjs`; recorrido `pruebas/navegador/estados.cjs` (con
+  `--experimental-strip-types`, datos en `datos-estados.mjs`). Parte 2: flujo de efectivo (indirecto) y cambios en el patrimonio;
+  parte 3: cierre del ejercicio y Centro de reportes; luego presentar el IR-2.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -240,7 +253,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
 | 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); parte 2 (conciliación) en `main` («sí» del 30-oct); parte 3 (reporte y cierre) en `main` («sí» del 30-oct). **Fase 5 completa.** Sigue presentar la estructura de la Fase 7. |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
-| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
+| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Estructura aprobada (30-oct-2026). Parte 1 (resultados y situación financiera) en la rama, falta su «sí». |
 
 ### Pendientes y decisiones abiertas
 
@@ -293,13 +306,13 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 102 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 107 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
-# también: acceso, firma, roles, documentos, dos-pasos, bancos, conciliacion y dgii (cada uno crea su propia firma; dgii y conciliacion con --experimental-strip-types)
+# también: acceso, firma, roles, documentos, dos-pasos, bancos, conciliacion, estados y dgii (cada uno crea su propia firma; dgii, conciliacion y estados con --experimental-strip-types)
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes

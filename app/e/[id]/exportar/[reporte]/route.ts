@@ -21,10 +21,12 @@ import { aCentavos, deCentavos, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { reporteConciliacion } from "@/lib/reporte-conciliacion";
+import { armarEstado, leerFiltrosEstados, TITULOS } from "@/lib/estados-pantalla";
+import { porcentaje, variacion } from "@/lib/estados";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -269,6 +271,30 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           deCentavos(f.montoPago), deCentavos(f.sujeto), deCentavos(f.tasa), deCentavos(f.retenido)]),
         totales: ["", "", "", "", "", "Totales", deCentavos(filas.reduce((t, f) => t + f.montoPago, 0n)),
           deCentavos(filas.reduce((t, f) => t + f.sujeto, 0n)), "", deCentavos(filas.reduce((t, f) => t + f.retenido, 0n))],
+      }];
+    }
+    if (reporte === "estado-financiero") {
+      const f = leerFiltrosEstados(sp);
+      const { estado, firmas } = await conEmpresa(id, (tx) => armarEstado(tx, f));
+      const cols = estado.columnas;
+      const dos = cols.length === 2, conPct = f.tipo === "resultados" && cols.length === 1;
+      const columnas = [col("", false, 46), ...cols.map((c) => col(c.titulo, true)),
+        ...(conPct ? [col("% de ingresos", false, 14)] : []), ...(dos ? [col("Variación", true), col("%", false, 10)] : [])];
+      const filas: Celda[][] = estado.filas.map((r) => {
+        const sangria = r.tipo === "cuenta" ? "   " : "";
+        if (r.tipo === "seccion") return [r.texto, ...cols.map(() => ""), ...(conPct ? [""] : []), ...(dos ? ["", ""] : [])];
+        const v = dos ? variacion(r.valores) : null;
+        return [sangria + r.texto, ...r.valores.map(deCentavos), ...(conPct ? [porcentaje(r.valores[0], estado.base?.[0] ?? 0n)] : []),
+          ...(v ? [deCentavos(v.monto), v.pct] : [])];
+      });
+      const detalle = f.tipo === "resultados" ? `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}` : `Al ${verFecha(cols[0].hasta)}`;
+      return [`${f.tipo === "resultados" ? "estado-de-resultados" : "estado-de-situacion"}-${cols[0].hasta}`, {
+        ...base, titulo: TITULOS[f.tipo], detalle: `${detalle} · valores en ${empresa.moneda}`, horizontal: cols.length > 3,
+        columnas, filas, negritas: estado.filas.flatMap((r, i) => (r.tipo === "cuenta" ? [] : [i])),
+        firmas: [
+          { rol: "Preparado por", nombre: firmas.firma_preparado ?? "", detalle: firmas.firma_icpard ? `ICPARD ${firmas.firma_icpard}` : undefined },
+          { rol: "Aprobado por", nombre: firmas.firma_aprobado ?? "", detalle: firmas.firma_cargo ?? undefined },
+        ],
       }];
     }
     if (reporte === "conciliacion-banco") {
