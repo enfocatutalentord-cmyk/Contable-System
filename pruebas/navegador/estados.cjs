@@ -76,6 +76,22 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await captura("estados-2-balance.png");
   paso("estado de situación al 31/12/2026: activos 124,000 = pasivos y patrimonio 124,000");
 
+  // Flujo de efectivo y cambios en el patrimonio de 2026
+  await page.goto(`${B}/e/${eid}/estados?tipo=flujo&desde=2026-01-01&hasta=2026-12-31&comparar=ninguno`, { waitUntil: "networkidle" });
+  assert(/19,000\.00/.test(await fila("Efectivo neto de las actividades de operación").innerText()), "flujo de operación");
+  assert(/124,000\.00/.test(await fila("Efectivo y equivalentes al final").innerText()), "efectivo final");
+  assert(!(await page.locator("text=El efectivo al final no coincide").count()), "el flujo cuadra con el efectivo");
+  await captura("estados-3-flujo.png");
+  await page.getByRole("link", { name: "Estado de cambios en el patrimonio" }).click();
+  await page.waitForURL(/tipo=patrimonio/);
+  assert(/121,000\.00/.test(await fila("Saldo al final del período").innerText()), "patrimonio final");
+  await captura("estados-4-patrimonio.png");
+  paso("flujo de efectivo (indirecto) llega a 124,000 de efectivo; el patrimonio cierra en 121,000 como el balance");
+  await page.goto(`${B}/e/${eid}/catalogo`, { waitUntil: "networkidle" });
+  assert(/Inversión \(sugerida\)/.test(await page.locator("tr", { hasText: "120105" }).innerText()), "actividad sugerida en el catálogo");
+  paso("el catálogo muestra la actividad del flujo de cada cuenta");
+  await page.goto(`${B}/e/${eid}/estados?tipo=balance&corte=2026-12-31&comparar=ninguno`, { waitUntil: "networkidle" });
+
   // Clic al libro mayor
   await fila("110103").getByRole("link").click();
   await page.waitForURL(/\/mayor\?cuenta=/);

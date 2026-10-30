@@ -8,6 +8,7 @@ import { insertarAsiento } from "../lib/asientos.ts";
 import {
   balanceGeneral, columnasBalance, columnasResultados, estadoResultados, inicioEjercicio, porcentaje, variacion,
 } from "../lib/estados.ts";
+import { actividadSugerida, cambiosPatrimonio, flujoEfectivo } from "../lib/estados-flujo.ts";
 
 const rangos = (cols) => cols.map((c) => [c.desde, c.hasta]);
 
@@ -38,6 +39,17 @@ test("porcentaje y variación sin decimales flotantes", () => {
   assert.equal(porcentaje(5n, 0n), "");
   assert.deepEqual(variacion([150n, 100n]), { monto: 50n, pct: "50.0 %" });
   assert.deepEqual(variacion([50n, -100n]), { monto: 150n, pct: "150.0 %" });
+});
+
+test("actividad sugerida para el flujo de efectivo", () => {
+  assert.equal(actividadSugerida("110103", "activo", "Banco cuenta corriente"), "efectivo");
+  assert.equal(actividadSugerida("110201", "activo", "Cuentas por cobrar clientes"), "operacion");
+  assert.equal(actividadSugerida("120106", "activo", "Depreciación acumulada"), "ajuste");
+  assert.equal(actividadSugerida("120105", "activo", "Vehículos"), "inversion");
+  assert.equal(actividadSugerida("210401", "pasivo", "Préstamos bancarios a corto plazo"), "financiamiento");
+  assert.equal(actividadSugerida("220101", "pasivo", "Préstamos bancarios a largo plazo"), "financiamiento");
+  assert.equal(actividadSugerida("310101", "patrimonio", "Capital suscrito y pagado"), "financiamiento");
+  assert.equal(actividadSugerida("410101", "ingreso", "Ingresos por servicios"), null);
 });
 
 // ───── Con la base ─────
@@ -118,4 +130,42 @@ test("estado de situación financiera: cuadra y separa el resultado del ejercici
   assert.deepEqual(total(e, "Resultado del ejercicio en curso"), [1600000n, 500000n]);
   assert.deepEqual(total(e, "Total patrimonio"), [12100000n, 10500000n]);
   assert.deepEqual(e.cuadra, [true, true]);
+});
+
+test("flujo de efectivo de 2026 (método indirecto): cuadra con el efectivo", conBase, async () => {
+  const e = await leer((tx) => flujoEfectivo(tx, columnasResultados("2026-01-01", "2026-12-31", "ninguno")));
+  assert.deepEqual(total(e, "Utilidad (pérdida) neta del período"), [1600000n]);
+  assert.deepEqual(e.filas.find((f) => f.texto.startsWith("210205"))?.valores, [300000n], "el ISR por pagar es efectivo que no salió");
+  assert.deepEqual(total(e, "Efectivo neto de las actividades de operación"), [1900000n]);
+  assert.deepEqual(total(e, "Aumento (disminución) neto del efectivo"), [1900000n]);
+  assert.deepEqual(total(e, "Efectivo y equivalentes al inicio del período"), [10500000n]);
+  assert.deepEqual(total(e, "Efectivo y equivalentes al final del período"), [12400000n]);
+  assert.deepEqual(e.cuadraEfectivo, [true]);
+});
+
+test("flujo de enero 2027: depreciación sumada de vuelta y préstamo en financiamiento", conBase, async () => {
+  await asiento("2027-01-15", "610214", "120106", 50000n);
+  await asiento("2027-01-20", "110103", "220101", 1000000n);
+  await asiento("2027-01-25", "120104", "110103", 300000n);
+  const e = await leer((tx) => flujoEfectivo(tx, columnasResultados("2027-01-01", "2027-01-31", "ninguno")));
+  assert.deepEqual(total(e, "Utilidad (pérdida) neta del período"), [-50000n]);
+  assert.deepEqual(e.filas.find((f) => f.texto.startsWith("120106"))?.valores, [50000n]);
+  assert.deepEqual(total(e, "Efectivo neto de las actividades de operación"), [0n]);
+  assert.deepEqual(total(e, "Efectivo neto de las actividades de inversión"), [-300000n]);
+  assert.deepEqual(total(e, "Efectivo neto de las actividades de financiamiento"), [1000000n]);
+  assert.deepEqual(e.cuadraEfectivo, [true]);
+  // Una cuenta reclasificada en el catálogo cambia de sección.
+  await leer((tx) => tx`UPDATE cuentas SET actividad_flujo = 'operacion' WHERE id = ${cuentas["220101"]}`);
+  const r = await leer((tx) => flujoEfectivo(tx, columnasResultados("2027-01-01", "2027-01-31", "ninguno")));
+  assert.deepEqual(total(r, "Efectivo neto de las actividades de financiamiento"), [0n]);
+  assert.deepEqual(r.cuadraEfectivo, [true]);
+  await leer((tx) => tx`UPDATE cuentas SET actividad_flujo = NULL WHERE id = ${cuentas["220101"]}`);
+});
+
+test("cambios en el patrimonio de 2026: llega al total del estado de situación", conBase, async () => {
+  const e = await leer((tx) => cambiosPatrimonio(tx, "2026-01-01", "2026-12-31"));
+  assert.deepEqual(e.columnas.map((c) => c.titulo), ["Capital social", "Resultados sin cerrar", "Total"]);
+  assert.deepEqual(total(e, "Saldo al inicio del período"), [10000000n, 500000n, 10500000n]);
+  assert.deepEqual(total(e, "Resultado del período"), [0n, 1600000n, 1600000n]);
+  assert.deepEqual(total(e, "Saldo al final del período"), [10000000n, 2100000n, 12100000n]);
 });

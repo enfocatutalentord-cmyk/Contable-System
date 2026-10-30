@@ -3,9 +3,11 @@ import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
 import { conEmpresa } from "@/lib/db";
+import { ACTIVIDADES, actividadSugerida, type Actividad } from "@/lib/estados-flujo";
 import { puede } from "@/lib/permisos";
 import { crearCuenta, editarCuenta } from "../acciones";
 
+const CORTAS: Record<Actividad, string> = { efectivo: "Efectivo", operacion: "Operación", ajuste: "No es efectivo", inversion: "Inversión", financiamiento: "Financiamiento" };
 const TIPOS: Record<string, string> = {
   activo: "Activo", pasivo: "Pasivo", patrimonio: "Patrimonio", ingreso: "Ingreso", costo: "Costo", gasto: "Gasto",
 };
@@ -43,6 +45,14 @@ export default async function Catalogo({ params, searchParams }: {
                 <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <input type="checkbox" name="activa" defaultChecked={enEdicion.activa} style={{ minHeight: 0 }} /> Activa
                 </label>
+                {enEdicion.de_detalle && actividadSugerida(enEdicion.codigo, enEdicion.tipo, enEdicion.nombre) && (
+                  <label style={{ flex: "1 1 300px" }}>En el flujo de efectivo
+                    <select name="actividad_flujo" defaultValue={enEdicion.actividad_flujo ?? ""}>
+                      <option value="">Sugerida: {ACTIVIDADES[actividadSugerida(enEdicion.codigo, enEdicion.tipo, enEdicion.nombre)!]}</option>
+                      {Object.entries(ACTIVIDADES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </label>
+                )}
               </Formulario>
               <p><a href={`/e/${id}/catalogo`}>Cancelar</a></p>
             </>
@@ -68,7 +78,7 @@ export default async function Catalogo({ params, searchParams }: {
 
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th>Uso</th>{editable && <th />}</tr></thead>
+          <thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th>Uso</th><th>Flujo de efectivo</th>{editable && <th />}</tr></thead>
           <tbody>
             {cuentas.map((c) => (
               <tr key={c.id} className={c.de_detalle ? undefined : "grupo"} style={c.activa ? undefined : { opacity: 0.55 }}>
@@ -76,6 +86,7 @@ export default async function Catalogo({ params, searchParams }: {
                 <td style={{ paddingLeft: 12 + (c.nivel - 1) * 18 }}>{c.nombre}{!c.activa && " (inactiva)"}</td>
                 <td>{TIPOS[c.tipo]}</td>
                 <td>{c.de_detalle ? "Detalle" : "Grupo"}</td>
+                <td>{c.de_detalle && actividadSugerida(c.codigo, c.tipo, c.nombre) ? CORTAS[(c.actividad_flujo as Actividad | null) ?? actividadSugerida(c.codigo, c.tipo, c.nombre)!] + (c.actividad_flujo ? "" : " (sugerida)") : ""}</td>
                 {editable && <td className="num"><a href={`/e/${id}/catalogo?editar=${c.id}`}>Editar</a></td>}
               </tr>
             ))}

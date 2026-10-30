@@ -13,7 +13,7 @@ export type Fila = {
   cuentaId?: string;
   valores: bigint[];
 };
-export type Estado = { columnas: Columna[]; filas: Fila[]; base?: bigint[]; cuadra?: boolean[] };
+export type Estado = { columnas: Columna[]; filas: Fila[]; base?: bigint[]; cuadra?: boolean[]; sinVariacion?: boolean };
 export type Comparar = "ninguno" | "anterior" | "anio" | "meses";
 export const COMPARAR: Record<Comparar, string> = {
   ninguno: "Sin comparar", anterior: "Período anterior", anio: "Mismo período del año pasado", meses: "Mes por mes",

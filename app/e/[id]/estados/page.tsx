@@ -22,7 +22,7 @@ export default async function Estados({ params, searchParams }: {
   const f = leerFiltrosEstados(sp);
   const { estado, firmas } = await conEmpresa(id, (tx) => armarEstado(tx, f));
   const cols = estado.columnas;
-  const dos = cols.length === 2;
+  const dos = cols.length === 2 && !estado.sinVariacion;
   const conPct = f.tipo === "resultados" && cols.length === 1;
   const enlaceTipo = (t: TipoEstado) => `/e/${id}/estados?${consultaEstados({ ...f, tipo: t })}`;
   const mayor = (fila: Fila) => {
@@ -47,7 +47,7 @@ export default async function Estados({ params, searchParams }: {
       </nav>
       <form className="fila" style={{ marginBottom: 16 }}>
         <input type="hidden" name="tipo" value={f.tipo} />
-        {f.tipo === "resultados" ? (
+        {f.tipo !== "balance" ? (
           <>
             <label>Desde<input type="date" name="desde" defaultValue={f.desde} required /></label>
             <label>Hasta<input type="date" name="hasta" defaultValue={f.hasta} required /></label>
@@ -55,25 +55,33 @@ export default async function Estados({ params, searchParams }: {
         ) : (
           <label>Al<input type="date" name="corte" defaultValue={f.corte} required /></label>
         )}
-        <label>Comparar con
-          <select name="comparar" defaultValue={f.comparar}>
-            {Object.entries(COMPARAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
-        <label>Detalle
-          <select name="agrupar" defaultValue={f.agrupar}>
-            <option value="cuentas">Por cuenta</option>
-            <option value="grupos">Por subgrupo</option>
-          </select>
-        </label>
+        {f.tipo !== "patrimonio" && (
+          <label>Comparar con
+            <select name="comparar" defaultValue={f.comparar}>
+              {Object.entries(COMPARAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        )}
+        {(f.tipo === "resultados" || f.tipo === "balance") && (
+          <label>Detalle
+            <select name="agrupar" defaultValue={f.agrupar}>
+              <option value="cuentas">Por cuenta</option>
+              <option value="grupos">Por subgrupo</option>
+            </select>
+          </label>
+        )}
         <button>Ver</button>
       </form>
 
       <h2 style={{ marginBottom: 4 }}>{TITULOS[f.tipo]}</h2>
       <p className="sub">
-        {f.tipo === "resultados" ? `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}` : `Al ${verFecha(cols[0].hasta)}`}
-        {" · "}toca una cuenta para ver su libro mayor
+        {f.tipo === "balance" ? `Al ${verFecha(cols[0].hasta)}` : `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}`}
+        {f.tipo === "flujo" && " · método indirecto; la actividad de cada cuenta se cambia en el Catálogo de cuentas"}
+        {f.tipo !== "patrimonio" && " · toca una cuenta para ver su libro mayor"}
       </p>
+      {estado.cuadraEfectivo?.some((c) => !c) && (
+        <p className="aviso">El efectivo al final no coincide con el saldo de las cuentas de efectivo. Revisa en el Catálogo qué cuentas están marcadas como «Efectivo y equivalentes».</p>
+      )}
       {estado.cuadra && estado.cuadra.some((c) => !c) && (
         <p className="aviso">El activo no es igual al pasivo más el patrimonio en alguna fecha. Revisa la balanza de comprobación.</p>
       )}
@@ -90,7 +98,7 @@ export default async function Estados({ params, searchParams }: {
           <tbody>
             {estado.filas.map((fila, i) => {
               const v = dos ? variacion(fila.valores) : null;
-              const enlace = fila.tipo === "cuenta" ? mayor(fila) : null;
+              const enlace = fila.tipo === "cuenta" && f.tipo !== "patrimonio" ? mayor(fila) : null;
               return (
                 <tr key={i} className={`fila-${fila.tipo}`}>
                   <td>{enlace ? <Link href={enlace}>{fila.texto}</Link> : fila.texto}</td>

@@ -277,7 +277,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const f = leerFiltrosEstados(sp);
       const { estado, firmas } = await conEmpresa(id, (tx) => armarEstado(tx, f));
       const cols = estado.columnas;
-      const dos = cols.length === 2, conPct = f.tipo === "resultados" && cols.length === 1;
+      const dos = cols.length === 2 && !estado.sinVariacion, conPct = f.tipo === "resultados" && cols.length === 1;
       const columnas = [col("", false, 46), ...cols.map((c) => col(c.titulo, true)),
         ...(conPct ? [col("% de ingresos", false, 14)] : []), ...(dos ? [col("Variación", true), col("%", false, 10)] : [])];
       const filas: Celda[][] = estado.filas.map((r) => {
@@ -287,8 +287,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return [sangria + r.texto, ...r.valores.map(deCentavos), ...(conPct ? [porcentaje(r.valores[0], estado.base?.[0] ?? 0n)] : []),
           ...(v ? [deCentavos(v.monto), v.pct] : [])];
       });
-      const detalle = f.tipo === "resultados" ? `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}` : `Al ${verFecha(cols[0].hasta)}`;
-      return [`${f.tipo === "resultados" ? "estado-de-resultados" : "estado-de-situacion"}-${cols[0].hasta}`, {
+      const detalle = f.tipo === "balance" ? `Al ${verFecha(cols[0].hasta)}` : `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}`;
+      const archivo = { resultados: "estado-de-resultados", balance: "estado-de-situacion", flujo: "flujo-de-efectivo", patrimonio: "cambios-en-el-patrimonio" }[f.tipo];
+      return [`${archivo}-${cols[0].hasta}`, {
         ...base, titulo: TITULOS[f.tipo], detalle: `${detalle} · valores en ${empresa.moneda}`, horizontal: cols.length > 3,
         columnas, filas, negritas: estado.filas.flatMap((r, i) => (r.tipo === "cuenta" ? [] : [i])),
         firmas: [

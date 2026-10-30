@@ -333,10 +333,13 @@ export async function editarCuenta(empresaId: string, _: Estado, fd: FormData): 
   const cuentaId = texto(fd, "cuenta");
   const nombre = texto(fd, "nombre");
   const activa = fd.get("activa") === "on";
+  // Actividad en el estado de flujos de efectivo; vacío = la sugerida por el código.
+  const actividad = texto(fd, "actividad_flujo") || null;
   if (!nombre) return { error: "Escribe el nombre de la cuenta." };
+  if (actividad && !["efectivo", "operacion", "ajuste", "inversion", "financiamiento"].includes(actividad)) return { error: "Actividad no válida." };
   try {
     await conEmpresa(empresaId, async (tx) => {
-      const r = await tx`UPDATE cuentas SET nombre = ${nombre}, activa = ${activa} WHERE id = ${cuentaId}`;
+      const r = await tx`UPDATE cuentas SET nombre = ${nombre}, activa = ${activa}, actividad_flujo = ${actividad} WHERE id = ${cuentaId}`;
       if (r.count === 0) throw new ErrorContable("La cuenta no existe");
       await tx`INSERT INTO bitacora (empresa_id, usuario_id, accion, detalle)
                VALUES (${empresaId}, ${usuario.id}, 'cuenta_editada', ${tx.json({ cuentaId, nombre, activa })})`;
