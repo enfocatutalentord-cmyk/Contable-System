@@ -175,7 +175,15 @@ Notas de infraestructura que costaron tiempo:
   concepto; «Agregar reglas sugeridas»: comisiones (620101) e impuesto a cheques y transferencias (620104; 0.20 % desde el
   3-jul-2026, Ley 30-26; en el catálogo nuevo la 620104 ya no dice «0.15 %»). Pruebas `pruebas/conciliacion.test.mjs`;
   recorrido `pruebas/navegador/conciliacion.cjs` (con `--experimental-strip-types`, datos en `datos-conciliacion.mjs`).
-  Parte 3: reporte y cierre de la conciliación del mes. **Pendiente:** Joannie aún no tiene estados de cuenta reales de los bancos de los
+  **Parte 3** (migración 020, `lib/reporte-conciliacion.ts`, `/bancos/[cid]/conciliacion?mes=AAAAMM`): reporte con la forma de
+  QuickBooks/Xero: saldo del banco al cierre (+ depósitos y − pagos en libros aún no en el banco = banco ajustado) contra saldo en
+  libros (± lo del banco que libros no tiene al cierre: por conciliar, excluidos o registrados después; ± diferencia de apertura
+  entre libros y el saldo inicial del banco) = libros ajustado; diferencia en verde si es 0. Una línea conciliada con un movimiento
+  posterior al cierre sigue en tránsito. Excel/PDF (`/exportar/conciliacion-banco?cuenta=&mes=`). «Cerrar la conciliación» (permiso
+  «cerrar»; sin pendientes hasta el cierre, diferencia 0, cuenta en DOP) guarda saldos, resumen y huella en `cierres_conciliacion`;
+  si algo cambia avisa «Cambió después del cierre»; «Quitar el cierre» pide «reabrir». No bloquea asientos (eso es el cierre del
+  mes). Inicio de la firma: cifra y pendiente «movimientos del banco por conciliar». Pruebas `pruebas/reporte-conciliacion.test.mjs`
+  (y el recorrido `conciliacion.cjs` llega hasta el cierre). Vercel ya está en plan **Pro** (captura del 30-oct). **Pendiente:** Joannie aún no tiene estados de cuenta reales de los bancos de los
   clientes (30-oct); cuando los mande, probar que cada formato se lea bien (hasta ahora solo con archivos de ejemplo).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
@@ -230,7 +238,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 2. Configuración tributaria | Perfil fiscal (persona física/jurídica, contribuyente de ITBIS, agente de retención, emisor e-CF), obligaciones DGII sugeridas y confirmables, impuestos con tasa, cuentas y vigencia, retenciones ITBIS/ISR con vigencia y tipo 606, todos los comprobantes B y E con sus rangos, «Probar cálculo» con asientos de ejemplo, permiso «impuestos» | **Aprobada y en `main`** (22-oct-2026, commit `3983185`; migración `004_tributaria.sql`; 34 pruebas; recorrido `pruebas/navegador/tributaria.cjs` de 11 pasos). |
 | 3. Ventas y CxC | Borradores y emisión de facturas, impuestos de la configuración por línea (con propina/selectivo), notas de crédito B04, anulación 608, cobros con retenciones configurables y sugeridas, clientes con datos fiscales, productos con impuestos, adjuntos e historial en facturas y cobros, antigüedad y estado de cuenta | **Aprobada y en `main`** (22-oct-2026, commit `0a396a1`; migración `005_ventas_fiscal.sql`; 45 pruebas, 11 de ellas de ventas con la lógica real; recorrido `pruebas/navegador/ventas.cjs` de 13 pasos; los de las fases 1 y 2 siguen pasando). |
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
-| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); parte 2 (conciliación) en `main` («sí» del 30-oct); sigue la parte 3 (reporte y cierre). |
+| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); parte 2 (conciliación) en `main` («sí» del 30-oct); parte 3 (reporte y cierre) en la rama, falta su «sí». |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
 | 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
 
@@ -260,7 +268,7 @@ No se pasa a la siguiente sin su autorización expresa.
   reordenado) en `main` (`3b752a1`). Parte 3 (documentos recibidos y portal del cliente) en `main` (`a9aa3f5`, 29-oct).
 - **Revisión del 29-oct-2026** (Drive › «5. Revisión de la plataforma, roles e IA»): urgentes (1) respaldos sin funcionar
   (faltan secretos en GitHub y Actions en $0), (2) e-CF obligatorio para micro/pequeños desde el 15-nov-2026 (Aviso DGII 06-26,
-  confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro. Propuestos y esperando su
+  confirmar texto oficial): adelantar PSFE, (3) Vercel Hobby no permite uso comercial: pasar a Pro (hecho: la captura del 30-oct muestra el equipo en Pro). Propuestos y esperando su
   «sí»: roles con permisos y restricciones (Administradora, Contadora, Auxiliar, Facturación opcional, Solo lectura, Cliente ·
   Consulta, Cliente · Sube documentos), menú reordenado (diario arriba, configuración y administración abajo, sin plegables),
   IA según el rol (dice qué rol/quién puede hacerlo; herramientas filtradas por permisos, OWASP LLM06), verificación en dos
@@ -285,7 +293,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 99 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 102 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

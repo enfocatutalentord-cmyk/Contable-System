@@ -136,6 +136,31 @@ const CSV = `Fecha;Descripción;Referencia;Débito;Crédito;Balance
     paso("el pago conciliado no se anula: pide desconciliarlo primero");
   }
 
+  // Reporte y cierre de la conciliación de octubre
+  await page.goto(cuentaUrl, { waitUntil: "networkidle" });
+  await page.getByRole("link", { name: "Reporte y cierre de la conciliación del mes" }).click();
+  await page.waitForURL(/\/conciliacion$/);
+  await page.locator("h1", { hasText: "Conciliación de octubre de 2026" }).waitFor();
+  const resumen = await page.locator(".resumen-conciliacion").innerText();
+  assert(/Saldo según el banco al 31\/10\/2026\s*18,300.00/.test(resumen), "saldo banco: " + resumen);
+  assert(/Saldo en libros al 31\/10\/2026\s*18,310.00/.test(resumen), "saldo libros");
+  assert(/Diferencia\s*0.00/.test(resumen), "diferencia cero");
+  assert(/Excluido: Línea informativa del banco/.test(await page.locator("body").innerText()), "excluido en el reporte");
+  const xlsx = await page.request.get(`${B}/e/${eid}/exportar/conciliacion-banco?cuenta=${cuentaUrl.split("/").pop()}&mes=202610`);
+  assert(xlsx.status() === 200 && (await xlsx.body()).subarray(0, 2).toString() === "PK", "Excel del reporte");
+  const pdf = await page.request.get(`${B}/e/${eid}/exportar/conciliacion-banco?cuenta=${cuentaUrl.split("/").pop()}&mes=202610&formato=pdf`);
+  assert(pdf.status() === 200 && (await pdf.body()).subarray(0, 4).toString() === "%PDF", "PDF del reporte");
+  await captura("conciliacion-3-reporte.png");
+  await page.getByRole("button", { name: "Cerrar la conciliación de octubre de 2026" }).click();
+  await page.waitForURL(/cerrado=1/);
+  await page.locator("text=Cerrada por Joannie").waitFor();
+  paso("reporte de octubre: banco 18,300 y libros 18,310 cuadran (el excluido explica los 10); Excel y PDF; mes cerrado");
+
+  // Un registro nuevo de octubre: avisa que cambió después del cierre
+  await page.goto(`${B}/firma/${fid}`, { waitUntil: "networkidle" });
+  assert(/Movimientos del banco por conciliar\s*0/.test(await page.locator(".cifras").innerText()), "cifra en el Inicio de la firma");
+  paso("el Inicio de la firma muestra los movimientos del banco por conciliar");
+
   // Celular
   const movil = await (await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await page.context().storageState() })).newPage();
   await movil.goto(cuentaUrl + "?estado=todos", { waitUntil: "networkidle" });

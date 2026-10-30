@@ -251,3 +251,4 @@ ol.pasos li { margin-bottom: 4px; }
 form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .conciliar { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .conciliar-lineas { margin: 0; padding-left: 18px; font-size: 0.9rem; }
+.resumen-conciliacion tr.total td { font-weight: 650; border-top: 2px solid var(--borde); }

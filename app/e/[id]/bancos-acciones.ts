@@ -10,6 +10,7 @@ import { conciliar, desconciliar, excluir, REGLAS_SUGERIDAS, registrarDesdeMovim
 import { conEmpresa, mensajeError, type Tx } from "@/lib/db";
 import { huella, nombreSeguro, TAMANO_MAXIMO } from "@/lib/documentos";
 import { leerMonto } from "@/lib/montos";
+import { cerrarConciliacion, reabrirConciliacion } from "@/lib/reporte-conciliacion";
 import type { Estado } from "../../acciones-cuenta";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -331,4 +332,32 @@ export async function agregarReglasSugeridas(empresaId: string, _: Estado, _fd: 
   const falta = faltan.length ? ` Falta en el catálogo la cuenta ${faltan.join(" y ")}.` : "";
   if (!n) return { error: `No se agregó ninguna regla nueva.${falta}` };
   redirect(`/e/${empresaId}/bancos/reglas?agregadas=${n}${faltan.length ? `&faltan=${faltan.join(",")}` : ""}`);
+}
+
+// ───────────── Cierre de la conciliación del mes ─────────────
+
+const MES = /^\d{4}(0[1-9]|1[0-2])$/;
+
+export async function cerrarMesBanco(empresaId: string, cuentaBancariaId: string, periodo: string, _: Estado, _fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "cerrar", "/bancos");
+  if (!esUuid(cuentaBancariaId) || !MES.test(periodo)) return { error: "Datos no válidos." };
+  try {
+    await conEmpresa(empresaId, (tx) => cerrarConciliacion(tx, { cuentaBancariaId, periodo, usuarioId: usuario.id }));
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/bancos/${cuentaBancariaId}/conciliacion?mes=${periodo}&cerrado=1`);
+}
+
+export async function reabrirMesBanco(empresaId: string, cuentaBancariaId: string, periodo: string, _: Estado, _fd: FormData): Promise<Estado> {
+  await exigirPermiso(empresaId, "reabrir", "/bancos");
+  if (!esUuid(cuentaBancariaId) || !MES.test(periodo)) return { error: "Datos no válidos." };
+  try {
+    await conEmpresa(empresaId, (tx) => reabrirConciliacion(tx, { cuentaBancariaId, periodo }));
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/bancos/${cuentaBancariaId}/conciliacion?mes=${periodo}&reabierto=1`);
 }

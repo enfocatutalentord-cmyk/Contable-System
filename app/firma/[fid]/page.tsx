@@ -23,6 +23,7 @@ export default async function InicioFirma({ params, searchParams }: {
     r.facturasBorrador && `${r.facturasBorrador} factura${r.facturasBorrador > 1 ? "s" : ""} sin emitir`,
     r.comprasBorrador && `${r.comprasBorrador} compra${r.comprasBorrador > 1 ? "s" : ""} sin registrar`,
     r.documentosPorProcesar && `${r.documentosPorProcesar} documento${r.documentosPorProcesar > 1 ? "s" : ""} por procesar`,
+    r.movimientosBanco && `${r.movimientosBanco} movimiento${r.movimientosBanco > 1 ? "s" : ""} del banco por conciliar`,
   ].filter(Boolean) as string[];
 
   return (
@@ -46,6 +47,7 @@ export default async function InicioFirma({ params, searchParams }: {
         <a className="tarjeta cifra" href={`/firma/${fid}/documentos`} style={{ color: "inherit", textDecoration: "none" }}>
           <div className="etiqueta">Documentos por procesar</div><div className="valor">{suma((r) => r.documentosPorProcesar).toString()}</div>
         </a>
+        <div className="tarjeta cifra"><div className="etiqueta">Movimientos del banco por conciliar</div><div className="valor">{suma((r) => r.movimientosBanco).toString()}</div></div>
       </div>
 
       <div className="inicio-firma">

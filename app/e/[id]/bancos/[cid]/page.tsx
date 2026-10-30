@@ -62,6 +62,7 @@ export default async function CuentaBanco({ params, searchParams }: {
 
       {sp.deshecha && <p className="exito" role="status">Importación deshecha: se quitaron sus movimientos.</p>}
       {sp.aviso && AVISOS[sp.aviso] && <p className="exito" role="status">{AVISOS[sp.aviso]}</p>}
+      <p><Link className="boton" href={`/e/${id}/bancos/${cid}/conciliacion`}>Reporte y cierre de la conciliación del mes</Link></p>
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Saldo según banco</div><div className="valor">{usd}{verMonto(c.saldo_banco)}</div></div>
         <div className="tarjeta cifra"><div className="etiqueta">Saldo en libros{c.moneda === "USD" && " (RD$)"}</div><div className="valor">{verMonto(c.saldo_libros)}</div></div>

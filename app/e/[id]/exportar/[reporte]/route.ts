@@ -20,9 +20,11 @@ import {
 import { aCentavos, deCentavos, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
+import { reporteConciliacion } from "@/lib/reporte-conciliacion";
+import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -267,6 +269,31 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           deCentavos(f.montoPago), deCentavos(f.sujeto), deCentavos(f.tasa), deCentavos(f.retenido)]),
         totales: ["", "", "", "", "", "Totales", deCentavos(filas.reduce((t, f) => t + f.montoPago, 0n)),
           deCentavos(filas.reduce((t, f) => t + f.sujeto, 0n)), "", deCentavos(filas.reduce((t, f) => t + f.retenido, 0n))],
+      }];
+    }
+    if (reporte === "conciliacion-banco") {
+      if (!esUuid(sp.cuenta ?? "") || !/^\d{4}(0[1-9]|1[0-2])$/.test(sp.mes ?? "")) return null;
+      const r = await conEmpresa(id, (tx) => reporteConciliacion(tx, sp.cuenta, sp.mes)).catch(() => null);
+      if (!r) return null;
+      const m = (c: bigint) => deCentavos(c);
+      const suma = (xs: { monto: bigint }[]) => xs.reduce((t, x) => t + x.monto, 0n);
+      const filas: Celda[][] = [
+        ["", `Saldo según el banco al ${verFecha(r.fin)}`, "", "", m(r.saldoBanco)],
+        ...r.depositosTransito.map((x) => [verFecha(x.fecha), `(+) Depósito en tránsito: ${x.documento ?? x.concepto} · asiento ${x.numero}`, x.referencia ?? "", m(x.monto), ""] as Celda[]),
+        ...r.pagosTransito.map((x) => [verFecha(x.fecha), `(−) Pago en tránsito: ${x.documento ?? x.concepto} · asiento ${x.numero}`, x.referencia ?? "", m(x.monto), ""] as Celda[]),
+        ["", "Saldo del banco ajustado", "", "", m(r.bancoAjustado)],
+        ["", `Saldo en libros al ${verFecha(r.fin)}`, "", "", m(r.saldoLibros)],
+        ...r.bancoNoLibros.map((x) => [verFecha(x.fecha), `(±) En el banco y no en libros: ${x.descripcion} (${x.motivo})`, x.referencia ?? "", m(x.monto), ""] as Celda[]),
+        ...(r.apertura.diferencia !== 0n ? [["", `(±) Diferencia al empezar a conciliar el ${verFecha(r.cuenta.fecha_inicial)}`, "", m(-r.apertura.diferencia), ""] as Celda[]] : []),
+        ["", "Saldo en libros ajustado", "", "", m(r.librosAjustado)],
+      ];
+      const estado = r.cierre ? `cerrada el ${new Date(r.cierre.cerrado_en).toLocaleDateString("es-DO", { timeZone: "America/Santo_Domingo" })}` : "sin cerrar";
+      return [`conciliacion-${r.cuenta.nombre.replace(/[^\w-]+/g, "-")}-${r.periodo}`, {
+        ...base, titulo: `Conciliación bancaria · ${r.cuenta.nombre} (${r.cuenta.banco})`,
+        detalle: `Al ${verFecha(r.fin)} · cuenta ${r.cuenta.codigo} · ${r.cuenta.moneda} · ${estado} · depósitos en tránsito ${m(suma(r.depositosTransito))}, pagos en tránsito ${m(suma(r.pagosTransito))}`,
+        columnas: [col("Fecha", false, 12), col("Concepto", false, 60), col("Referencia", false, 14), col("Partida", true), col("Saldo", true)],
+        filas,
+        totales: r.comparable ? ["", "Diferencia", "", "", m(r.diferencia)] : undefined,
       }];
     }
     if (reporte === "catalogo") {
