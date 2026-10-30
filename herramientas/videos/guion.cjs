@@ -20,19 +20,25 @@ const CAPA = () => {
   const c = mk("tuto-cursor", '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M3 2l7 19 2.6-7.4L20 11z" fill="#fff" stroke="#003D19" stroke-width="1.6" stroke-linejoin="round"/></svg>');
   const p = JSON.parse(sessionStorage.getItem("tuto-pos") || '{"x":640,"y":360}');
   c.style.left = p.x + "px"; c.style.top = p.y + "px";
+  // El subtítulo sigue visible aunque la página cambie.
+  const sub = sessionStorage.getItem("tuto-subtexto");
+  if (sub) { const s = document.getElementById("tuto-sub"); s.innerHTML = sub; s.style.opacity = 1; }
   window.__tuto = true;
 };
-async function abrir(nombreArchivo, dir) {
+// opciones.cookies: sesión ya iniciada (el video no muestra la contraseña). t.inicio: momento en que empezó la grabación.
+async function abrir(nombreArchivo, dir, opciones = {}) {
   const br = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
   const ctx = await br.newContext({ viewport: { width: 1280, height: 720 }, locale: "es-DO", recordVideo: { dir, size: { width: 1280, height: 720 } } });
   await ctx.addInitScript(CAPA);
+  if (opciones.cookies) await ctx.addCookies(opciones.cookies);
   const page = await ctx.newPage();
+  const inicio = Date.now();
   const espera = (ms) => page.waitForTimeout(ms);
   const t = {
-    page, espera,
+    page, espera, inicio,
     async ir(ruta) { await page.goto(B + ruta, { waitUntil: "networkidle" }); await page.evaluate(CAPA); },
     async sub(texto, ms = 2600) {
-      await page.evaluate((x) => { const s = document.getElementById("tuto-sub"); s.innerHTML = x; s.style.opacity = x ? 1 : 0; }, texto);
+      await page.evaluate((x) => { const s = document.getElementById("tuto-sub"); s.innerHTML = x; s.style.opacity = x ? 1 : 0; sessionStorage.setItem("tuto-subtexto", x); }, texto);
       if (ms) await espera(ms);
     },
     async tarjeta(titulo, linea2 = "", ms = 3200) {
@@ -42,6 +48,12 @@ async function abrir(nombreArchivo, dir) {
       await page.evaluate(() => { document.getElementById("tuto-tarjeta").style.opacity = 0; });
       await espera(600);
     },
+    // Tarjeta a pantalla completa con contenido libre (por ejemplo, una lista); se quita con tarjetaFuera().
+    async tarjetaHtml(html) {
+      await page.evaluate((h) => { const c = document.getElementById("tuto-tarjeta");
+        c.innerHTML = `<p style="letter-spacing:3px;font-size:16px">EMPIRE TAX’N LEGAL · SISTEMA CONTABLE</p><div class="linea"></div>${h}`; c.style.opacity = 1; }, html);
+    },
+    async tarjetaFuera() { await page.evaluate(() => { document.getElementById("tuto-tarjeta").style.opacity = 0; }); await espera(600); },
     async señalar(loc, texto) {
       await loc.scrollIntoViewIfNeeded(); await espera(250);
       const b = await loc.boundingBox();
@@ -50,7 +62,7 @@ async function abrir(nombreArchivo, dir) {
         Object.assign(m.style, { left: b.x - 6 + "px", top: b.y - 6 + "px", width: b.width + 12 + "px", height: b.height + 12 + "px", opacity: 1 });
         const c = document.getElementById("tuto-cursor"); const px = b.x + Math.min(b.width / 2, 40), py = b.y + b.height / 2;
         c.style.left = px + "px"; c.style.top = py + "px"; sessionStorage.setItem("tuto-pos", JSON.stringify({ x: px, y: py }));
-        if (x) { const s = document.getElementById("tuto-sub"); s.innerHTML = x; s.style.opacity = 1; }
+        if (x) { const s = document.getElementById("tuto-sub"); s.innerHTML = x; s.style.opacity = 1; sessionStorage.setItem("tuto-subtexto", x); }
       }, [b, texto || ""]);
       await espera(1300);
     },

@@ -16,3 +16,19 @@ Sistema contable y web» › «Videos tutoriales» (una subcarpeta por tema; los
   latinoamericano, tono suave) y mezclarlo con ffmpeg, alargando cada paso a lo que dure su frase. Requiere en el entorno de
   la sesión el dominio `generativelanguage.googleapis.com` permitido y la variable `GEMINI_API_KEY` (la pone Joannie; nunca
   por el chat).
+
+## Video demo de la plataforma (30-oct-2026, pedido de Joannie)
+
+Recorrido de 2:44 con la voz Aoede: propósito, pantallas reales y «lo que viene» (e-CF, conciliación bancaria, estados
+financieros con IR-2, asistente con IA). Todo en `demo/`:
+
+1. `escenas.json`: texto que se lee (voz) y subtítulo de cada escena.
+2. Voz: el plan gratis de Gemini permite **10 solicitudes al día por modelo de voz**. Por eso `voces_bloques.py` pide la voz
+   en 3 bloques de 5 escenas (`python3 -I voces_bloques.py gemini-3.8-flash-lite-tts Aoede <carpeta>/voz`) y `alinear.py`
+   corta cada bloque: un modelo de texto (`MODELO=gemini-3.5-flash`) dice en qué segundo empieza cada escena y el corte se
+   ajusta al silencio más cercano (a veces la voz lee parte de la instrucción al principio: se descarta). Revisar las
+   duraciones; `voces.sh` hace una solicitud por escena si hay cupo.
+3. `preparar.cjs`: crea la firma «Empire Tax’N Legal» con dos clientes ficticios desde la app y carga sus movimientos con
+   `datos.mjs` (lógica real; nada de datos reales). Deja `demo.json`.
+4. `grabar.cjs`: graba escena por escena; cada una dura lo que su voz. Deja `demo.webm` y `tiempos.json`.
+5. `mezclar.py`: pone cada voz en su segundo y saca `demo.mp4` (H.264 + AAC).
