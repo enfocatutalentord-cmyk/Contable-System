@@ -1,5 +1,6 @@
 "use server";
 
+import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -279,7 +280,8 @@ export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Pr
     return { error: mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}`, "layout");
-  redirect(`/e/${empresaId}/cobros/${numero}?nuevo=1`);
+  const banco = await conciliarDesdeBanco(empresaId, texto(fd, "movimiento"), "cobros", numero, usuario.id);
+  redirect(banco ?? `/e/${empresaId}/cobros/${numero}?nuevo=1`);
 }
 
 export async function anularRecibo(empresaId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {

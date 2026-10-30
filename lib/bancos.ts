@@ -35,11 +35,12 @@ export async function cuentaBancaria(tx: Tx, id: string): Promise<CuentaBancaria
 
 export type MovimientoBanco = {
   id: string; fecha: string; descripcion: string; referencia: string | null; monto: string; saldo: string | null; estado: string;
+  motivo_exclusion: string | null;
 };
 
 export async function listarMovimientos(tx: Tx, cuentaId: string, f: { estado: string | null; desde: string | null; hasta: string | null }): Promise<MovimientoBanco[]> {
   return tx<MovimientoBanco[]>`
-    SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, descripcion, referencia, monto::text, saldo::text, estado
+    SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, descripcion, referencia, monto::text, saldo::text, estado, motivo_exclusion
       FROM movimientos_banco
      WHERE cuenta_bancaria_id = ${cuentaId}
        AND (${f.estado}::text IS NULL OR estado = ${f.estado})

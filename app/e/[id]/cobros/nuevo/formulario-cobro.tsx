@@ -18,7 +18,7 @@ const cent = (v: string) => {
 };
 const texto = (c: number) => (c / 100).toFixed(2);
 
-export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenciones, hoy, clienteInicial, facturaInicial }: {
+export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenciones, hoy, clienteInicial, facturaInicial, banco }: {
   accion: (estado: Estado, fd: FormData) => Promise<Estado>;
   clientes: Cliente[];
   pendientes: Pendiente[];
@@ -27,10 +27,11 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenci
   hoy: string;
   clienteInicial: string;
   facturaInicial: string;
+  banco?: { movimientoId: string; fecha: string; referencia: string | null; cuentaId: string; monto: string }; // desde un movimiento del banco
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [clienteId, setClienteId] = useState(clienteInicial);
-  const [fecha, setFecha] = useState(hoy);
+  const [fecha, setFecha] = useState(banco?.fecha ?? hoy);
   const deCliente = useMemo(() => pendientes.filter((p) => p.cliente_id === clienteId), [pendientes, clienteId]);
   const monedas = [...new Set(deCliente.map((p) => p.moneda))];
   const [moneda, setMoneda] = useState(deCliente[0]?.moneda ?? "DOP");
@@ -152,7 +153,7 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenci
       </div>
       <div className="fila" style={{ marginBottom: 12 }}>
         <label style={{ flex: "1 1 240px" }}>Entró a
-          <select name="cuenta_destino" required defaultValue={cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
+          <select name="cuenta_destino" required defaultValue={banco?.cuentaId ?? cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
             <option value="" disabled>Elige banco o caja…</option>
             {cuentas.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
           </select>
@@ -163,9 +164,10 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenci
             <option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option>
           </select>
         </label>
-        <label style={{ flex: "1 1 180px" }}>Referencia<input name="referencia" placeholder="N.º de transferencia o cheque" /></label>
+        <label style={{ flex: "1 1 180px" }}>Referencia<input name="referencia" placeholder="N.º de transferencia o cheque" defaultValue={banco?.referencia ?? ""} /></label>
       </div>
       <label>Notas<textarea name="notas" rows={2} /></label>
+      {banco && <input type="hidden" name="movimiento" value={banco.movimientoId} />}
       <div className="fila" style={{ marginTop: 12 }}>
         <button className="primario" disabled={enviando || aplicaciones.length === 0 || recibido < 0}>{enviando ? "Guardando…" : "Registrar cobro"}</button>
       </div>

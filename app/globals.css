@@ -249,3 +249,5 @@ ol.pasos li { margin-bottom: 4px; }
 .tabla-it1 tr.calculada td { background: var(--fila-alterna); }
 .tabla-it1 .sugerido { display: block; color: var(--suave); font-size: 11px; }
 form.it1 .tabla-envoltura { margin-bottom: 12px; }
+.conciliar { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.conciliar-lineas { margin: 0; padding-left: 18px; font-size: 0.9rem; }

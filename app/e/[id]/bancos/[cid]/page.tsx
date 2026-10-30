@@ -4,20 +4,27 @@ import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
 import { NOMBRE_TIPO } from "@/lib/archivos-banco";
 import { cuentaBancaria, listarImportaciones, listarMovimientos } from "@/lib/bancos";
+import { detalleConciliado, lineasPendientes, listarReglas, sugerir, type Sugerencia } from "@/lib/conciliacion";
 import { conEmpresa } from "@/lib/db";
-import { verFecha, verMonto } from "@/lib/montos";
+import { aCentavos, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { deshacer, guardarCuentaBancaria, subirEstadoCuenta } from "../../bancos-acciones";
+import {
+  conciliarMovimiento, desconciliarMovimiento, deshacer, guardarCuentaBancaria, registrarDesdeBanco, reincluirMovimiento, subirEstadoCuenta,
+} from "../../bancos-acciones";
 
 export const metadata = { title: "Cuenta bancaria · Empire Tax’N Legal" };
 
 const ESTADOS: Record<string, string> = { pendiente: "Por conciliar", conciliado: "Conciliado", excluido: "Excluido" };
-const FILTROS: Record<string, string> = { pendiente: "Por conciliar", todos: "Todos" };
+const FILTROS: Record<string, string> = { pendiente: "Por conciliar", conciliado: "Conciliados", excluido: "Excluidos", todos: "Todos" };
+const AVISOS: Record<string, string> = {
+  conciliado: "Movimiento conciliado.", registrado: "Asiento registrado y movimiento conciliado.",
+  desconciliado: "Movimiento desconciliado: vuelve a estar por conciliar.", excluido: "Movimiento excluido.", reincluido: "El movimiento vuelve a estar por conciliar.",
+};
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });
 
 export default async function CuentaBanco({ params, searchParams }: {
   params: Promise<{ id: string; cid: string }>;
-  searchParams: Promise<{ estado?: string; importados?: string; repetidos?: string; deshecha?: string }>;
+  searchParams: Promise<{ estado?: string; importados?: string; repetidos?: string; deshecha?: string; aviso?: string }>;
 }) {
   const { id, cid } = await params;
   const sp = await searchParams;
@@ -27,11 +34,18 @@ export default async function CuentaBanco({ params, searchParams }: {
   const datos = await conEmpresa(id, async (tx) => {
     const c = await cuentaBancaria(tx, cid).catch(() => null);
     if (!c) return null;
-    return { c, movimientos: await listarMovimientos(tx, cid, { estado: filtro === "todos" ? null : filtro, desde: null, hasta: null }), importaciones: await listarImportaciones(tx, cid) };
+    const movimientos = await listarMovimientos(tx, cid, { estado: filtro === "todos" ? null : filtro, desde: null, hasta: null });
+    const pendientes = movimientos.filter((m) => m.estado === "pendiente")
+      .map((m) => ({ id: m.id, fecha: m.fecha, descripcion: m.descripcion, referencia: m.referencia, monto: aCentavos(m.monto), cuenta_bancaria_id: cid }));
+    const sugerencias = pendientes.length ? sugerir(pendientes, await lineasPendientes(tx, cid), await listarReglas(tx)) : new Map<string, Sugerencia>();
+    const conciliado = await detalleConciliado(tx, movimientos.filter((m) => m.estado === "conciliado").map((m) => m.id));
+    return { c, movimientos, sugerencias, conciliado, importaciones: await listarImportaciones(tx, cid) };
   });
   if (!datos) notFound();
-  const { c, movimientos, importaciones } = datos;
+  const { c, movimientos, sugerencias, conciliado, importaciones } = datos;
   const registra = puede(permisos, "registrar");
+  const contabiliza = puede(permisos, "contabilizar");
+  const revierte = puede(permisos, "revertir");
   const configura = puede(permisos, "catalogo");
   const usd = c.moneda === "USD" ? "US$ " : "";
 
@@ -47,6 +61,7 @@ export default async function CuentaBanco({ params, searchParams }: {
       )}
 
       {sp.deshecha && <p className="exito" role="status">Importación deshecha: se quitaron sus movimientos.</p>}
+      {sp.aviso && AVISOS[sp.aviso] && <p className="exito" role="status">{AVISOS[sp.aviso]}</p>}
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Saldo según banco</div><div className="valor">{usd}{verMonto(c.saldo_banco)}</div></div>
         <div className="tarjeta cifra"><div className="etiqueta">Saldo en libros{c.moneda === "USD" && " (RD$)"}</div><div className="valor">{verMonto(c.saldo_libros)}</div></div>
@@ -75,22 +90,76 @@ export default async function CuentaBanco({ params, searchParams }: {
           ))}
         </nav>
       </div>
+      <p className="sub">
+        Para cada movimiento se sugiere el cobro, pago o asiento que lo explica (mismo monto, fecha cercana o misma referencia)
+        o, si no hay nada registrado, la regla que le aplica. Nada se concilia solo: revisa y confirma.
+        {puede(permisos, "catalogo") && <> <Link href={`/e/${id}/bancos/reglas`}>Reglas</Link>.</>}
+      </p>
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Fecha</th><th>Descripción</th><th>Referencia</th><th className="num">Entra</th><th className="num">Sale</th><th className="num">Saldo del banco</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Descripción</th><th className="num">Entra</th><th className="num">Sale</th><th>Conciliación</th></tr></thead>
           <tbody>
-            {movimientos.map((m) => (
-              <tr key={m.id}>
-                <td>{verFecha(m.fecha)}</td>
-                <td>{m.descripcion}</td>
-                <td>{m.referencia}</td>
-                <td className="num">{Number(m.monto) > 0 ? verMonto(m.monto) : ""}</td>
-                <td className="num">{Number(m.monto) < 0 ? verMonto(m.monto.slice(1)) : ""}</td>
-                <td className="num">{verMonto(m.saldo)}</td>
-                <td>{ESTADOS[m.estado]}</td>
-              </tr>
-            ))}
-            {movimientos.length === 0 && <tr><td colSpan={7}>{filtro === "pendiente" ? "No hay movimientos por conciliar." : "Todavía no hay movimientos importados."}</td></tr>}
+            {movimientos.map((m) => {
+              const s = sugerencias.get(m.id);
+              return (
+                <tr key={m.id} className={m.estado === "excluido" ? "anulado" : undefined}>
+                  <td>{verFecha(m.fecha)}</td>
+                  <td>{m.descripcion}{m.referencia && <div className="sub" style={{ margin: 0 }}>Ref. {m.referencia}</div>}</td>
+                  <td className="num">{Number(m.monto) > 0 ? <>{usd}{verMonto(m.monto)}</> : ""}</td>
+                  <td className="num">{Number(m.monto) < 0 ? <>{usd}{verMonto(m.monto.slice(1))}</> : ""}</td>
+                  <td style={{ minWidth: 280 }}>
+                    {m.estado === "pendiente" && (
+                      <div className="conciliar">
+                        {s?.tipo === "lineas" && (
+                          <>
+                            <div><span className={`estado ${s.confianza === "alta" ? "estado-contabilizado" : "estado-borrador"}`}>{s.confianza === "alta" ? "Coincide" : "Posible"}</span> {s.motivo}</div>
+                            <ul className="conciliar-lineas">
+                              {s.lineas.map((l) => <li key={l.id}>{l.documento ?? l.concepto} · asiento {l.numero} del {verFecha(l.fecha)}{s.lineas.length > 1 && <> · {verMonto(l.monto)}</>}</li>)}
+                            </ul>
+                            {contabiliza && (
+                              <Formulario accion={conciliarMovimiento.bind(null, id, m.id)} boton="Confirmar" className="fila">
+                                {s.lineas.map((l) => <input key={l.id} type="hidden" name="linea" value={l.id} />)}
+                              </Formulario>
+                            )}
+                          </>
+                        )}
+                        {s?.tipo === "regla" && (
+                          <>
+                            <div><span className="estado estado-borrador">Regla</span> {s.regla.nombre} → {s.regla.cuenta}</div>
+                            {contabiliza && (
+                              <Formulario accion={registrarDesdeBanco.bind(null, id, m.id)} boton="Registrar y conciliar" className="fila">
+                                <input type="hidden" name="cuenta_id" value={s.regla.cuenta_id} />
+                                <input type="hidden" name="concepto" value={s.regla.concepto} />
+                                {c.moneda === "USD" && <label style={{ flex: "0 1 120px" }}>Tasa<input name="tasa" inputMode="decimal" required /></label>}
+                              </Formulario>
+                            )}
+                          </>
+                        )}
+                        {!s && <div className="sub" style={{ margin: 0 }}>Sin sugerencia.</div>}
+                        <Link href={`/e/${id}/bancos/${cid}/m/${m.id}`}>{s ? "Otra opción" : "Buscar o registrar"}</Link>
+                      </div>
+                    )}
+                    {m.estado === "conciliado" && (
+                      <div className="conciliar">
+                        <ul className="conciliar-lineas">
+                          {(conciliado.get(m.id) ?? []).map((l) => (
+                            <li key={l.asiento_id}>{l.documento ?? l.concepto} · <Link href={`/e/${id}/asientos/${l.asiento_id}`}>asiento {l.asiento}</Link></li>
+                          ))}
+                        </ul>
+                        {revierte && <Formulario accion={desconciliarMovimiento.bind(null, id, m.id)} boton="Desconciliar" className="fila"><span /></Formulario>}
+                      </div>
+                    )}
+                    {m.estado === "excluido" && (
+                      <div className="conciliar">
+                        <div>Excluido: {m.motivo_exclusion}</div>
+                        {contabiliza && <Formulario accion={reincluirMovimiento.bind(null, id, m.id)} boton="Volver a incluir" className="fila"><span /></Formulario>}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {movimientos.length === 0 && <tr><td colSpan={5}>{filtro === "pendiente" ? "No hay movimientos por conciliar." : "No hay movimientos."}</td></tr>}
           </tbody>
         </table>
       </div>

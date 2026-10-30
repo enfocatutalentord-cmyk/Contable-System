@@ -2,7 +2,10 @@ import Link from "next/link";
 import { exigirPermiso } from "@/lib/acceso";
 import { pendientesAl } from "@/lib/cxc";
 import { listarCuentas } from "@/lib/cuentas";
+import { datosParaDocumento } from "@/lib/conciliacion";
 import { conEmpresa } from "@/lib/db";
+import { esUuid } from "@/lib/acceso";
+import { verFecha, verMonto } from "@/lib/montos";
 import { listarRetenciones } from "@/lib/fiscal";
 import { deCentavos, hoyISO } from "@/lib/montos";
 import { crearCobro } from "../../ventas-acciones";
@@ -10,13 +13,14 @@ import { FormularioCobro } from "./formulario-cobro";
 
 export default async function NuevoCobro({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cliente?: string; factura?: string }>;
+  searchParams: Promise<{ cliente?: string; factura?: string; movimiento?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   await exigirPermiso(id, "contabilizar", "/cobros");
   const hoy = hoyISO();
-  const { clientes, pendientes, cuentas, bases, retenciones } = await conEmpresa(id, async (tx) => ({
+  const { clientes, pendientes, cuentas, bases, retenciones, banco } = await conEmpresa(id, async (tx) => ({
+    banco: sp.movimiento && esUuid(sp.movimiento) ? await datosParaDocumento(tx, sp.movimiento) : null,
     clientes: await tx<{ id: string; nombre: string; retenciones: string[] }[]>`SELECT id, nombre, retenciones FROM clientes ORDER BY nombre`,
     pendientes: await pendientesAl(tx, "9999-12-31"),
     cuentas: (await listarCuentas(tx)).filter((c) => c.de_detalle && c.activa && c.codigo.startsWith("1101")),
@@ -38,6 +42,7 @@ export default async function NuevoCobro({ params, searchParams }: {
         Elige el cliente, marca las facturas que paga y las retenciones que te hizo (salen de la configuración tributaria;
         las habituales del cliente vienen marcadas). El monto sugerido se puede ajustar al del comprobante de retención.
       </p>
+      {banco && <p className="aviso">Desde el banco: movimiento del {verFecha(banco.fecha)} por {verMonto(banco.monto)}. Si lo que entra al banco coincide, queda conciliado al registrarlo.</p>}
       <FormularioCobro
         accion={crearCobro.bind(null, id)}
         clientes={clientes.filter((c) => conSaldo.has(c.id))}
@@ -51,6 +56,7 @@ export default async function NuevoCobro({ params, searchParams }: {
         hoy={hoy}
         clienteInicial={clienteInicial}
         facturaInicial={factura?.id ?? ""}
+        banco={banco ? { movimientoId: sp.movimiento!, fecha: banco.fecha, referencia: banco.referencia, cuentaId: banco.cuenta_id, monto: banco.monto } : undefined}
       />
     </>
   );

@@ -113,7 +113,7 @@ export const CATALOGO_RD: [codigo: string, nombre: string][] = [
   ["620101", "Comisiones bancarias"],
   ["620102", "Intereses pagados"],
   ["620103", "Pérdida cambiaria"],
-  ["620104", "Impuesto de 0.15 % a cheques y transferencias"],
+  ["620104", "Impuesto a cheques y transferencias"],
   ["63", "Impuesto sobre la renta"],
   ["6301", "Impuesto sobre la renta"],
   ["630101", "Gasto de impuesto sobre la renta"],

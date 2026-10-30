@@ -6,7 +6,8 @@ import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { CAMPOS, MENSAJE_XLS, tipoEstadoCuenta, type Formato, type TipoArchivo } from "@/lib/archivos-banco";
 import { ErrorContable } from "@/lib/asientos";
 import { confirmarImportacion, deshacerImportacion } from "@/lib/bancos";
-import { conEmpresa, mensajeError } from "@/lib/db";
+import { conciliar, desconciliar, excluir, REGLAS_SUGERIDAS, registrarDesdeMovimiento, reincluir } from "@/lib/conciliacion";
+import { conEmpresa, mensajeError, type Tx } from "@/lib/db";
 import { huella, nombreSeguro, TAMANO_MAXIMO } from "@/lib/documentos";
 import { leerMonto } from "@/lib/montos";
 import type { Estado } from "../../acciones-cuenta";
@@ -194,4 +195,140 @@ export async function deshacer(empresaId: string, importacionId: string, _: Esta
   }
   revalidatePath(`/e/${empresaId}`, "layout");
   redirect(`/e/${empresaId}/bancos/${cuenta}?deshecha=1`);
+}
+
+// ───────────── Conciliación (parte 2) ─────────────
+// Conciliar crea o enlaza asientos contabilizados: lo hace quien puede contabilizar. Desconciliar, quien puede revertir.
+
+async function cuentaDe(tx: Tx, movimientoId: string) {
+  const [r] = await tx<{ c: string }[]>`SELECT cuenta_bancaria_id AS c FROM movimientos_banco WHERE id = ${movimientoId}`;
+  if (!r) throw new ErrorContable("Movimiento no encontrado");
+  return r.c;
+}
+
+async function enMovimiento(empresaId: string, movimientoId: string, aviso: string, fn: (tx: Tx) => Promise<unknown>): Promise<Estado> {
+  if (!esUuid(movimientoId)) return { error: "Movimiento no encontrado." };
+  let cuenta: string;
+  try {
+    cuenta = await conEmpresa(empresaId, async (tx) => {
+      const c = await cuentaDe(tx, movimientoId);
+      await fn(tx);
+      return c;
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/bancos/${cuenta}?aviso=${aviso}`);
+}
+
+const idsDe = (fd: FormData) => fd.getAll("linea").map(String).filter(esUuid);
+
+export async function conciliarMovimiento(empresaId: string, movimientoId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/bancos");
+  const lineaIds = idsDe(fd);
+  if (lineaIds.length === 0) return { error: "Marca los registros que explican este movimiento." };
+  return enMovimiento(empresaId, movimientoId, "conciliado", (tx) => conciliar(tx, { movimientoId, lineaIds, usuarioId: usuario.id }));
+}
+
+export async function registrarDesdeBanco(empresaId: string, movimientoId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/bancos");
+  const cuentaId = texto(fd, "cuenta_id");
+  const concepto = texto(fd, "concepto").slice(0, 200);
+  if (!esUuid(cuentaId)) return { error: "Elige la cuenta." };
+  if (!concepto) return { error: "Escribe el concepto." };
+  return enMovimiento(empresaId, movimientoId, "registrado", (tx) =>
+    registrarDesdeMovimiento(tx, { empresaId, movimientoId, cuentaId, concepto, tasa: texto(fd, "tasa") || null, usuarioId: usuario.id }));
+}
+
+export async function desconciliarMovimiento(empresaId: string, movimientoId: string, _: Estado, _fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "revertir", "/bancos");
+  return enMovimiento(empresaId, movimientoId, "desconciliado", (tx) => desconciliar(tx, { movimientoId, usuarioId: usuario.id }));
+}
+
+export async function excluirMovimiento(empresaId: string, movimientoId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/bancos");
+  const motivo = texto(fd, "motivo").slice(0, 300);
+  if (!motivo) return { error: "Escribe por qué se excluye (por ejemplo, «línea repetida del banco»)." };
+  return enMovimiento(empresaId, movimientoId, "excluido", (tx) => excluir(tx, { movimientoId, motivo, usuarioId: usuario.id }));
+}
+
+export async function reincluirMovimiento(empresaId: string, movimientoId: string, _: Estado, _fd: FormData): Promise<Estado> {
+  await exigirPermiso(empresaId, "contabilizar", "/bancos");
+  return enMovimiento(empresaId, movimientoId, "reincluido", (tx) => reincluir(tx, movimientoId));
+}
+
+// ───────────── Reglas ─────────────
+
+export async function guardarRegla(empresaId: string, reglaId: string | null, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "catalogo", "/bancos");
+  const nombre = texto(fd, "nombre").slice(0, 100);
+  const textos = texto(fd, "textos").slice(0, 500);
+  const direccion = texto(fd, "direccion");
+  const cuentaId = texto(fd, "cuenta_id");
+  const concepto = texto(fd, "concepto").slice(0, 200) || nombre;
+  const banco = texto(fd, "cuenta_bancaria_id") || null;
+  const desde = texto(fd, "monto_desde") ? leerMonto(texto(fd, "monto_desde")) : null;
+  const hasta = texto(fd, "monto_hasta") ? leerMonto(texto(fd, "monto_hasta")) : null;
+  if (!nombre || !textos.split(",").some((t) => t.trim())) return { error: "Escribe el nombre y al menos un texto que debe contener la descripción." };
+  if (!["entra", "sale", "ambas"].includes(direccion)) return { error: "Elige si el dinero entra o sale." };
+  if (!esUuid(cuentaId)) return { error: "Elige la cuenta donde se registra." };
+  if (banco && !esUuid(banco)) return { error: "Cuenta bancaria no válida." };
+  if ((texto(fd, "monto_desde") && desde === null) || (texto(fd, "monto_hasta") && hasta === null)) return { error: "Revisa los montos." };
+  const activa = reglaId ? fd.get("activa") === "on" : true;
+  try {
+    await conEmpresa(empresaId, async (tx) => {
+      const [c] = await tx<{ ok: boolean }[]>`SELECT de_detalle AND activa AS ok FROM cuentas WHERE id = ${cuentaId}`;
+      if (!c?.ok) throw new ErrorContable("La cuenta de la regla debe ser de detalle y estar activa");
+      const datos = { nombre, textos, direccion, cuenta_id: cuentaId, concepto, cuenta_bancaria_id: banco, monto_desde: desde, monto_hasta: hasta, activa };
+      if (reglaId) {
+        if (!esUuid(reglaId)) throw new ErrorContable("Regla no encontrada");
+        const r = await tx`UPDATE reglas_banco SET ${tx(datos)} WHERE id = ${reglaId}`;
+        if (r.count === 0) throw new ErrorContable("Regla no encontrada");
+      } else {
+        await tx`INSERT INTO reglas_banco ${tx({ ...datos, empresa_id: empresaId, creado_por: usuario.id })}`;
+      }
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}/bancos`, "layout");
+  return { ok: reglaId ? "Regla guardada." : "Regla agregada." };
+}
+
+export async function borrarRegla(empresaId: string, reglaId: string, _: Estado, _fd: FormData): Promise<Estado> {
+  await exigirPermiso(empresaId, "catalogo", "/bancos");
+  if (!esUuid(reglaId)) return { error: "Regla no encontrada." };
+  try {
+    await conEmpresa(empresaId, (tx) => tx`DELETE FROM reglas_banco WHERE id = ${reglaId}`);
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}/bancos`, "layout");
+  redirect(`/e/${empresaId}/bancos/reglas`);
+}
+
+export async function agregarReglasSugeridas(empresaId: string, _: Estado, _fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "catalogo", "/bancos");
+  let n = 0;
+  const faltan: string[] = [];
+  try {
+    await conEmpresa(empresaId, async (tx) => {
+      for (const r of REGLAS_SUGERIDAS) {
+        const [c] = await tx<{ id: string }[]>`SELECT id FROM cuentas WHERE codigo = ${r.codigo} AND de_detalle AND activa`;
+        if (!c) { faltan.push(r.codigo); continue; }
+        const [ya] = await tx`SELECT 1 FROM reglas_banco WHERE nombre = ${r.nombre}`;
+        if (ya) continue;
+        await tx`INSERT INTO reglas_banco (empresa_id, nombre, textos, direccion, cuenta_id, concepto, creado_por)
+                 VALUES (${empresaId}, ${r.nombre}, ${r.textos}, 'sale', ${c.id}, ${r.concepto}, ${usuario.id})`;
+        n++;
+      }
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}/bancos`, "layout");
+  const falta = faltan.length ? ` Falta en el catálogo la cuenta ${faltan.join(" y ")}.` : "";
+  if (!n) return { error: `No se agregó ninguna regla nueva.${falta}` };
+  redirect(`/e/${empresaId}/bancos/reglas?agregadas=${n}${faltan.length ? `&faltan=${faltan.join(",")}` : ""}`);
 }

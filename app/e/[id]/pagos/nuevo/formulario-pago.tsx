@@ -18,7 +18,7 @@ const cent = (v: string) => {
 };
 const texto = (c: number) => (c / 100).toFixed(2);
 
-export function FormularioPago({ accion, proveedores, pendientes, cuentas, retenciones, formasPago, hoy, proveedorInicial, compraInicial }: {
+export function FormularioPago({ accion, proveedores, pendientes, cuentas, retenciones, formasPago, hoy, proveedorInicial, compraInicial, banco }: {
   accion: (estado: Estado, fd: FormData) => Promise<Estado>;
   proveedores: Proveedor[];
   pendientes: Pendiente[];
@@ -28,10 +28,11 @@ export function FormularioPago({ accion, proveedores, pendientes, cuentas, reten
   hoy: string;
   proveedorInicial: string;
   compraInicial: string;
+  banco?: { movimientoId: string; fecha: string; referencia: string | null; cuentaId: string; monto: string }; // desde un movimiento del banco
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [proveedorId, setProveedorId] = useState(proveedorInicial);
-  const [fecha, setFecha] = useState(hoy);
+  const [fecha, setFecha] = useState(banco?.fecha ?? hoy);
   const deProveedor = useMemo(() => pendientes.filter((p) => p.proveedor_id === proveedorId), [pendientes, proveedorId]);
   const monedas = [...new Set(deProveedor.map((p) => p.moneda))];
   const [moneda, setMoneda] = useState(deProveedor[0]?.moneda ?? "DOP");
@@ -153,7 +154,7 @@ export function FormularioPago({ accion, proveedores, pendientes, cuentas, reten
       </div>
       <div className="fila" style={{ marginBottom: 12 }}>
         <label style={{ flex: "1 1 240px" }}>Salió de
-          <select name="cuenta_origen" required defaultValue={cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
+          <select name="cuenta_origen" required defaultValue={banco?.cuentaId ?? cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
             <option value="" disabled>Elige banco o caja…</option>
             {cuentas.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
           </select>
@@ -163,9 +164,10 @@ export function FormularioPago({ accion, proveedores, pendientes, cuentas, reten
             {Object.entries(formasPago).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
           </select>
         </label>
-        <label style={{ flex: "1 1 180px" }}>Referencia<input name="referencia" placeholder="N.º de transferencia o cheque" /></label>
+        <label style={{ flex: "1 1 180px" }}>Referencia<input name="referencia" placeholder="N.º de transferencia o cheque" defaultValue={banco?.referencia ?? ""} /></label>
       </div>
       <label>Notas<textarea name="notas" rows={2} /></label>
+      {banco && <input type="hidden" name="movimiento" value={banco.movimientoId} />}
       <div className="fila" style={{ marginTop: 12 }}>
         <button className="primario" disabled={enviando || aplicaciones.length === 0 || pagado < 0}>{enviando ? "Guardando…" : "Registrar pago"}</button>
       </div>

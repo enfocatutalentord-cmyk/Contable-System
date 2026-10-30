@@ -2,7 +2,7 @@ import type { Tx } from "./db";
 import { aCentavos, deCentavos } from "./montos.ts";
 
 export type LineaAsiento = { cuentaId: string; debe: bigint; haber: bigint; descripcion?: string | null };
-export type Origen = "manual" | "factura" | "nota_credito" | "cobro" | "compra" | "nota_credito_compra" | "pago";
+export type Origen = "manual" | "factura" | "nota_credito" | "cobro" | "compra" | "nota_credito_compra" | "pago" | "banco";
 
 export class ErrorContable extends Error {
   code = "P0001";
