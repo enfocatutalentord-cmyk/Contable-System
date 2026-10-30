@@ -32,3 +32,7 @@ financieros con IR-2, asistente con IA). Todo en `demo/`:
    `datos.mjs` (lógica real; nada de datos reales). Deja `demo.json`.
 4. `grabar.cjs`: graba escena por escena; cada una dura lo que su voz. Deja `demo.webm` y `tiempos.json`.
 5. `mezclar.py`: pone cada voz en su segundo y saca `demo.mp4` (H.264 + AAC).
+6. **Siempre** `revisar.py demo.mp4` antes de entregar: transcribe el video completo y falla si la voz leyó la instrucción.
+   En la primera entrega (30-oct) la escena 11 traía 15 s de «Lee en español latinoamericano… pausa larga…»; Joannie lo
+   notó. Revisar escena por escena no basta: el modelo transcribe lo que espera oír; hay que pedir la transcripción
+   completa con marcas de tiempo.
