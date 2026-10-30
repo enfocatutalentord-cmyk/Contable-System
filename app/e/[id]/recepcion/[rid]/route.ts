@@ -1,5 +1,6 @@
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
+import { TIPOS } from "@/lib/documentos";
 import { puede } from "@/lib/permisos";
 
 // Descarga de un documento recibido: la base solo lo entrega si es de la empresa en curso (y el rol ve la pestaña).
@@ -13,7 +14,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   return new Response(new Uint8Array(d.contenido), {
     headers: {
       "Content-Type": d.tipo,
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(d.nombre)}`,
+      // PDF e imágenes se abren en el navegador; los estados de cuenta en Excel, CSV u OFX se descargan.
+      "Content-Disposition": `${TIPOS[d.tipo] ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(d.nombre)}`,
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:",
       "Cache-Control": "private, no-store",

@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 29-oct-2026 (Fases 1 a 4 y nueva navegación en `main`; Excel en listas y verificación en dos pasos en `main`).
+Última actualización: 30-oct-2026 (Fase 5 Bancos, parte 1 en la rama; Fases 1 a 4, nueva navegación y Fase 6 hasta IR-17 en `main`).
 
 ## Con quién y cómo
 
@@ -150,6 +150,20 @@ Notas de infraestructura que costaron tiempo:
   `retenciones_ir17`); sin concepto, error. Los borradores de IT-1 e IR-17 están en la tabla común `declaraciones`
   (formulario, período, manuales); `lib/declaraciones.ts` define ambos formularios y la pantalla común es
   `app/e/[id]/dgii/declaracion.tsx`. Excel/PDF `IR-17_<RNC>_<AAAAMM>` e `IR-6_<RNC>_<AAAAMM>`.
+- **Bancos** (Fase 5, «sí» de Joannie a la estructura el 30-oct-2026, en 3 partes; referentes Xero «Import a Statement» y
+  QuickBooks «Upload from file»; sin conexión directa con los bancos). **Parte 1** (migración 018, `lib/archivos-banco.ts`,
+  `lib/bancos.ts`, pestaña `/bancos` en Contabilidad; la ven Administrador, Contador, Auxiliar y Solo lectura): `cuentas_bancarias`
+  ligadas a una cuenta de activo de detalle del catálogo, con saldo inicial del banco y fecha desde la que se concilia (lo anterior
+  no se importa). Importar Excel (.xlsx), CSV u OFX (tipo por contenido; .xls y PDF se rechazan con indicación): el archivo queda
+  en `importaciones_banco` (borrador → importada/deshecha/descartada) con vista previa; se adivinan encabezado y columnas
+  (débito/crédito o monto con signo, saldo, orden de la fecha) y el formato queda guardado en la cuenta. `movimientos_banco`
+  (monto > 0 entra, < 0 sale) con huella fecha+monto+descripción+referencia y número de ocurrencia: un archivo encima de otro
+  no repite nada. Avisa si el saldo del banco no cuadra fila a fila. Deshacer una importación (sin conciliados, fuera de período
+  cerrado). Los estados bancarios de «Documentos del cliente» aceptan Excel/CSV/OFX y se importan desde ahí («Importar a Bancos»;
+  el documento pasa a Procesado). Permisos: alta de cuentas «catálogo»; importar/deshacer «registrar». Pruebas
+  `pruebas/bancos-archivos.test.mjs` y `pruebas/bancos.test.mjs`; recorrido `pruebas/navegador/bancos.cjs`. Parte 2: conciliación
+  con sugerencias y reglas que solo sugieren (impuesto 0.20 % a cheques y transferencias desde el 3-jul-2026, Ley 30-26); parte 3:
+  reporte y cierre de la conciliación del mes. Se pidió a Joannie un estado de cuenta de ejemplo de cada banco de los clientes.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -203,7 +217,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 2. Configuración tributaria | Perfil fiscal (persona física/jurídica, contribuyente de ITBIS, agente de retención, emisor e-CF), obligaciones DGII sugeridas y confirmables, impuestos con tasa, cuentas y vigencia, retenciones ITBIS/ISR con vigencia y tipo 606, todos los comprobantes B y E con sus rangos, «Probar cálculo» con asientos de ejemplo, permiso «impuestos» | **Aprobada y en `main`** (22-oct-2026, commit `3983185`; migración `004_tributaria.sql`; 34 pruebas; recorrido `pruebas/navegador/tributaria.cjs` de 11 pasos). |
 | 3. Ventas y CxC | Borradores y emisión de facturas, impuestos de la configuración por línea (con propina/selectivo), notas de crédito B04, anulación 608, cobros con retenciones configurables y sugeridas, clientes con datos fiscales, productos con impuestos, adjuntos e historial en facturas y cobros, antigüedad y estado de cuenta | **Aprobada y en `main`** (22-oct-2026, commit `0a396a1`; migración `005_ventas_fiscal.sql`; 45 pruebas, 11 de ellas de ventas con la lógica real; recorrido `pruebas/navegador/ventas.cjs` de 13 pasos; los de las fases 1 y 2 siguen pasando). |
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
-| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Pendiente |
+| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en la rama, falta su «sí» para `main`; siguen conciliación y reporte. |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
 | 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
 
@@ -258,13 +272,13 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 78 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 91 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
-# también: acceso, firma, roles, documentos, dos-pasos y dgii (cada uno crea su propia firma; dgii con --experimental-strip-types)
+# también: acceso, firma, roles, documentos, dos-pasos, bancos y dgii (cada uno crea su propia firma; dgii con --experimental-strip-types)
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes

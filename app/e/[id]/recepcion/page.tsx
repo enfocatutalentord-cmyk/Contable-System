@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, soloCliente } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
+import { NOMBRE_TIPO, MIME } from "@/lib/archivos-banco";
 import { TIPOS, verTamano } from "@/lib/documentos";
 import { puede } from "@/lib/permisos";
 import { puedeVer } from "@/lib/pestanas";
@@ -10,6 +11,7 @@ import { cambiarEstadoRecepcion, subirDocumentos } from "../recepcion-acciones";
 
 export const metadata = { title: "Documentos · Empire Tax’N Legal" };
 
+const TIPOS_BANCO = Object.fromEntries(Object.entries(MIME).map(([k, v]) => [v, NOMBRE_TIPO[k as keyof typeof NOMBRE_TIPO]]));
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });
 const FILTROS: Record<string, string> = { pendientes: "Por procesar", procesado: "Procesados", descartado: "Descartados", todos: "Todos" };
 
@@ -28,6 +30,7 @@ export default async function Recepcion({ params, searchParams }: {
   const sube = puede(permisos, "adjuntar");
   const procesa = puede(permisos, "registrar") && !cliente;
   const haceCompras = procesa && puedeVer(pestanas, "/compras");
+  const haceBancos = procesa && puedeVer(pestanas, "/bancos");
 
   return (
     <>
@@ -42,8 +45,8 @@ export default async function Recepcion({ params, searchParams }: {
         <div className="tarjeta" style={{ marginBottom: 20 }}>
           <h2 style={{ marginTop: 0 }}>Subir documentos</h2>
           <Formulario accion={subirDocumentos.bind(null, id)} boton="Subir" className="fila">
-            <label style={{ flex: "2 1 280px" }}>Archivos (PDF, JPG o PNG, hasta 4 MB cada uno; desde el celular puedes tomar la foto)
-              <input type="file" name="archivos" accept="application/pdf,image/jpeg,image/png" multiple required />
+            <label style={{ flex: "2 1 280px" }}>Archivos (PDF, JPG o PNG, hasta 4 MB cada uno; desde el celular puedes tomar la foto; los estados bancarios también en Excel, CSV u OFX)
+              <input type="file" name="archivos" accept="application/pdf,image/jpeg,image/png,.xlsx,.csv,.ofx" multiple required />
             </label>
             <label style={{ flex: "1 1 200px" }}>Qué es
               <select name="categoria" defaultValue="gasto">
@@ -68,7 +71,7 @@ export default async function Recepcion({ params, searchParams }: {
               <tr key={r.id} className={r.estado === "descartado" ? "anulado" : undefined}>
                 <td>
                   <a href={`/e/${id}/recepcion/${r.id}`} target="_blank" rel="noopener">{r.nombre}</a>
-                  <div className="sub" style={{ margin: 0 }}>{TIPOS[r.tipo]} · {verTamano(r.tamano)}</div>
+                  <div className="sub" style={{ margin: 0 }}>{TIPOS[r.tipo] ?? TIPOS_BANCO[r.tipo]} · {verTamano(r.tamano)}</div>
                   {r.nota && <div style={{ fontSize: "0.9rem" }}>«{r.nota}»</div>}
                 </td>
                 <td>{CATEGORIAS[r.categoria]}</td>
@@ -85,6 +88,9 @@ export default async function Recepcion({ params, searchParams }: {
                       <div className="fila" style={{ gap: 6, flexDirection: "column", alignItems: "stretch" }}>
                         {haceCompras && ["gasto", "factura_recibida"].includes(r.categoria) && (
                           <Link className="boton primario" href={`/e/${id}/compras/nueva?recepcion=${r.id}`}>Registrar compra con este documento</Link>
+                        )}
+                        {haceBancos && r.categoria === "estado_bancario" && TIPOS_BANCO[r.tipo] && (
+                          <Link className="boton primario" href={`/e/${id}/bancos/importar?recepcion=${r.id}`}>Importar a Bancos</Link>
                         )}
                         {r.estado === "nuevo" && (
                           <Formulario accion={cambiarEstadoRecepcion.bind(null, id, r.id, "en_proceso")} boton="Marcar en proceso" className="fila"><span /></Formulario>

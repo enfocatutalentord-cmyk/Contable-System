@@ -8,6 +8,7 @@ import { conEmpresa, db, mensajeError } from "@/lib/db";
 import { huella, nombreSeguro, TAMANO_MAXIMO, tipoPorContenido } from "@/lib/documentos";
 import { urlApp } from "@/lib/enlaces";
 import { CATEGORIAS } from "@/lib/recepciones";
+import { MENSAJE_XLS, MIME, tipoEstadoCuenta } from "@/lib/archivos-banco";
 import type { Estado } from "../../acciones-cuenta";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -25,8 +26,14 @@ export async function subirDocumentos(empresaId: string, _: Estado, fd: FormData
   for (const a of archivos) {
     if (a.size > TAMANO_MAXIMO) return { error: `«${a.name}» pasa de 4 MB. Tómale la foto con menos resolución o divide el PDF.` };
     const bytes = new Uint8Array(await a.arrayBuffer());
-    const tipo = tipoPorContenido(bytes);
-    if (!tipo) return { error: `«${a.name}» no es PDF, JPG ni PNG.` };
+    let tipo = tipoPorContenido(bytes);
+    // Los estados bancarios también pueden venir en Excel, CSV u OFX, para importarlos en Bancos.
+    if (!tipo && categoria === "estado_bancario") {
+      const t = tipoEstadoCuenta(bytes);
+      if (t === "xls") return { error: `«${a.name}»: ${MENSAJE_XLS}` };
+      if (t) tipo = MIME[t];
+    }
+    if (!tipo) return { error: `«${a.name}» no es PDF, JPG ni PNG${categoria === "estado_bancario" ? " (ni Excel, CSV u OFX)" : ""}.` };
     leidos.push({ nombre: nombreSeguro(a.name), tipo, bytes });
   }
   try {
