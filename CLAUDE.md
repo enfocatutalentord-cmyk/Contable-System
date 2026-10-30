@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 30-oct-2026 (Fase 5 Bancos, parte 1 en la rama; Fases 1 a 4, nueva navegación y Fase 6 hasta IR-17 en `main`).
+Última actualización: 30-oct-2026 (Fase 5 Bancos parte 1 y retención de alquileres en `main`; sigue la conciliación).
 
 ## Con quién y cómo
 
@@ -163,7 +163,8 @@ Notas de infraestructura que costaron tiempo:
   el documento pasa a Procesado). Permisos: alta de cuentas «catálogo»; importar/deshacer «registrar». Pruebas
   `pruebas/bancos-archivos.test.mjs` y `pruebas/bancos.test.mjs`; recorrido `pruebas/navegador/bancos.cjs`. Parte 2: conciliación
   con sugerencias y reglas que solo sugieren (impuesto 0.20 % a cheques y transferencias desde el 3-jul-2026, Ley 30-26); parte 3:
-  reporte y cierre de la conciliación del mes. Se pidió a Joannie un estado de cuenta de ejemplo de cada banco de los clientes.
+  reporte y cierre de la conciliación del mes. **Pendiente:** Joannie aún no tiene estados de cuenta reales de los bancos de los
+  clientes (30-oct); cuando los mande, probar que cada formato se lea bien (hasta ahora solo con archivos de ejemplo).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -200,7 +201,7 @@ Notas de infraestructura que costaron tiempo:
   ITBIS son % del ITBIS facturado; las de ISR, % del monto sin impuestos. Cada línea puede llevar varios impuestos (ITBIS + propina).
   `configurar_tributaria(eid)` carga la configuración sugerida al crear una empresa. Catálogos de comprobantes (B01–B17, E31–E47)
   y obligaciones en `lib/fiscal.ts`; lo que la firma confirma se guarda en `obligaciones_empresa`. Pruebas: `pruebas/fiscal.test.mjs`.
-  ISR de alquileres 15 % desde el 1-jul-2026 (migración 017, «sí» del 30-oct; la tasa sale del formulario oficial IR-17 2026,
+  ISR de alquileres 15 % desde el 1-jul-2026 (migración 017, en `main` el 30-oct; la tasa sale del formulario oficial IR-17 2026,
   casilla 1); antes de julio no se cargó tasa de alquileres.
 - **Respaldos:** `.github/workflows/respaldo.yml` (diario, pg_dump cifrado AES-256 con prueba de restauración). Necesita en
   GitHub → Settings → Secrets: `DATABASE_URL` (conexión directa de Neon, sin pooler) y `RESPALDO_CLAVE`. Ver `docs/respaldos.md`.
@@ -217,7 +218,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 2. Configuración tributaria | Perfil fiscal (persona física/jurídica, contribuyente de ITBIS, agente de retención, emisor e-CF), obligaciones DGII sugeridas y confirmables, impuestos con tasa, cuentas y vigencia, retenciones ITBIS/ISR con vigencia y tipo 606, todos los comprobantes B y E con sus rangos, «Probar cálculo» con asientos de ejemplo, permiso «impuestos» | **Aprobada y en `main`** (22-oct-2026, commit `3983185`; migración `004_tributaria.sql`; 34 pruebas; recorrido `pruebas/navegador/tributaria.cjs` de 11 pasos). |
 | 3. Ventas y CxC | Borradores y emisión de facturas, impuestos de la configuración por línea (con propina/selectivo), notas de crédito B04, anulación 608, cobros con retenciones configurables y sugeridas, clientes con datos fiscales, productos con impuestos, adjuntos e historial en facturas y cobros, antigüedad y estado de cuenta | **Aprobada y en `main`** (22-oct-2026, commit `0a396a1`; migración `005_ventas_fiscal.sql`; 45 pruebas, 11 de ellas de ventas con la lógica real; recorrido `pruebas/navegador/ventas.cjs` de 13 pasos; los de las fases 1 y 2 siguen pasando). |
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
-| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en la rama, falta su «sí» para `main`; siguen conciliación y reporte. |
+| 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); siguen conciliación y reporte. |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
 | 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Pendiente |
 
@@ -258,7 +259,7 @@ No se pasa a la siguiente sin su autorización expresa.
   redactado como borrador en Gmail (sin destinatarios: ella elige a quién enviarlo).
 - Antes de facturar de verdad, cada empresa debe cargar sus rangos de NCF autorizados en «Comprobantes NCF».
 - **Orden de los pendientes acordado con Joannie (29-oct-2026):** 1) Excel en todas las listas y 2) verificación en dos pasos
-  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 en `main` (`e4f4e8a`, «sí» del 30-oct); retención de alquileres 15 % (migración 017) en la rama, falta su «sí» para `main`; sigue ISR anual (IR-2-2026 ya subido; depende de la Fase 7, presentar estructura antes);
+  (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 en `main` (`e4f4e8a`, «sí» del 30-oct); retención de alquileres 15 % (migración 017) en `main` («sí» del 30-oct); sigue ISR anual (IR-2-2026 ya subido; depende de la Fase 7, presentar estructura antes);
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
