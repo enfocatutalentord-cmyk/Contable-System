@@ -211,13 +211,25 @@ Notas de infraestructura que costaron tiempo:
   `cierres_ejercicio` guarda asientos, resultado y bloqueo anterior; «Deshacer el cierre» (permiso «reabrir») los anula y devuelve
   el bloqueo. El estado de resultados no cuenta los asientos de cierre (`saldosPorCuenta(..., sinCierre)`). **Centro de reportes**
   (`/reportes`, pestaña nueva para todos los roles con reportes): tarjetas por grupo con los reportes que el rol puede ver.
-  Siguiente: IR-2. **Propuesta presentada el 31-oct-2026** (espera su «sí»): parte 1 anexos A-1, B-1 y J desde la contabilidad
+  Siguiente: IR-2. **Propuesta aprobada el 31-oct-2026**: parte 1 anexos A-1, B-1 y J desde la contabilidad
   (cada cuenta a su casilla, sugerida por código y editable); parte 2 anexos G y E y liquidación 12–33 (saldo a favor del IR-2
   anterior presentado); parte 3 anexo D, impuesto a los activos y H-1/H-2. Solo sector manufactura/comercio/agropecuaria/hoteles
   (A-1/B-1). El 31-oct Joannie volvió a subir el mismo formulario (no hay instructivo; tampoco en la carpeta de Drive). Del
   formulario: casilla 12 «27 % o 30 %», activos 1 % de los activos imponibles con crédito del ISR liquidado (casilla 12),
-  recargo 10 % el primer mes + 4 % por mes. Prensa (no Gaceta): Ley 30-26 mantiene 27 % y agrega 30 % transitorio 2026–2028
-  para ingresos desde RD$1,000 millones: confirmar con la contadora o la Guía 10 de la DGII.
+  recargo 10 % el primer mes + 4 % por mes. **Fórmulas del Excel oficial** (convertido con LibreOffice a xlsx y leídas con
+  openpyxl, sin macros): casilla 12 = `SI(11>0; 11 × SI(A ≥ 1,000,000,000; 30 %; 27 %))`; A-1 total activos = 1+2+3+4−5, total
+  pasivos y patrimonio = 7+8+9+10; B-1 casilla 1 = 1.1+1.2−1.3−1.4+1.5, 4 = 1+2+3, 5 (costo) viene del anexo D, 14 = 4−(5 a 13),
+  15 = 5..13+14; activos: 1 % de los activos imponibles menos el ISR liquidado (casilla 12); nuevo saldo a favor solo si > 200.
+  «sí» de Joannie a la estructura del IR-2 el 31-oct (sector 1: manufactura/comercio/agropecuaria). El PDF que subió ese día es el
+  folleto «Agentes de Retención» (2023/2025, anterior a la Ley 30-26), no la Guía 10.
+  **IR-2 parte 1** (migración 024, `lib/ir2.ts`, pantalla `/dgii/ir2?ejercicio=&anexo=a1|b1|j`, tarjeta en Reportes DGII): casillas
+  y textos del A-1 y B-1 copiados del formulario; `cuentas.casilla_ir2` («A1:1.1», «B1:6.1»; vacío = `casillaSugerida` por código y
+  nombre: categorías de depreciación del art. 287, ISR 63 fuera del B-1), se cambia en Catálogo › Editar y se ve en una columna.
+  A-1 al fin del ejercicio (provisiones en positivo que se restan; resultados sin cerrar a 10.4/10.5); B-1 del ejercicio sin
+  asientos de cierre (devoluciones/descuentos en positivo que se restan; costo 5 desde las cuentas de costo hasta la parte 3); cuentas
+  con saldo sin casilla y A-1 que no cuadra se avisan; detalle por casilla con enlace a la cuenta. Anexo J desde facturas emitidas
+  (1.x) y compras registradas (2.x) no anuladas, monto sin impuestos en pesos; B16/B02/B17 de compras sin casilla se avisan.
+  Excel/PDF `IR-2_A1|B1|J_<RNC>_<año>`. Pruebas `pruebas/ir2.test.mjs`; recorrido `pruebas/navegador/ir2.cjs` (datos de estados y dgii).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -326,13 +338,13 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 113 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 117 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/ventas.cjs       # crea su propia firma
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/compras.cjs      # crea su propia firma
-# también: acceso, firma, roles, documentos, dos-pasos, bancos, conciliacion, estados y dgii (cada uno crea su propia firma; dgii, conciliacion y estados con --experimental-strip-types)
+# también: acceso, firma, roles, documentos, dos-pasos, bancos, conciliacion, estados, ir2 y dgii (cada uno crea su propia firma; dgii, conciliacion, estados e ir2 con --experimental-strip-types)
 ```
 
 Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas si no se fija antes

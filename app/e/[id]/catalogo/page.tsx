@@ -4,6 +4,7 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
 import { conEmpresa } from "@/lib/db";
 import { ACTIVIDADES, actividadSugerida, type Actividad } from "@/lib/estados-flujo";
+import { A1, ASIGNABLES, B1, casillaSugerida, nombreCasilla } from "@/lib/ir2";
 import { puede } from "@/lib/permisos";
 import { crearCuenta, editarCuenta } from "../acciones";
 
@@ -45,6 +46,18 @@ export default async function Catalogo({ params, searchParams }: {
                 <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <input type="checkbox" name="activa" defaultChecked={enEdicion.activa} style={{ minHeight: 0 }} /> Activa
                 </label>
+                {enEdicion.de_detalle && (
+                  <label style={{ flex: "1 1 320px" }}>Casilla en el IR-2
+                    <select name="casilla_ir2" defaultValue={enEdicion.casilla_ir2 ?? ""}>
+                      <option value="">{casillaSugerida(enEdicion.codigo, enEdicion.tipo, enEdicion.nombre) ? `Sugerida: ${nombreCasilla(casillaSugerida(enEdicion.codigo, enEdicion.tipo, enEdicion.nombre)!)}` : "Sin casilla (no va en el A-1 ni en el B-1)"}</option>
+                      {(["A1", "B1"] as const).map((an) => (
+                        <optgroup key={an} label={an === "A1" ? "Anexo A-1 · Balance general" : "Anexo B-1 · Estado de resultados"}>
+                          {ASIGNABLES[an].map((c) => <option key={c} value={`${an}:${c}`}>{c} {(an === "A1" ? A1 : B1).find((k) => k.c === c)!.texto}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {enEdicion.de_detalle && actividadSugerida(enEdicion.codigo, enEdicion.tipo, enEdicion.nombre) && (
                   <label style={{ flex: "1 1 300px" }}>En el flujo de efectivo
                     <select name="actividad_flujo" defaultValue={enEdicion.actividad_flujo ?? ""}>
@@ -78,7 +91,7 @@ export default async function Catalogo({ params, searchParams }: {
 
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th>Uso</th><th>Flujo de efectivo</th>{editable && <th />}</tr></thead>
+          <thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th>Uso</th><th>Flujo de efectivo</th><th>IR-2</th>{editable && <th />}</tr></thead>
           <tbody>
             {cuentas.map((c) => (
               <tr key={c.id} className={c.de_detalle ? undefined : "grupo"} style={c.activa ? undefined : { opacity: 0.55 }}>
@@ -87,6 +100,7 @@ export default async function Catalogo({ params, searchParams }: {
                 <td>{TIPOS[c.tipo]}</td>
                 <td>{c.de_detalle ? "Detalle" : "Grupo"}</td>
                 <td>{c.de_detalle && actividadSugerida(c.codigo, c.tipo, c.nombre) ? CORTAS[(c.actividad_flujo as Actividad | null) ?? actividadSugerida(c.codigo, c.tipo, c.nombre)!] + (c.actividad_flujo ? "" : " (sugerida)") : ""}</td>
+                <td>{c.de_detalle ? (() => { const k = c.casilla_ir2 ?? casillaSugerida(c.codigo, c.tipo, c.nombre); return k ? `${k.replace("A1:", "A-1 ").replace("B1:", "B-1 ")}${c.casilla_ir2 ? "" : " (sugerida)"}` : ""; })() : ""}</td>
                 {editable && <td className="num"><a href={`/e/${id}/catalogo?editar=${c.id}`}>Editar</a></td>}
               </tr>
             ))}

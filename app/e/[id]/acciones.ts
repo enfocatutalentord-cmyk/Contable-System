@@ -1,5 +1,6 @@
 "use server";
 
+import { esCasillaIr2 } from "@/lib/ir2";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { esUuid, exigirPermiso } from "@/lib/acceso";
@@ -337,9 +338,12 @@ export async function editarCuenta(empresaId: string, _: Estado, fd: FormData): 
   const actividad = texto(fd, "actividad_flujo") || null;
   if (!nombre) return { error: "Escribe el nombre de la cuenta." };
   if (actividad && !["efectivo", "operacion", "ajuste", "inversion", "financiamiento"].includes(actividad)) return { error: "Actividad no válida." };
+  // Casilla del IR-2 (anexo A-1 o B-1); vacío = la sugerida por el código.
+  const casillaIr2 = texto(fd, "casilla_ir2") || null;
+  if (casillaIr2 && !esCasillaIr2(casillaIr2)) return { error: "Casilla del IR-2 no válida." };
   try {
     await conEmpresa(empresaId, async (tx) => {
-      const r = await tx`UPDATE cuentas SET nombre = ${nombre}, activa = ${activa}, actividad_flujo = ${actividad} WHERE id = ${cuentaId}`;
+      const r = await tx`UPDATE cuentas SET nombre = ${nombre}, activa = ${activa}, actividad_flujo = ${actividad}, casilla_ir2 = ${casillaIr2} WHERE id = ${cuentaId}`;
       if (r.count === 0) throw new ErrorContable("La cuenta no existe");
       await tx`INSERT INTO bitacora (empresa_id, usuario_id, accion, detalle)
                VALUES (${empresaId}, ${usuario.id}, 'cuenta_editada', ${tx.json({ cuentaId, nombre, activa })})`;

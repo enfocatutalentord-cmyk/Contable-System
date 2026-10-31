@@ -10,8 +10,9 @@ export type Cuenta = {
   de_detalle: boolean;
   activa: boolean;
   actividad_flujo: string | null;
+  casilla_ir2: string | null;
 };
 
 export async function listarCuentas(tx: Tx): Promise<Cuenta[]> {
-  return tx<Cuenta[]>`SELECT id, codigo, nombre, tipo, nivel, de_detalle, activa, actividad_flujo FROM cuentas ORDER BY codigo`;
+  return tx<Cuenta[]>`SELECT id, codigo, nombre, tipo, nivel, de_detalle, activa, actividad_flujo, casilla_ir2 FROM cuentas ORDER BY codigo`;
 }

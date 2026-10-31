@@ -23,10 +23,12 @@ import { fechaValida } from "@/lib/reportes";
 import { reporteConciliacion } from "@/lib/reporte-conciliacion";
 import { armarEstado, leerFiltrosEstados, TITULOS } from "@/lib/estados-pantalla";
 import { porcentaje, variacion } from "@/lib/estados";
+import { A1, anexoA1, anexoB1, anexoJ, B1 } from "@/lib/ir2";
+import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2-a1|ir2-b1|ir2-j)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -271,6 +273,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           deCentavos(f.montoPago), deCentavos(f.sujeto), deCentavos(f.tasa), deCentavos(f.retenido)]),
         totales: ["", "", "", "", "", "Totales", deCentavos(filas.reduce((t, f) => t + f.montoPago, 0n)),
           deCentavos(filas.reduce((t, f) => t + f.sujeto, 0n)), "", deCentavos(filas.reduce((t, f) => t + f.retenido, 0n))],
+      }];
+    }
+    if (reporte.startsWith("ir2-")) {
+      const r = await conEmpresa(id, async (tx) => {
+        const [{ mes_cierre }] = await tx<{ mes_cierre: number }[]>`SELECT mes_cierre FROM empresas WHERE id = ${id}`;
+        const e = (await ejercicios(tx, mes_cierre)).find((x) => x.fin === sp.ejercicio);
+        if (!e) return null;
+        if (reporte === "ir2-a1") return { e, a: await anexoA1(tx, e.fin, mes_cierre), j: null };
+        if (reporte === "ir2-b1") return { e, a: await anexoB1(tx, e.inicio, e.fin), j: null };
+        return { e, a: null, j: await anexoJ(tx, e.inicio, e.fin) };
+      });
+      if (!r) return null;
+      const anio = r.e.fin.slice(0, 4);
+      const detalle = `Ejercicio del ${verFecha(r.e.inicio)} al ${verFecha(r.e.fin)} · IR-2 versión 2026`;
+      if (r.j) {
+        return [`IR-2_J_${empresa.rnc ?? "sin-rnc"}_${anio}`, {
+          ...base, titulo: "IR-2 · Anexo J · Resumen por tipo de comprobante", detalle,
+          columnas: [col("Casilla", false, 8), col("Concepto", false, 50), col("Cantidad", false, 10), col("Monto", true)],
+          filas: r.j.filas.map((f) => [f.c, f.texto, String(f.cantidad), deCentavos(f.monto)]),
+          negritas: r.j.filas.flatMap((f, i) => (f.total ? [i] : [])),
+        }];
+      }
+      const cs = reporte === "ir2-a1" ? A1 : B1;
+      return [`IR-2_${reporte === "ir2-a1" ? "A1" : "B1"}_${empresa.rnc ?? "sin-rnc"}_${anio}`, {
+        ...base, titulo: reporte === "ir2-a1" ? "IR-2 · Anexo A-1 · Balance general" : "IR-2 · Anexo B-1 · Estado de resultados", detalle,
+        columnas: [col("Casilla", false, 8), col("Concepto", false, 60), col("Monto", true)],
+        filas: cs.map((k) => [k.c, k.texto, deCentavos(r.a!.valores[k.c] ?? 0n)]),
+        negritas: cs.flatMap((k, i) => (k.total ? [i] : [])),
       }];
     }
     if (reporte === "estado-financiero") {
