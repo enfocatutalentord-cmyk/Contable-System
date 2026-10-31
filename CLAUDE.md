@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 30-oct-2026 (Fase 5 Bancos completa en `main`; Fase 7 parte 1 en la rama).
+Última actualización: 31-oct-2026 (Fase 5 Bancos completa; Fase 7 partes 1 y 2 en `main`).
 
 ## Con quién y cómo
 
@@ -260,7 +260,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
 | 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); parte 2 (conciliación) en `main` («sí» del 30-oct); parte 3 (reporte y cierre) en `main` («sí» del 30-oct). **Fase 5 completa.** Sigue presentar la estructura de la Fase 7. |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
-| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Estructura aprobada (30-oct-2026). Parte 1 (resultados y situación financiera) y parte 2 (flujo de efectivo y cambios en el patrimonio) en la rama, falta su «sí» (el 30-oct escribió «i»: se pidió confirmar). |
+| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Estructura aprobada (30-oct-2026). Partes 1 (resultados y situación financiera) y 2 (flujo de efectivo y cambios en el patrimonio) en `main` («sí» del 31-oct). Sigue la parte 3 (cierre del ejercicio y Centro de reportes). |
 
 ### Pendientes y decisiones abiertas
 
