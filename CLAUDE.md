@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 31-oct-2026 (Fases 5 y 7 completas en `main`; sigue el IR-2).
+Última actualización: 31-oct-2026 (Fases 5 y 7 completas; IR-2 parte 1 en `main`; sigue la parte 2).
 
 ## Con quién y cómo
 
@@ -230,6 +230,7 @@ Notas de infraestructura que costaron tiempo:
   con saldo sin casilla y A-1 que no cuadra se avisan; detalle por casilla con enlace a la cuenta. Anexo J desde facturas emitidas
   (1.x) y compras registradas (2.x) no anuladas, monto sin impuestos en pesos; B16/B02/B17 de compras sin casilla se avisan.
   Excel/PDF `IR-2_A1|B1|J_<RNC>_<año>`. Pruebas `pruebas/ir2.test.mjs`; recorrido `pruebas/navegador/ir2.cjs` (datos de estados y dgii).
+  En `main` el 31-oct («sí» de Joannie). Sigue la parte 2 (anexos G y E y liquidación 12–33).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
