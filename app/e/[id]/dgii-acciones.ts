@@ -47,7 +47,7 @@ export async function quitarEnvio(empresaId: string, formato: string, periodo: s
   return { ok: "Marca de envío quitada." };
 }
 
-// ───── Declaraciones juradas (IT-1, IR-17) ─────
+// ───── Declaraciones juradas (IT-1, IR-17, IR-2) ─────
 
 // Guarda lo escrito a mano en el borrador (lo que se deja igual a la sugerencia sigue a lo registrado).
 export async function guardarDeclaracion(empresaId: string, formulario: string, periodo: string, _: Estado, fd: FormData): Promise<Estado> {
@@ -84,7 +84,7 @@ export async function presentarDeclaracion(empresaId: string, formulario: string
         INSERT INTO envios_dgii (empresa_id, formato, periodo, referencia, huella, registros, enviado_por, casillas)
         VALUES (${empresaId}, ${formulario}, ${periodo}, ${referencia}, ${r.huella}, 0, ${usuario.id}, ${tx.json(casillas)})
         ON CONFLICT (empresa_id, formato, periodo) DO NOTHING`;
-      if (x.count === 0) throw new ErrorContable(`El ${formulario} de ese mes ya está marcado como presentado`);
+      if (x.count === 0) throw new ErrorContable(`El ${formulario} de ese período ya está marcado como presentado`);
     });
   } catch (e) {
     return { error: mensajeError(e) };

@@ -19,9 +19,10 @@ const ver = (col: Columna, v: bigint) =>
   col.tipo === "cantidad" ? String(v / 100n) : col.tipo === "porcentaje" ? `${deCentavos(v)} %` : verMonto(deCentavos(v));
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" });
 
-// Pantalla de una declaración jurada (IT-1, IR-17): las casillas del formulario oficial, lo sugerido desde lo registrado,
-// lo escrito a mano, la revisión y la constancia de presentación.
-export async function Declaracion({ id, formulario, mes }: { id: string; formulario: Form; mes?: string }) {
+// Pantalla de una declaración jurada (IT-1, IR-17, IR-2): las casillas del formulario oficial, lo sugerido desde lo
+// registrado, lo escrito a mano, la revisión y la constancia de presentación. «incrustada»: dentro de otra pantalla que
+// ya tiene su título y su selector de período (el IR-2, por ejercicio).
+export async function Declaracion({ id, formulario, mes, incrustada }: { id: string; formulario: Form; mes?: string; incrustada?: boolean }) {
   const def = FORMULARIOS[formulario];
   const { permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
@@ -42,7 +43,8 @@ export async function Declaracion({ id, formulario, mes }: { id: string; formula
   const avisos = r.avisos.filter((a) => a.nivel === "aviso");
   const cambio = envio && envio.huella !== r.huella;
   const v = (k: string) => r.valores[k] ?? 0n;
-  const vence = `${p.vence.slice(0, 8)}${String(def.diaVence).padStart(2, "0")}`;
+  const vence = def.anual ? def.anual.vence(p) : `${p.vence.slice(0, 8)}${String(def.diaVence).padStart(2, "0")}`;
+  const etiqueta = def.anual?.etiqueta;
 
   const celda = (col: Columna) => {
     if (esRelleno(col.clave)) return <td key={col.clave} />;
@@ -62,7 +64,15 @@ export async function Declaracion({ id, formulario, mes }: { id: string; formula
 
   return (
     <>
-      <p><Link href={`/e/${id}/dgii?mes=${mesTexto}`}>← Reportes DGII</Link></p>
+      {!incrustada && <p><Link href={`/e/${id}/dgii?mes=${mesTexto}`}>← Reportes DGII</Link></p>}
+      {incrustada ? (
+        <div className="entre" style={{ marginBottom: 12 }}>
+          <p className="sub" style={{ margin: 0 }}>Lo que sale de la contabilidad se llena solo; lo demás se escribe. Vence el {verFecha(vence)}.</p>
+          <span className={`estado-envio ${envio ? (cambio ? "cambio" : "enviado") : errores.length ? "con-errores" : "listo"}`}>
+            {envio ? (cambio ? "Cambió después de presentarlo" : "Presentado") : errores.length ? `${errores.length} por corregir` : "Listo para presentar"}
+          </span>
+        </div>
+      ) : (<>
       <div className="entre">
         <div>
           <h1>{def.nombre}</h1>
@@ -80,6 +90,7 @@ export async function Declaracion({ id, formulario, mes }: { id: string; formula
         <button>Ver</button>
         <Descargar href={`/e/${id}/exportar/${def.ruta}?periodo=${p.periodo}`} />
       </form>
+      </>)}
 
       <dl className="cifras-dgii tarjeta">
         {def.cifras.map(([k, t]) => <div key={k}><dt>{t}</dt><dd>{verMonto(deCentavos(v(k)))}</dd></div>)}
@@ -94,9 +105,9 @@ export async function Declaracion({ id, formulario, mes }: { id: string; formula
         <div className="tarjeta" style={{ margin: "12px 0" }}>
           <p className="sub" style={{ margin: 0 }}>
             Marcado como presentado el {fechaHora(envio.enviado_en)} por {envio.quien ?? "—"}{envio.referencia && <> · referencia {envio.referencia}</>}.
-            Su nuevo saldo a favor pasa como saldo a favor anterior al mes siguiente.
+            Su nuevo saldo a favor pasa como saldo a favor anterior al {def.anual ? "ejercicio" : "mes"} siguiente.
           </p>
-          {cambio && <p className="error">Después de presentarlo cambió algo de este mes. Si corresponde, presenta una rectificativa y vuelve a marcarlo.</p>}
+          {cambio && <p className="error">Después de presentarlo cambió algo de este {def.anual ? "ejercicio" : "mes"}. Si corresponde, presenta una rectificativa y vuelve a marcarlo.</p>}
           {puede(permisos, "impuestos") && <Formulario accion={quitarDeclaracion.bind(null, id, formulario, p.periodo)} boton="Quitar marca de presentado" className="fila"><span /></Formulario>}
         </div>
       )}
@@ -130,7 +141,7 @@ export async function Declaracion({ id, formulario, mes }: { id: string; formula
         </Formulario>
       )}
       {"ir6" in r && <AnexoIr6 filas={(r as Resultado & { ir6: FilaIr6[] }).ir6} descarga={`/e/${id}/exportar/ir6?periodo=${p.periodo}`} />}
-      <ResumenOrigen r={r} />
+      <ResumenOrigen r={r} etiqueta={etiqueta} />
     </>
   );
 }
@@ -160,13 +171,13 @@ function AnexoIr6({ filas, descarga }: { filas: FilaIr6[]; descarga: string }) {
   );
 }
 
-function ResumenOrigen({ r }: { r: Resultado }) {
+function ResumenOrigen({ r, etiqueta }: { r: Resultado; etiqueta?: (k: string) => string }) {
   const filas = Object.entries(r.origen);
   if (!filas.length) return null;
   return (
     <details className="tarjeta" style={{ marginTop: 12 }}>
       <summary>De dónde salen los valores sugeridos</summary>
-      <ul>{filas.map(([k, t]) => <li key={k}><b>{k.startsWith("A") ? `Anexo A ${k.slice(1)}` : `Casilla ${k.slice(1).replace(/[a-z]$/, "")}`}</b>: {t}</li>)}</ul>
+      <ul>{filas.map(([k, t]) => <li key={k}><b>{etiqueta ? etiqueta(k) : k.startsWith("A") ? `Anexo A ${k.slice(1)}` : `Casilla ${k.slice(1).replace(/[a-z]$/, "")}`}</b>: {t}</li>)}</ul>
     </details>
   );
 }

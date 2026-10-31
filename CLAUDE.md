@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 31-oct-2026 (Fases 5 y 7 completas; IR-2 parte 1 en `main`; sigue la parte 2).
+Última actualización: 31-oct-2026 (Fases 5 y 7 completas; IR-2 parte 1 en `main`; parte 2 en la rama, esperando el «sí»).
 
 ## Con quién y cómo
 
@@ -230,7 +230,19 @@ Notas de infraestructura que costaron tiempo:
   con saldo sin casilla y A-1 que no cuadra se avisan; detalle por casilla con enlace a la cuenta. Anexo J desde facturas emitidas
   (1.x) y compras registradas (2.x) no anuladas, monto sin impuestos en pesos; B16/B02/B17 de compras sin casilla se avisan.
   Excel/PDF `IR-2_A1|B1|J_<RNC>_<año>`. Pruebas `pruebas/ir2.test.mjs`; recorrido `pruebas/navegador/ir2.cjs` (datos de estados y dgii).
-  En `main` el 31-oct («sí» de Joannie). Sigue la parte 2 (anexos G y E y liquidación 12–33).
+  En `main` el 31-oct («sí» de Joannie).
+  **IR-2 parte 2** (migración 025, `lib/ir2-liquidacion.ts`, pestaña «Liquidación · anexos G y E» en `/dgii/ir2?anexo=liq`): usa la
+  pantalla común de declaraciones (`Declaracion` con `incrustada`; formulario «IR-2» en `FORMULARIOS` con `anual`: vence a los 120
+  días del cierre, art. 299 CT) y guarda en `declaraciones` con período = mes de cierre del ejercicio (AAAAMM). Anexo G a mano
+  (1.1–1.17, 2.1–2.4 y distribución 3.1–3.13; error si los totales no coinciden, como el Excel). Anexo E: 5 filas de pérdidas con
+  las fórmulas del Excel (d = b × c %, e = b + d, g = e ÷ f, h = casilla 7, j = h × i, k = menor de g y j, l = e − g; con renta
+  negativa el límite es 0); % por antigüedad sugerido (art. 287 k: 100 % años 1–3, 80 % el 4.º, 70 % el 5.º) y períodos = 6 − edad;
+  B y C a mano; D desde el B-1 (15 = 4, 17 = 3.1, 18 = 2.3). Liquidación A, B, 1–33 con las fórmulas oficiales; casilla 14 sugerida
+  desde el ISR retenido en cobros del ejercicio; % de recargo e interés a mano (aviso con el recargo sugerido: 10 % + 4 % por mes o
+  fracción). Al marcarlo presentado, el ejercicio siguiente toma la casilla 33 como 22 y las pérdidas pendientes (l) con un período
+  menos (y la pérdida fiscal si la casilla 9 fue negativa). Excel/PDF `IR-2_liquidacion_<RNC>_<año>` (`/exportar/ir2?periodo=`).
+  Pruebas `pruebas/ir2-liquidacion.test.mjs`; el recorrido `ir2.cjs` llega hasta presentar y ver el arrastre. Esperando el «sí»
+  de Joannie para `main`. Sigue la parte 3 (anexo D, impuesto a los activos, H-1/H-2).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -339,7 +351,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 117 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 124 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

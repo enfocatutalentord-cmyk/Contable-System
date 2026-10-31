@@ -28,7 +28,7 @@ import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2-a1|ir2-b1|ir2-j)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -256,6 +256,32 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         columnas: [col("Hoja", false, 14), col("Casilla", false, 8), col("Descripción", false, 60),
           col(ir17 ? "Monto imponible" : "Cantidad, total facturado o %", true), col(ir17 ? "Tasa %" : "Compras locales", true),
           col("Servicios", true), col("Importaciones", true), col("Monto / total", true)],
+        filas,
+      }];
+    }
+    if (reporte === "ir2") {
+      // Liquidación del IR-2 con los anexos G y E: una fila por valor (las filas con varias columnas, una por columna).
+      const per = periodoDe(sp.periodo ?? "");
+      if (!per) return null;
+      const def = FORMULARIOS["IR-2"];
+      const r = await conEmpresa(id, (tx) => calcularDeclaracion(tx, "IR-2", per));
+      const filas: Celda[][] = [];
+      for (const s of def.secciones) {
+        const hoja = def.hojas.find(([h]) => h === s.hoja)?.[1] ?? "";
+        filas.push([hoja, "", s.titulo, ""]);
+        for (const f of s.renglones) {
+          const cols = f.columnas.map((c, i) => ({ c, enc: s.encabezados[i] ?? "" })).filter(({ c }) => !esRelleno(c.clave));
+          for (const { c, enc } of cols) {
+            const x = r.valores[c.clave] ?? 0n;
+            const texto = cols.length > 1 ? `${f.texto} · ${enc}` : f.texto;
+            filas.push([hoja, f.n, texto, c.tipo === "cantidad" ? String(x / 100n) : deCentavos(x)]);
+          }
+        }
+      }
+      return [`IR-2_liquidacion_${empresa.rnc ?? ""}_${per.periodo.slice(0, 4)}`, {
+        ...base, titulo: `${def.nombre} (borrador)`,
+        detalle: `Ejercicio que termina en ${per.periodo.slice(4)}/${per.periodo.slice(0, 4)} · formulario oficial IR-2 2026 · montos en DOP; % y años como número`,
+        columnas: [col("Hoja", false, 22), col("Casilla", false, 8), col("Descripción", false, 70), col("Valor", true)],
         filas,
       }];
     }

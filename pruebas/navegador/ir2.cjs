@@ -1,4 +1,5 @@
-// Recorrido del IR-2 (parte 1): anexos A-1, B-1 y J desde la contabilidad, cambio de casilla en el catálogo y descargas.
+// Recorrido del IR-2: anexos A-1, B-1 y J desde la contabilidad, cambio de casilla en el catálogo, liquidación con los
+// anexos G y E (parte 2), marcar como presentado, arrastre al ejercicio siguiente y descargas.
 // Crea su propia firma con los datos de estados.cjs y de dgii.cjs. Uso: npm run build && npx next start -p 3100, luego:
 // DATABASE_URL=... node --experimental-strip-types pruebas/navegador/ir2.cjs
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
@@ -83,6 +84,45 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
     assert(x.status() === 200 && (await x.body()).subarray(0, 2).toString() === "PK", "Excel " + r);
   }
   paso("Excel de los tres anexos");
+
+  // Liquidación del ejercicio 2025 (parte 2)
+  const cifra = async (t) => (await page.locator("dl.cifras-dgii div", { hasText: t }).locator("dd").textContent()).trim();
+  const guardar = async () => {
+    await page.getByRole("button", { name: "Guardar y recalcular" }).click();
+    await page.locator("text=Borrador del IR-2 guardado y recalculado.").waitFor();
+    await page.reload({ waitUntil: "networkidle" });
+  };
+  const pesos = (t) => BigInt(t.replace(/[^\d-]/g, ""));
+  await page.goto(`${B}/e/${eid}/dgii/ir2?ejercicio=2025-12-31&anexo=liq`, { waitUntil: "networkidle" });
+  const renta = pesos(await cifra("Renta neta imponible (11)"));
+  assert(renta > 0n, "renta neta 2025");
+  assert(pesos(await cifra("Impuesto liquidado (12)")) === (renta * 27n + 50n) / 100n, "27 % de la casilla 11");
+  await page.fill('input[name="G1.1"]', "1000");
+  await guardar();
+  await page.locator("text=Anexo G: el total de la distribución de los ajustes positivos").waitFor();
+  assert(/por corregir/.test(await page.locator(".estado-envio").textContent()), "error del anexo G");
+  await page.fill('input[name="G3.13p"]', "1000");
+  await page.fill('input[name="E1a"]', "2024");
+  await page.fill('input[name="E1b"]', "500");
+  await guardar();
+  assert(/Listo para presentar/.test(await page.locator(".estado-envio").textContent()), "sin errores");
+  const renta2 = pesos(await cifra("Renta neta imponible (11)"));
+  assert(renta2 === renta + 100000n - 10000n, `ajuste +1,000 y pérdida 500/5 = 100: ${renta} → ${renta2}`);
+  await captura("ir2-4-liquidacion.png");
+  paso("liquidación 2025: anexo G cuadrado, pérdida de 2024 compensada y 27 % sobre la casilla 11");
+
+  const xl = await page.request.get(`${B}/e/${eid}/exportar/ir2?periodo=202512`);
+  assert(xl.status() === 200 && (await xl.body()).subarray(0, 2).toString() === "PK", "Excel de la liquidación");
+  await page.getByRole("button", { name: "Marcar como presentado" }).click();
+  await page.locator(".estado-envio", { hasText: /^Presentado$/ }).waitFor();
+  await page.locator("text=Marcado como presentado el").waitFor();
+  paso("Excel de la liquidación y marcar como presentado");
+
+  await page.goto(`${B}/e/${eid}/dgii/ir2?ejercicio=2026-12-31&anexo=liq`, { waitUntil: "networkidle" });
+  assert((await page.inputValue('input[name="E1a"]')) === "2024" && (await page.inputValue('input[name="E1b"]')) === "400.00", "pérdida pendiente pasa a 2026");
+  assert((await page.inputValue('input[name="E1f"]')) === "4", "le quedan 4 períodos");
+  await captura("ir2-5-arrastre.png");
+  paso("2026: la pérdida pendiente (400) y sus períodos vienen del IR-2 de 2025 presentado");
 
   assert(errores.length === 0, "errores en la consola: " + errores.join(" | "));
   await browser.close();

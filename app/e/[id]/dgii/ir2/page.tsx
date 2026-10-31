@@ -3,13 +3,17 @@ import { Descargar } from "@/app/descargar";
 import { accesoEmpresa } from "@/lib/acceso";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { conEmpresa } from "@/lib/db";
+import { Declaracion } from "../declaracion";
 import { A1, anexoA1, anexoB1, anexoJ, B1, type Anexo1, type Casilla } from "@/lib/ir2";
 import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 
 export const metadata = { title: "IR-2 · Empire Tax’N Legal" };
 
-const ANEXOS: Record<string, string> = { a1: "Anexo A-1 · Balance general", b1: "Anexo B-1 · Estado de resultados", j: "Anexo J · Comprobantes" };
+const ANEXOS: Record<string, string> = {
+  a1: "Anexo A-1 · Balance general", b1: "Anexo B-1 · Estado de resultados", j: "Anexo J · Comprobantes",
+  liq: "Liquidación · anexos G y E",
+};
 
 function TablaAnexo({ casillas, anexo, id }: { casillas: Casilla[]; anexo: Anexo1; id: string }) {
   return (
@@ -44,8 +48,8 @@ function TablaAnexo({ casillas, anexo, id }: { casillas: Casilla[]; anexo: Anexo
   );
 }
 
-// IR-2 2026, parte 1: anexos A-1, B-1 y J del ejercicio elegido, desde la contabilidad. Cada cuenta va a la casilla que
-// tiene en el catálogo (o a la sugerida por su código).
+// IR-2 2026: anexos A-1, B-1 y J del ejercicio elegido, desde la contabilidad (cada cuenta va a la casilla que tiene en el
+// catálogo o a la sugerida por su código), y la liquidación con los anexos G y E (parte 2).
 export default async function Ir2({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ ejercicio?: string; anexo?: string }>;
@@ -70,7 +74,7 @@ export default async function Ir2({ params, searchParams }: {
           <h1>IR-2 · ISR anual de sociedades</h1>
           <p className="sub">{empresa.nombre}{empresa.rnc && ` · RNC ${empresa.rnc}`} · formulario IR-2 versión 2026 · manufactura, comercio, agropecuaria y hoteles</p>
         </div>
-        {datos && puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/ir2-${anexoElegido}?ejercicio=${datos.e.fin}`} />}
+        {datos && puede(permisos, "exportar") && <Descargar href={anexoElegido === "liq" ? `/e/${id}/exportar/ir2?periodo=${datos.e.fin.slice(0, 7).replace("-", "")}` : `/e/${id}/exportar/ir2-${anexoElegido}?ejercicio=${datos.e.fin}`} />}
       </div>
       {!datos ? <p>Todavía no hay asientos contabilizados.</p> : (
         <>
@@ -86,9 +90,10 @@ export default async function Ir2({ params, searchParams }: {
               <Link key={k} className={`boton${k === anexoElegido ? " primario" : ""}`} href={`/e/${id}/dgii/ir2?ejercicio=${datos.e.fin}&anexo=${k}`}>{v}</Link>
             ))}
           </nav>
-          <p className="sub">Ejercicio del {verFecha(datos.e.inicio)} al {verFecha(datos.e.fin)}. Toca un concepto para ver sus cuentas; la casilla de cada cuenta se cambia en el Catálogo de cuentas.</p>
-          {!datos.e.terminado && <p className="aviso">El ejercicio todavía no ha terminado: las cifras pueden cambiar.</p>}
-          {anexoElegido !== "j" && (() => {
+          {anexoElegido === "liq" && <Declaracion id={id} formulario="IR-2" mes={datos.e.fin.slice(0, 7).replace("-", "")} incrustada />}
+          {anexoElegido !== "liq" && <p className="sub">Ejercicio del {verFecha(datos.e.inicio)} al {verFecha(datos.e.fin)}. Toca un concepto para ver sus cuentas; la casilla de cada cuenta se cambia en el Catálogo de cuentas.</p>}
+          {anexoElegido !== "liq" && !datos.e.terminado && <p className="aviso">El ejercicio todavía no ha terminado: las cifras pueden cambiar.</p>}
+          {(anexoElegido === "a1" || anexoElegido === "b1") && (() => {
             const an = anexoElegido === "a1" ? datos.a1 : datos.b1;
             return (
               <>
