@@ -9,6 +9,7 @@ import {
   balanceGeneral, columnasBalance, columnasResultados, estadoResultados, inicioEjercicio, porcentaje, variacion,
 } from "../lib/estados.ts";
 import { actividadSugerida, cambiosPatrimonio, flujoEfectivo } from "../lib/estados-flujo.ts";
+import { cerrarEjercicio, deshacerCierre, ejercicios, finEjercicio, propuestaCierre, traspasarResultado } from "../lib/cierre-ejercicio.ts";
 
 const rangos = (cols) => cols.map((c) => [c.desde, c.hasta]);
 
@@ -30,6 +31,13 @@ test("columnas del balance y ejercicio fiscal", () => {
   assert.equal(inicioEjercicio("2026-10-15", 12), "2026-01-01");
   assert.equal(inicioEjercicio("2026-10-15", 6), "2026-07-01");
   assert.equal(inicioEjercicio("2026-03-15", 6), "2025-07-01");
+});
+
+test("fin del ejercicio fiscal", () => {
+  assert.equal(finEjercicio("2026-10-15", 12), "2026-12-31");
+  assert.equal(finEjercicio("2026-10-15", 6), "2027-06-30");
+  assert.equal(finEjercicio("2026-03-15", 6), "2026-06-30");
+  assert.equal(finEjercicio("2024-01-10", 2), "2024-02-29");
 });
 
 test("porcentaje y variación sin decimales flotantes", () => {
@@ -168,4 +176,41 @@ test("cambios en el patrimonio de 2026: llega al total del estado de situación"
   assert.deepEqual(total(e, "Saldo al inicio del período"), [10000000n, 500000n, 10500000n]);
   assert.deepEqual(total(e, "Resultado del período"), [0n, 1600000n, 1600000n]);
   assert.deepEqual(total(e, "Saldo al final del período"), [10000000n, 2100000n, 12100000n]);
+});
+
+test("cierre del ejercicio 2025: propuesta, asiento, bloqueo, traspaso y deshacer", conBase, async () => {
+  const p = await leer((tx) => propuestaCierre(tx, "2025-12-31", 12));
+  assert.equal(p.resultado, 500000n);
+  assert.deepEqual(p.lineas.map((l) => [l.codigo, l.debe, l.haber]), [["410101", 500000n, 0n]]);
+  const cerrar = (fin) => leer((tx) => cerrarEjercicio(tx, { empresaId: empresa, fin, mesCierre: 12, cuentaResultadoId: cuentas["310302"], usuarioId: ana }));
+  await assert.rejects(cerrar("2026-12-31"), /todavía no ha terminado/);
+  await assert.rejects(cerrar("2025-11-30"), /no es el fin de un ejercicio/);
+  await cerrar("2025-12-31");
+  await assert.rejects(cerrar("2025-12-31"), /ya está cerrado/);
+  const [{ bloqueo }] = await sql`SELECT to_char(fecha_bloqueo, 'YYYY-MM-DD') AS bloqueo FROM empresas WHERE id = ${empresa}`;
+  assert.equal(bloqueo, "2025-12-31", "el ejercicio queda bloqueado");
+  // El estado de resultados de 2025 sigue mostrando la utilidad; el balance sigue cuadrando.
+  const er = await leer((tx) => estadoResultados(tx, columnasResultados("2025-01-01", "2025-12-31", "ninguno"), "cuentas"));
+  assert.deepEqual(total(er, "Utilidad (pérdida) neta del período"), [500000n]);
+  const b = await leer((tx) => balanceGeneral(tx, columnasBalance("2026-12-31", "ninguno", 12), "cuentas", 12));
+  assert.deepEqual(total(b, "Total patrimonio"), [12100000n]);
+  assert.equal(total(b, "Resultados de ejercicios anteriores sin cerrar"), undefined, "ya no hay resultados sin cerrar de 2025");
+  assert.ok(b.filas.some((f) => f.texto.startsWith("310302") && f.valores[0] === 500000n));
+  assert.deepEqual(b.cuadra, [true]);
+  // El flujo de 2025 no cuenta el asiento de cierre.
+  const fl = await leer((tx) => flujoEfectivo(tx, columnasResultados("2025-01-01", "2025-12-31", "ninguno")));
+  assert.deepEqual(total(fl, "Utilidad (pérdida) neta del período"), [500000n]);
+  assert.deepEqual(fl.cuadraEfectivo, [true]);
+  // Traspaso a resultados acumulados el 1 de enero.
+  await leer((tx) => traspasarResultado(tx, { empresaId: empresa, fin: "2025-12-31", cuentaAcumuladosId: cuentas["310301"], usuarioId: ana }));
+  const pat = await leer((tx) => cambiosPatrimonio(tx, "2026-01-01", "2026-12-31"));
+  assert.deepEqual(total(pat, "Saldo al final del período").at(-1), 12100000n);
+  const lista = await leer((tx) => ejercicios(tx, 12));
+  assert.ok(lista.find((e) => e.fin === "2025-12-31").cierre?.traspaso_id);
+  // Deshacer: anula los dos asientos y devuelve el bloqueo que había (ninguno).
+  await leer((tx) => deshacerCierre(tx, { empresaId: empresa, fin: "2025-12-31", usuarioId: ana }));
+  const [{ b2 }] = await sql`SELECT fecha_bloqueo AS b2 FROM empresas WHERE id = ${empresa}`;
+  assert.equal(b2, null);
+  const despues = await leer((tx) => balanceGeneral(tx, columnasBalance("2026-12-31", "ninguno", 12), "cuentas", 12));
+  assert.deepEqual(total(despues, "Resultados de ejercicios anteriores sin cerrar"), [500000n]);
 });

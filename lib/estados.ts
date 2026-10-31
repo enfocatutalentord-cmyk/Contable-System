@@ -139,7 +139,7 @@ function lineasDe(sec: Seccion, porColumna: CuentaSaldo[][], valor: (c: CuentaSa
 const sumar = (a: bigint[], b: bigint[], signo = 1n) => a.map((v, i) => v + signo * b[i]);
 
 export async function estadoResultados(tx: Tx, columnas: Columna[], agrupar: Agrupar): Promise<Estado> {
-  const porColumna = await Promise.all(columnas.map((c) => saldosPorCuenta(tx, c.desde, c.hasta)));
+  const porColumna = await Promise.all(columnas.map((c) => saldosPorCuenta(tx, c.desde, c.hasta, true)));
   const nombres = new Map(porColumna[0].map((c) => [c.codigo, { id: c.id, nombre: c.nombre }]));
   const cero = columnas.map(() => 0n);
   const totales: Record<string, bigint[]> = {};

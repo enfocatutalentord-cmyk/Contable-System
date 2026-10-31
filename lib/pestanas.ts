@@ -11,7 +11,7 @@ export const PESTANAS_CLIENTE: Seccion[] = [
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
                                 ["/proveedores", "Proveedores"]] },
   { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/bancos", "Bancos"], ["/cierres", "Cierre del mes"]] },
-  { grupo: "Reportes", enlaces: [["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"], ["/estados", "Estados financieros"]] },
+  { grupo: "Reportes", enlaces: [["/reportes", "Centro de reportes"], ["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"], ["/estados", "Estados financieros"]] },
   { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
   {
     grupo: "Configuración del cliente",

@@ -16,7 +16,9 @@ export type CuentaSaldo = {
 };
 
 // Saldos de todas las cuentas en un rango, con las cuentas de grupo sumando a sus hijas por código.
-export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string): Promise<CuentaSaldo[]> {
+// Con `sinCierre`, no cuenta los asientos de cierre del ejercicio (el estado de resultados de un año cerrado sigue mostrando su
+// utilidad).
+export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string, sinCierre = false): Promise<CuentaSaldo[]> {
   const filas = await tx<
     { id: string; codigo: string; nombre: string; tipo: TipoCuenta; nivel: number; de_detalle: boolean; inicial: string; debe: string; haber: string }[]
   >`
@@ -27,6 +29,7 @@ export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string): Pro
       FROM cuentas c
       LEFT JOIN lineas_asiento l ON l.cuenta_id = c.id
       LEFT JOIN asientos a ON a.id = l.asiento_id AND a.estado = 'contabilizado' AND a.fecha <= ${hasta}
+                           AND (NOT ${sinCierre} OR a.origen <> 'cierre')
      GROUP BY c.id
      ORDER BY c.codigo`;
 

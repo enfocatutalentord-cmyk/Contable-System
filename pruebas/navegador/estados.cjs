@@ -115,6 +115,31 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   require("node:fs").writeFileSync(path.join(S, "estado-de-situacion.pdf"), await pdf.body());
   paso("firmas guardadas; Excel y PDF del estado de situación comparativo");
 
+  // Cierre del ejercicio 2025 y traspaso a resultados acumulados
+  await page.goto(`${B}/e/${eid}/cierres`, { waitUntil: "networkidle" });
+  await page.locator("text=Asiento propuesto: utilidad del ejercicio de 5,000.00").waitFor();
+  await captura("estados-5-cierre.png");
+  await page.getByRole("button", { name: "Contabilizar el cierre del ejercicio 2025" }).click();
+  await page.waitForURL(/aviso=cerrado/);
+  await page.locator("text=Período cerrado hasta el 31/12/2025").waitFor();
+  await page.getByRole("button", { name: "Pasar a resultados acumulados" }).click();
+  await page.waitForURL(/aviso=traspasado/);
+  await page.locator("text=traspaso: asiento").waitFor();
+  await page.goto(`${B}/e/${eid}/estados?tipo=resultados&desde=2025-01-01&hasta=2025-12-31&comparar=ninguno`, { waitUntil: "networkidle" });
+  assert(/5,000\.00/.test(await fila("Utilidad (pérdida) neta del período").innerText()), "2025 cerrado sigue mostrando su utilidad");
+  await page.goto(`${B}/e/${eid}/estados?tipo=balance&corte=2026-12-31&comparar=ninguno`, { waitUntil: "networkidle" });
+  assert(/124,000\.00/.test(await fila("Total pasivos y patrimonio").innerText()) && !(await page.locator("text=El activo no es igual").count()), "el balance sigue cuadrando");
+  assert(/5,000\.00/.test(await fila("310301").innerText()), "resultados acumulados");
+  paso("cierre del ejercicio 2025: asiento contabilizado, año bloqueado y resultado pasado a resultados acumulados");
+
+  // Centro de reportes
+  await page.goto(`${B}/e/${eid}/reportes`, { waitUntil: "networkidle" });
+  for (const t of ["Estado de flujos de efectivo", "Balanza de comprobación", "Antigüedad de cuentas por cobrar", "Conciliación bancaria", "IT-1 (ITBIS)"]) {
+    assert(await page.getByRole("link", { name: t }).count(), "falta en el centro de reportes: " + t);
+  }
+  await captura("estados-6-centro.png");
+  paso("Centro de reportes con todos los reportes");
+
   // Celular
   const movil = await (await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await page.context().storageState() })).newPage();
   await movil.goto(`${B}/e/${eid}/estados?tipo=resultados&desde=2026-01-01&hasta=2026-12-31&comparar=anio`, { waitUntil: "networkidle" });

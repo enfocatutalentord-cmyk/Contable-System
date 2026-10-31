@@ -204,7 +204,14 @@ Notas de infraestructura que costaron tiempo:
   demás operación), se cambia en Catálogo › Editar y se ve en una columna. Estado de cambios en el patrimonio: columnas por subgrupo
   del patrimonio + «Resultados sin cerrar» + total; filas saldo inicial, resultado del período, traspaso por cierre, otros
   movimientos y saldo final (= total patrimonio del balance). Los asientos `origen = 'cierre'` (nuevo en la 022) no cuentan como
-  movimientos del período. Parte 3: cierre del ejercicio y Centro de reportes; luego presentar el IR-2.
+  movimientos del período. **Parte 3** (migración 023, `lib/cierre-ejercicio.ts`, en `/cierres`): «Cierre del ejercicio» por año
+  fiscal (`empresas.mes_cierre`; `finEjercicio`): asiento propuesto que deja ingresos, costos y gastos en cero contra «Resultado del
+  ejercicio» (310302 por defecto, elegible), `origen = 'cierre'`, fecha = fin del ejercicio; exige año terminado, sin borradores y
+  sin bloqueo en esa fecha; deja `fecha_bloqueo` = fin. «Pasar a resultados acumulados» (310301) con fecha del día siguiente.
+  `cierres_ejercicio` guarda asientos, resultado y bloqueo anterior; «Deshacer el cierre» (permiso «reabrir») los anula y devuelve
+  el bloqueo. El estado de resultados no cuenta los asientos de cierre (`saldosPorCuenta(..., sinCierre)`). **Centro de reportes**
+  (`/reportes`, pestaña nueva para todos los roles con reportes): tarjetas por grupo con los reportes que el rol puede ver.
+  Siguiente: presentar la estructura del IR-2.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -260,7 +267,7 @@ No se pasa a la siguiente sin su autorización expresa.
 | 4. Compras y CxP | Proveedores con datos fiscales y valores habituales, compras en borrador y registradas con NCF del proveedor o propio (B11, B13, B17), control de NCF duplicados, ITBIS con crédito o al costo, notas de crédito del proveedor, pagos con retenciones sugeridas y diferencia cambiaria, antigüedad y estado de cuenta de proveedores, datos del 606, adjuntos e historial | **Aprobada y en `main`** (23-oct-2026, commit `617f33a`; migración `006_compras.sql`; 56 pruebas, 11 de compras con la lógica real; recorrido `pruebas/navegador/compras.cjs` de 11 pasos; los de las fases 1 a 3 siguen pasando). |
 | 5. Bancos | Importación de estados de cuenta y conciliación con reglas | Estructura aprobada (30-oct-2026). Parte 1 (cuentas e importación) en `main` («sí» del 30-oct); parte 2 (conciliación) en `main` («sí» del 30-oct); parte 3 (reporte y cierre) en `main` («sí» del 30-oct). **Fase 5 completa.** Sigue presentar la estructura de la Fase 7. |
 | 6. Fiscal | 606–609, IT-1, ISR, IR-17; e-CF por proveedor certificado (PSFE) | Pendiente |
-| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Estructura aprobada (30-oct-2026). Partes 1 (resultados y situación financiera) y 2 (flujo de efectivo y cambios en el patrimonio) en `main` («sí» del 31-oct). Sigue la parte 3 (cierre del ejercicio y Centro de reportes). |
+| 7. Estados financieros y reportes | Resultados, balance, flujo, comparativos; Excel y PDF | Estructura aprobada (30-oct-2026). Partes 1 (resultados y situación financiera) y 2 (flujo de efectivo y cambios en el patrimonio) en `main` («sí» del 31-oct). Parte 3 (cierre del ejercicio y Centro de reportes) en la rama, falta su «sí». |
 
 ### Pendientes y decisiones abiertas
 
@@ -313,7 +320,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 111 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 113 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
