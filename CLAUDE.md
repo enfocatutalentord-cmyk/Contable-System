@@ -211,7 +211,13 @@ Notas de infraestructura que costaron tiempo:
   `cierres_ejercicio` guarda asientos, resultado y bloqueo anterior; «Deshacer el cierre» (permiso «reabrir») los anula y devuelve
   el bloqueo. El estado de resultados no cuenta los asientos de cierre (`saldosPorCuenta(..., sinCierre)`). **Centro de reportes**
   (`/reportes`, pestaña nueva para todos los roles con reportes): tarjetas por grupo con los reportes que el rol puede ver.
-  Siguiente: presentar la estructura del IR-2.
+  Siguiente: IR-2. **Propuesta presentada el 31-oct-2026** (espera su «sí»): parte 1 anexos A-1, B-1 y J desde la contabilidad
+  (cada cuenta a su casilla, sugerida por código y editable); parte 2 anexos G y E y liquidación 12–33 (saldo a favor del IR-2
+  anterior presentado); parte 3 anexo D, impuesto a los activos y H-1/H-2. Solo sector manufactura/comercio/agropecuaria/hoteles
+  (A-1/B-1). El 31-oct Joannie volvió a subir el mismo formulario (no hay instructivo; tampoco en la carpeta de Drive). Del
+  formulario: casilla 12 «27 % o 30 %», activos 1 % de los activos imponibles con crédito del ISR liquidado (casilla 12),
+  recargo 10 % el primer mes + 4 % por mes. Prensa (no Gaceta): Ley 30-26 mantiene 27 % y agrega 30 % transitorio 2026–2028
+  para ingresos desde RD$1,000 millones: confirmar con la contadora o la Guía 10 de la DGII.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
