@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 completo y Consola entrega 1 en `main`; Consola entrega 2 en la rama, esperando el «sí»; e-CF para después, pedido del 4-nov; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 completo y Consola de la plataforma completa en `main`; e-CF para después, pedido del 4-nov; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -382,7 +382,7 @@ No se pasa a la siguiente sin su autorización expresa.
   `.franja-supervision`) con la hora de fin, el motivo y «Terminar». Ninguna acción del cliente se conforma con «ver», así que
   nada se guarda; las descargas piden «exportar» (403). La firma ve todo el registro de la plataforma en Personas y accesos.
   Probado en pantalla con una firma ajena local (sin permiso 404; con permiso ve facturas, franja, descarga 403, nueva factura
-  sin permiso, firma 404; al terminar vuelve a 404). Esperando el «sí» de Joannie para `main` (aplica la migración 028).
+  sin permiso, firma 404; al terminar vuelve a 404). En `main` el 4-nov-2026 («sí» de Joannie). **Consola completa.**
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
@@ -404,7 +404,7 @@ No se pasa a la siguiente sin su autorización expresa.
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
   Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte: Consola
-  de la plataforma (aprobada el 4-nov-2026; entrega 1 en `main`).
+  de la plataforma (aprobada el 4-nov-2026; entregas 1 y 2 en `main`).
 
 ## Cómo trabajar en local
 
