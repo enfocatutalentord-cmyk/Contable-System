@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 completo en `main`; Consola de la plataforma entrega 1 en la rama, esperando el «sí»; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 completo y Consola de la plataforma entrega 1 en `main`; sigue la entrega 2 de la consola; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -372,7 +372,7 @@ No se pasa a la siguiente sin su autorización expresa.
   suspende o reactiva con motivo y su registro; /plataforma/registro. `firmas.suspendida_*`: `accesoEmpresa` y `accesoFirma`
   llevan a /suspendida (los datos se conservan; /empresas oculta las suspendidas). `registro_plataforma` (ver detalle, suspender,
   reactivar; con el nombre de la firma) no se cambia ni se borra (trigger). Enlace desde Mi cuenta solo para la dueña. Pruebas
-  `pruebas/plataforma.test.mjs` (cierran la conexión de lib/db.ts). Esperando el «sí» de Joannie para `main`. **Entrega 2**:
+  `pruebas/plataforma.test.mjs` (cierran la conexión de lib/db.ts). En `main` el 4-nov-2026 («sí» de Joannie). **Entrega 2**:
   permiso de supervisión en Personas y accesos, aviso por correo, modo solo lectura con franja, sesión de 1 h y registro visible
   para la firma.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
@@ -395,8 +395,8 @@ No se pasa a la siguiente sin su autorización expresa.
   (en `main`, `6c0bf98`, «sí» del 29-oct); 3) Fase 6 Fiscal («sí» del 29-oct; parte 1 606/607/608 en `main` (`133b3af`, «sí» del 29-oct); TXT e IT-1 en `main` (`b8a9abe`, «sí» del 29-oct, junto con el menú móvil de Manaury); IR-17 en `main` (`e4f4e8a`, «sí» del 30-oct); retención de alquileres 15 % (migración 017) en `main` («sí» del 30-oct); sigue ISR anual (IR-2-2026 ya subido; depende de la Fase 7, presentar estructura antes);
   dgii.gov.do responde 403 a descargas automáticas: Joannie sube los archivos) (606/607/608, luego IT-1, IR-17, ISR; presentar estructura
   antes); 4) e-CF (cuando elija el PSFE); 5) Fase 5 Bancos; 6) Fase 7 Estados financieros; 7) Asistente IA por rol (llave de
-  Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte, espera
-  su «sí»: Consola de la plataforma.
+  Gemini en Vercel, nivel pagado); 8) manuales y videos con la voz Aoede, al final, con la versión definitiva. Aparte: Consola
+  de la plataforma (aprobada el 4-nov-2026; entrega 1 en `main`).
 
 ## Cómo trabajar en local
 
