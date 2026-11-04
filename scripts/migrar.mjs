@@ -2,6 +2,7 @@
 // En Vercel corre antes de cada build (vercel-build), solo en producción.
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
 const url = process.env.DATABASE_URL;
@@ -15,7 +16,7 @@ if (!url) {
   process.exit(1);
 }
 const sql = postgres(url, { max: 1, onnotice: () => {} });
-const dir = path.join(path.dirname(new URL(import.meta.url).pathname), "..", "migraciones");
+const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migraciones");
 
 try {
   await sql`CREATE TABLE IF NOT EXISTS migraciones (nombre text PRIMARY KEY, aplicada timestamptz NOT NULL DEFAULT now())`;
