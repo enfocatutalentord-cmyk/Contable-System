@@ -4,6 +4,7 @@ import { exigirUsuario } from "@/lib/auth";
 import { estadoDosPasos } from "@/lib/cuenta-dos-pasos";
 import { enlaceAutenticador } from "@/lib/dos-pasos";
 import { verFecha } from "@/lib/montos";
+import { esDuenaPlataforma } from "@/lib/plataforma";
 import { cambiarClave } from "../acciones-cuenta";
 import { Formulario } from "../formulario";
 import { cancelarDosPasos, confirmarDosPasos, desactivarDosPasos, empezarDosPasos, nuevosCodigos } from "./acciones-dos-pasos";
@@ -20,6 +21,7 @@ export default async function MiCuenta({ searchParams }: { searchParams: Promise
   const usuario = await exigirUsuario();
   const { exigido, desactivada } = await searchParams;
   const dp = await estadoDosPasos(usuario.id);
+  const duena = await esDuenaPlataforma(usuario.email);
   const configurando = !dp.desde && dp.secreto;
   const qr = configurando ? await QRCode.toString(enlaceAutenticador(dp.secreto!, usuario.email), { type: "svg", margin: 1, errorCorrectionLevel: "M" }) : "";
 
@@ -28,11 +30,12 @@ export default async function MiCuenta({ searchParams }: { searchParams: Promise
       <div className="tarjeta" style={{ width: "100%", maxWidth: 560 }}>
         <h1>Mi cuenta</h1>
         <p className="sub">{usuario.nombre} · {usuario.email}</p>
+        {duena && <p><Link className="boton" href="/plataforma">Consola de la plataforma</Link>{!dp.desde && " (pide la verificación en dos pasos)"}</p>}
 
         <h2 id="dos-pasos">Verificación en dos pasos</h2>
         {desactivada && !dp.desde && <p className="exito" role="status">Verificación en dos pasos desactivada. Al entrar solo se pide la contraseña.</p>}
         {exigido && !dp.desde && (
-          <p className="error" role="alert">{dp.exigida.join(", ") || "Tu firma"} exige la verificación en dos pasos. Actívala para seguir trabajando.</p>
+          <p className="error" role="alert">{exigido === "consola" ? "La Consola de la plataforma" : dp.exigida.join(", ") || "Tu firma"} exige la verificación en dos pasos. Actívala para seguir trabajando.</p>
         )}
         {dp.desde ? (
           <>

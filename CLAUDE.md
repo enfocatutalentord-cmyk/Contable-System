@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 completo en `main`: partes 1, 2 y 3 con sus tres entregas; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 completo en `main`; Consola de la plataforma entrega 1 en la rama, esperando el «sí»; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -360,8 +360,21 @@ No se pasa a la siguiente sin su autorización expresa.
 - 28-oct-2026: en `main` la guía del Panel de la firma («los módulos están dentro de cada cliente») y avisos claros sin
   clientes (`746e474`). Joannie pidió acceso para Patricia (empiretaxnlegal@gmail.com) como administradora de la firma
   (lo hace un administrador en Firma → Equipo). Ese día Joannie dijo que las claves temporales no llegaban y pidió acceso con verificación por correo y cambio de clave al
-  primer ingreso: hecho y en `main` (ver Seguridad). Propuesta pendiente de su «sí»: **Consola de la plataforma** para la dueña
-  (todas las firmas, ver como supervisora solo lectura, suspender, registro de cada acceso; Ley 172-13).
+  primer ingreso: hecho y en `main` (ver Seguridad).
+- **Consola de la plataforma** (propuesta en https://claude.ai/artifact/4GRqmXRNgMejSwsTSGJXLY; «sí» de Joannie el 4-nov-2026 a la
+  estructura en 2 entregas). Respuestas: la supervisión de los datos de una firma solo con permiso de esa firma (24 h, 7 días o
+  hasta quitarlo, como el acceso temporal de Zendesk, con aviso por correo a sus administradores); la dueña es
+  patriciapm2312@gmail.com (la cuenta de esa sesión), que también es el contacto del aviso de firma suspendida. Base: Ley 172-13,
+  art. 5, numerales 5 (seguridad: evitar consulta o acceso no autorizado) y 6 (deber de secreto). **Entrega 1** (migración 027,
+  `lib/plataforma.ts`, `exigirDuena` en `lib/acceso.ts`, `app/plataforma/`, `app/suspendida/`): `duenas_plataforma` por correo
+  (solo por migración); exige la verificación en dos pasos (si no, /cuenta?exigido=consola). /plataforma lista las firmas con RNC,
+  alta, clientes, personas, última entrada (sesiones) y estado; /plataforma/[fid] muestra administradores y clientes (nombre y RNC),
+  suspende o reactiva con motivo y su registro; /plataforma/registro. `firmas.suspendida_*`: `accesoEmpresa` y `accesoFirma`
+  llevan a /suspendida (los datos se conservan; /empresas oculta las suspendidas). `registro_plataforma` (ver detalle, suspender,
+  reactivar; con el nombre de la firma) no se cambia ni se borra (trigger). Enlace desde Mi cuenta solo para la dueña. Pruebas
+  `pruebas/plataforma.test.mjs` (cierran la conexión de lib/db.ts). Esperando el «sí» de Joannie para `main`. **Entrega 2**:
+  permiso de supervisión en Personas y accesos, aviso por correo, modo solo lectura con franja, sesión de 1 h y registro visible
+  para la firma.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
@@ -393,7 +406,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 138 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 141 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

@@ -20,7 +20,10 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const usuario = await exigirUsuario();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().toLowerCase();
-  const firmas = await misFirmas(usuario.id);
+  const todas = await misFirmas(usuario.id);
+  // Las firmas suspendidas desde la Consola de la plataforma no se muestran; si solo tiene esas, ve el aviso.
+  const firmas = todas.filter((f) => !f.suspendida);
+  if (!firmas.length && todas.length) redirect("/suspendida");
   // Con una sola firma (lo normal) se entra directo a «Inicio de la firma».
   if (firmas.length === 1) {
     const aviso = sp.bienvenida ? "?bienvenida=1" : sp.sin_permiso ? "?sin_permiso=1" : "";
