@@ -3,14 +3,16 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 completo y Consola de la plataforma completa en `main`; e-CF para después, pedido del 4-nov; respaldos sin activar).
+Última actualización: 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
 - Se trabaja con **Joannie** (Enfoca Tu Talento). Responder siempre en **español**, con tono humano, claro y sin tecnicismos
   innecesarios. Explicar los pasos en el panel (Vercel, GitHub, midominio.do) uno por uno, con lo que hay que hacer clic.
 - La cuenta de la app en producción la abrió **Manaury Enrique Gómez Guerrero**, con la empresa **Goemhy Services** (RNC 132151119).
-- **Nunca pasar nada a `main` sin el «sí» de Joannie.** Se trabaja en la rama `claude/gallant-bell-4ejogr` y se pasa a `main`
+- **Desde el 4-nov-2026 el «sí» de cada bloque lo da Patricia** (Patricia Paulino, CEO de Empire Tax’N Legal; la cuenta
+  patriciapm2312@gmail.com), por decisión de esa fecha. Lo anterior lo aprobó Joannie.
+- **Nunca pasar nada a `main` sin el «sí» de Patricia.** Se trabaja en la rama `claude/gallant-bell-4ejogr` y se pasa a `main`
   (fast-forward) solo cuando ella lo aprueba. `main` publica solo en producción.
 - Todo lo que se proponga debe basarse en lo que hoy usan las plataformas líderes y mejor valoradas (G2, Capterra, casos
   publicados), citando la fuente. Referentes elegidos: **Xero** (G2 4.4, fechas de bloqueo, conciliación con reglas),
@@ -19,6 +21,18 @@ Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendi
 - No inventar datos, montos ni resultados. Antes de decir que algo funciona, probarlo.
 
 ## Documento rector
+
+**Desde el 4-nov-2026 mandan los documentos «Sistema Empire»** (subidos ese día; copias en `Downloads`):
+`Sistema_Empire_Documento_Maestro_Fase1.pdf` (2-nov-2026, 22 págs.: Módulo 1 contabilidad de Empire con unidades de negocio,
+cuenta de la socia y presupuesto, igualas y lista de precios EMP-P01; Módulo 2 ficha y expediente del cliente, formularios en
+línea, biblioteca de documentos, bitácora y reporte mensual, alertas, WhatsApp, roles) y
+`Sistema_Empire_Fase2_Aplicacion_e_Impuestos.pdf` (3-nov-2026, 7 págs.: aplicación del cliente, carga de facturas, solicitudes,
+impuestos de clientes, inventario, trámites DGII). Análisis y orden en https://claude.ai/artifact/FQLM162XxtLcFmSURKeJD1:
+1) ficha única y módulos, 2) igualas y facturación de Empire, 3) operación diaria (bitácora, cronograma, WhatsApp),
+4) reporte mensual e impuestos de clientes, 5) expediente y biblioteca, 6) formularios en línea y diagnóstico,
+7) presupuesto y cuenta de la socia, 8) aplicación del cliente; después e-CF, inventario, auditoría. La contabilidad propia de
+Empire se lleva **como un cliente más** dentro de la firma (Empire Tax’N Legal SRL, RNC 133-09734-6), decidido el 4-nov.
+
 
 **`docs/requerimientos-sistema.md`** (22-oct-2026) manda sobre todo lo anterior: sistema para **firmas contables** con
 varios clientes, por fases con aprobación expresa, sin módulos ni cambios no autorizados. Antes de desarrollar se presenta
