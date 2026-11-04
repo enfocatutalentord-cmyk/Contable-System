@@ -49,7 +49,8 @@ const asiento = (fecha, debe, haber, monto) => leer((tx) => insertarAsiento(tx, 
   empresaId: empresa, usuarioId: ana, fecha, concepto: `${debe}/${haber}`, origen: "manual",
   lineas: [{ cuentaId: cuentas[debe], debe: monto, haber: 0n }, { cuentaId: cuentas[haber], debe: 0n, haber: monto }],
 }));
-const ir2 = (periodo, manuales = {}) => leer((tx) => calcularIr2(tx, periodoDe(periodo), manuales));
+// En 2026 el costo (20,000) se registró con un asiento, sin compras ni inventario: en el anexo D va como compras locales.
+const ir2 = (periodo, manuales = {}) => leer((tx) => calcularIr2(tx, periodoDe(periodo), periodo === "202612" ? { Dtipo: "2", D35: "20000", ...manuales } : manuales));
 const errores = (r) => r.avisos.filter((a) => a.nivel === "error").map((a) => a.texto);
 
 before(async () => {

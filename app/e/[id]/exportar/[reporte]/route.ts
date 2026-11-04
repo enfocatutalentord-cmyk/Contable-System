@@ -9,7 +9,7 @@ import { aCsv, aPdf, aXlsx, type Celda, type Columna, type Tabla } from "@/lib/e
 import { FORMAS_PAGO } from "@/lib/compras";
 import { listarCuentas } from "@/lib/cuentas";
 import { armarFormato, aTxt, FORMATOS, nombreTxt, periodoDe, type Formato } from "@/lib/formatos-dgii";
-import { calcularDeclaracion, FORMULARIOS } from "@/lib/declaraciones";
+import { anexoB1ConCostoD, calcularDeclaracion, FORMULARIOS } from "@/lib/declaraciones";
 import { esRelleno } from "@/lib/it1";
 import { anexoIr6 } from "@/lib/ir17";
 import { balanza, libroDiario, libroMayor } from "@/lib/libros";
@@ -23,7 +23,7 @@ import { fechaValida } from "@/lib/reportes";
 import { reporteConciliacion } from "@/lib/reporte-conciliacion";
 import { armarEstado, leerFiltrosEstados, TITULOS } from "@/lib/estados-pantalla";
 import { porcentaje, variacion } from "@/lib/estados";
-import { A1, anexoA1, anexoB1, anexoJ, B1 } from "@/lib/ir2";
+import { A1, anexoA1, anexoJ, B1 } from "@/lib/ir2";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
@@ -260,7 +260,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }];
     }
     if (reporte === "ir2") {
-      // Liquidación del IR-2 con los anexos G y E: una fila por valor (las filas con varias columnas, una por columna).
+      // Liquidación del IR-2 con los anexos D, G y E y el impuesto a los activos: una fila por valor (las filas con varias columnas, una por columna).
       const per = periodoDe(sp.periodo ?? "");
       if (!per) return null;
       const def = FORMULARIOS["IR-2"];
@@ -307,7 +307,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const e = (await ejercicios(tx, mes_cierre)).find((x) => x.fin === sp.ejercicio);
         if (!e) return null;
         if (reporte === "ir2-a1") return { e, a: await anexoA1(tx, e.fin, mes_cierre), j: null };
-        if (reporte === "ir2-b1") return { e, a: await anexoB1(tx, e.inicio, e.fin), j: null };
+        if (reporte === "ir2-b1") return { e, a: await anexoB1ConCostoD(tx, e.inicio, e.fin), j: null };
         return { e, a: null, j: await anexoJ(tx, e.inicio, e.fin) };
       });
       if (!r) return null;

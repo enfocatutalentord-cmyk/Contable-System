@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (Fases 5 y 7 completas; IR-2 partes 1 y 2 en `main`; sigue la parte 3).
+Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 en `main`; parte 3 entrega 1 en la rama, esperando el «sí»; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -242,7 +242,20 @@ Notas de infraestructura que costaron tiempo:
   fracción; pedido del 4-nov) y, una vez presentado, queda el que se presentó; el % de interés (29) a mano. Al marcarlo presentado, el ejercicio siguiente toma la casilla 33 como 22 y las pérdidas pendientes (l) con un período
   menos (y la pérdida fiscal si la casilla 9 fue negativa). Excel/PDF `IR-2_liquidacion_<RNC>_<año>` (`/exportar/ir2?periodo=`).
   Pruebas `pruebas/ir2-liquidacion.test.mjs`; el recorrido `ir2.cjs` llega hasta presentar y ver el arrastre. En `main` el
-  4-nov-2026 («sí» de Joannie, junto con el recargo prellenado). Sigue la parte 3 (anexo D, impuesto a los activos, H-1/H-2).
+  4-nov-2026 («sí» de Joannie, junto con el recargo prellenado).
+  **IR-2 parte 3** (propuesta en el documento «Propuesta IR-2 parte 3», https://claude.ai/artifact/VMgxG1U6Q6kajXDyz71wtL, hecha con el
+  Excel oficial `IR-2, Vers. 2026.xls` de `Downloads/IR-2-2026.zip`, convertido con Excel y macros apagadas). Respuestas del
+  4-nov-2026: compras 35/36 solo de líneas de bienes a cuentas de inventario o costo; si el costo del anexo D no coincide con las
+  cuentas de costo manda el anexo D con aviso; el índice de inflación del D-2 lo escribe la contadora; orden: 1) costo de venta e
+  impuesto a los activos, 2) depreciación fiscal D/D-1/D-2, 3) H-1 y H-2. **Entrega 1** (sin migración; `comprasDeBienes`,
+  `b1ConCostoD` e `inventarioDe` en `lib/ir2.ts`, hojas «D» y «X» en `SECCIONES_IR2`): anexo D I–II (datos informativos 1–8), IV
+  (34 y 38 = inventarios 1.5–1.8 del A-1 al cierre anterior y al actual; 35 locales y 36 exterior/B17 sin impuestos en pesos, notas
+  B04/E34 restan; 37 ITBIS al costo; 39 = 34+35+36+37−38; «Dtipo» 1/2/3 con aviso si falta) y V manufactura (49, 52; si hay algo
+  escrito ahí manda la 52). `DCV` = costo del anexo D → casilla 5 del B-1 (`anexoB1ConCostoD` en `lib/declaraciones.ts`, pantalla y
+  descarga del B-1) y casilla 1 de la liquidación. Impuesto a los activos (sector 1): 1 = A-1 6; 2–5 = A-1 2.2, 2.6, 3.2, 4.2; 6 a
+  mano; 8 = A-1 5.2; 9 = 1−7+8; 38 = 34−35−36−37; 39 = 1 %; 40 = casilla 12; 41, 44, 45 como el Excel. Todo en la pestaña
+  «Liquidación · anexos D, G, E y activos» y en el Excel/PDF de la liquidación. Pruebas `pruebas/ir2-anexo-d.test.mjs` (en
+  `ir2-liquidacion.test.mjs` el costo de 2026 va como D35). Esperando el «sí» de Joannie para `main`; siguen las entregas 2 y 3.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -307,6 +320,11 @@ No se pasa a la siguiente sin su autorización expresa.
 - Fase 4 publicada el 23-oct-2026 (Joannie confirmó en Vercel: c49b62b Ready). Siguiente: Fase 5 (Bancos), solo con autorización expresa.
 - Preguntar a Joannie: ¿qué firma usará el sistema (Empire, Enfoca o se vende a muchas)? ¿Goemhy sigue como primer cliente?
 - Antes de producción: secretos de respaldo en GitHub (`DATABASE_URL` directa y `RESPALDO_CLAVE`) y activar PITR en Neon.
+  **4-nov-2026: el respaldo diario falla todos los días desde al menos el 30-oct por falta de esos secretos** (no hay ninguno en
+  el repositorio). Claude no puede escribirlos (son credenciales): los pone Joannie o Manaury en GitHub › Settings › Secrets and
+  variables › Actions. Costos revisados ese día: solo se paga Vercel Pro (US$20 por persona); Neon, GitHub y Gmail en plan gratis;
+  sugerido pasar Neon a Launch (~US$5–15/mes) cuando haya cobro real (historial de 7 días y sin tope de 1 GB; los adjuntos se
+  guardan en la base). La app corre en `iad1` (Washington): confirmar que Neon esté en AWS US East.
 - **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
@@ -351,7 +369,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 125 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 129 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

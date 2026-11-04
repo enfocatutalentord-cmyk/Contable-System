@@ -1,9 +1,10 @@
 import type { Tx } from "./db";
-import type { Periodo } from "./formatos-dgii.ts";
+import { periodoDe, type Periodo } from "./formatos-dgii.ts";
+import { anexoB1, b1ConCostoD, type Anexo1 } from "./ir2.ts";
 import { calcularIt1, EDITABLES, SECCIONES, type Resultado, type Seccion } from "./it1.ts";
 import { calcularIr17, EDITABLES_IR17, SECCIONES_IR17 } from "./ir17.ts";
 import { calcularIr2, EDITABLES_IR2, SECCIONES_IR2, venceIr2 } from "./ir2-liquidacion.ts";
-import { leerMonto } from "./montos.ts";
+import { deCentavos, leerMonto } from "./montos.ts";
 
 // Declaraciones juradas que el sistema prepara como borrador: IT-1 (ITBIS), IR-17 (otras retenciones) e IR-2 (ISR anual;
 // su período es el mes en que termina el ejercicio). Cada una con
@@ -35,13 +36,16 @@ export const FORMULARIOS: Record<Formulario, Definicion> = {
   },
   "IR-2": {
     nombre: "IR-2 · Liquidación del ISR anual de sociedades", ruta: "ir2", diaVence: 0, secciones: SECCIONES_IR2, editables: EDITABLES_IR2,
-    hojas: [["G", "Anexo G · Ajustes fiscales"], ["E", "Anexo E · Datos complementarios"], ["I", "Formulario IR-2"]],
+    hojas: [["D", "Anexo D · Costo de venta"], ["G", "Anexo G · Ajustes fiscales"], ["E", "Anexo E · Datos complementarios"],
+      ["I", "Formulario IR-2"], ["X", "Impuesto a los activos"]],
     cifras: [["I7", "Renta neta imponible antes de pérdidas (7)"], ["I11", "Renta neta imponible (11)"], ["I12", "Impuesto liquidado (12)"],
-      ["I23", "Diferencia a pagar (23)"], ["I31", "Total a pagar (31)"], ["I33", "Nuevo saldo a favor (33)"]],
+      ["I23", "Diferencia a pagar (23)"], ["I31", "Total a pagar (31)"], ["I33", "Nuevo saldo a favor (33)"],
+      ["DCV", "Costo de venta del anexo D"], ["X45", "Impuesto a los activos a pagar (45)"]],
     calcular: calcularIr2,
     anual: {
       vence: venceIr2,
-      etiqueta: (k) => (k.startsWith("G") ? `Anexo G ${k.slice(1)}` : k.startsWith("E") ? `Anexo E ${k.slice(1)}` : `Casilla ${k.slice(1)}`),
+      etiqueta: (k) => ({ G: "Anexo G", E: "Anexo E", D: "Anexo D", X: "Activos, casilla" } as Record<string, string>)[k[0]]
+        ?.concat(` ${k.slice(1)}`) ?? `Casilla ${k.slice(1)}`,
     },
   },
 };
@@ -69,4 +73,13 @@ export function leerManuales(fd: FormData, editables: Set<string>): Record<strin
     salida[k] = n;
   }
   return salida;
+}
+
+// Anexo B-1 con el costo de venta del anexo D en la casilla 5, como lo lleva el IR-2 (pantalla y descarga del B-1).
+export async function anexoB1ConCostoD(tx: Tx, inicio: string, fin: string): Promise<Anexo1> {
+  const b1 = await anexoB1(tx, inicio, fin);
+  const { valores } = await calcularDeclaracion(tx, "IR-2", periodoDe(fin.slice(0, 7).replace("-", ""))!);
+  const costo = valores.DCV ?? 0n;
+  const nota = `Costo de venta del anexo D (las cuentas de costo de la contabilidad suman ${deCentavos(b1.valores["5"] ?? 0n)})`;
+  return { ...b1, valores: b1ConCostoD(b1.valores, costo), detalle: { ...b1.detalle, "5": [{ cuentaId: "", codigo: "", nombre: nota, monto: costo }] } };
 }

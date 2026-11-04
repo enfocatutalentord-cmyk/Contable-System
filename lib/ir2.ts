@@ -280,6 +280,45 @@ export async function anexoB1(tx: Tx, inicio: string, fin: string): Promise<Anex
   return r;
 }
 
+// B-1 con el costo de venta del anexo D en la casilla 5 (así lo pide el formulario), con 14 y 15 recalculadas.
+export function b1ConCostoD(valores: Record<string, bigint>, costo: bigint): Record<string, bigint> {
+  const v: Record<string, bigint> = { ...valores, "5": costo };
+  const gastos = ["5", "6", "7", "8", "9", "10", "11", "12", "13"].reduce((t, k) => t + (v[k] ?? 0n), 0n);
+  v["14"] = (v["4"] ?? 0n) - gastos;
+  v["15"] = gastos + v["14"];
+  return v;
+}
+
+// Inventarios del A-1 (casillas 1.5 a 1.8): el inicial y el final del costo de venta del anexo D.
+export const INVENTARIOS = ["1.5", "1.6", "1.7", "1.8"];
+export const inventarioDe = (a1: Anexo1) => INVENTARIOS.reduce((t, c) => t + (a1.valores[c] ?? 0n), 0n);
+
+// Compras del ejercicio para el costo de venta (anexo D, casillas 35 a 37): solo las líneas de bienes cargadas a cuentas
+// de inventario o de costo (decisión de Joannie, 4-nov-2026), sin impuestos y en pesos; las notas de crédito del
+// proveedor restan. El ITBIS de esas líneas va a la 37 cuando se llevó al costo (B02, E32, B13, «ITBIS al costo» o
+// empresa no contribuyente).
+export async function comprasDeBienes(tx: Tx, inicio: string, fin: string) {
+  const casillas = await casillasDeCuentas(tx);
+  const tipos = new Map((await tx<{ id: string; tipo: TipoCuenta }[]>`SELECT id, tipo FROM cuentas WHERE de_detalle`).map((c) => [c.id, c.tipo]));
+  const [{ contribuye_itbis }] = await tx<{ contribuye_itbis: boolean }[]>`SELECT contribuye_itbis FROM empresas`;
+  const lineas = await tx<{ cuenta_id: string; subtotal: string; itbis: string; tasa: string; tipo: string; al_costo: boolean; exterior: boolean }[]>`
+    SELECT l.cuenta_id, l.subtotal::text, l.itbis::text, c.tasa::text, c.tipo_comprobante AS tipo, c.itbis_al_costo AS al_costo,
+           (p.del_exterior OR c.tipo_comprobante = 'B17') AS exterior
+      FROM lineas_compra l JOIN compras c ON c.id = l.compra_id JOIN proveedores p ON p.id = c.proveedor_id
+     WHERE c.estado = 'registrada' AND NOT c.anulada AND l.clase = 'bien' AND c.fecha BETWEEN ${inicio} AND ${fin}`;
+  const r = { locales: 0n, exterior: 0n, itbisAlCosto: 0n };
+  for (const l of lineas) {
+    const casilla = casillas.get(l.cuenta_id);
+    if (!(tipos.get(l.cuenta_id) === "costo" || INVENTARIOS.some((c) => casilla === `A1:${c}`))) continue;
+    const signo = l.tipo === "B04" || l.tipo === "E34" ? -1n : 1n;
+    const tasa = tasaDeTexto(l.tasa);
+    const monto = signo * aPesos(aCentavos(l.subtotal), tasa);
+    if (l.exterior) r.exterior += monto; else r.locales += monto;
+    if (l.al_costo || !contribuye_itbis) r.itbisAlCosto += signo * aPesos(aCentavos(l.itbis), tasa);
+  }
+  return r;
+}
+
 // Anexo J: cantidad y monto (sin impuestos, en pesos) de los comprobantes del año, de lo registrado para el 607 y el 606.
 export type FilaJ = { c: string; texto: string; cantidad: number; monto: bigint; resta?: boolean; total?: boolean };
 export async function anexoJ(tx: Tx, inicio: string, fin: string): Promise<{ filas: FilaJ[]; avisos: string[] }> {

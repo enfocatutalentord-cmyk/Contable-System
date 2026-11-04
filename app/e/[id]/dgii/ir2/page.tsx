@@ -4,7 +4,8 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { conEmpresa } from "@/lib/db";
 import { Declaracion } from "../declaracion";
-import { A1, anexoA1, anexoB1, anexoJ, B1, type Anexo1, type Casilla } from "@/lib/ir2";
+import { anexoB1ConCostoD } from "@/lib/declaraciones";
+import { A1, anexoA1, anexoJ, B1, type Anexo1, type Casilla } from "@/lib/ir2";
 import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 
@@ -12,7 +13,7 @@ export const metadata = { title: "IR-2 · Empire Tax’N Legal" };
 
 const ANEXOS: Record<string, string> = {
   a1: "Anexo A-1 · Balance general", b1: "Anexo B-1 · Estado de resultados", j: "Anexo J · Comprobantes",
-  liq: "Liquidación · anexos G y E",
+  liq: "Liquidación · anexos D, G, E y activos",
 };
 
 function TablaAnexo({ casillas, anexo, id }: { casillas: Casilla[]; anexo: Anexo1; id: string }) {
@@ -49,7 +50,7 @@ function TablaAnexo({ casillas, anexo, id }: { casillas: Casilla[]; anexo: Anexo
 }
 
 // IR-2 2026: anexos A-1, B-1 y J del ejercicio elegido, desde la contabilidad (cada cuenta va a la casilla que tiene en el
-// catálogo o a la sugerida por su código), y la liquidación con los anexos G y E (parte 2).
+// catálogo o a la sugerida por su código), y la liquidación con los anexos D, G y E y el impuesto a los activos.
 export default async function Ir2({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ ejercicio?: string; anexo?: string }>;
@@ -63,7 +64,7 @@ export default async function Ir2({ params, searchParams }: {
     const lista = await ejercicios(tx, mes_cierre);
     const e = lista.find((x) => x.fin === sp.ejercicio) ?? lista.find((x) => x.terminado) ?? lista[0];
     if (!e) return null;
-    return { lista, e, a1: await anexoA1(tx, e.fin, mes_cierre), b1: await anexoB1(tx, e.inicio, e.fin), j: await anexoJ(tx, e.inicio, e.fin) };
+    return { lista, e, a1: await anexoA1(tx, e.fin, mes_cierre), b1: await anexoB1ConCostoD(tx, e.inicio, e.fin), j: await anexoJ(tx, e.inicio, e.fin) };
   });
 
   return (
@@ -108,7 +109,7 @@ export default async function Ir2({ params, searchParams }: {
                 {anexoElegido === "a1" && datos.a1.valores["6"] !== datos.a1.valores["11"] && (
                   <p className="aviso">El total de activos no es igual al total de pasivos y patrimonio: revisa las cuentas sin casilla o asignadas al anexo equivocado.</p>
                 )}
-                {anexoElegido === "b1" && <p className="sub">El costo de venta (casilla 5) sale aquí de las cuentas de costo; en el formulario oficial viene del anexo D (parte 3). El ISR del ejercicio no va en el B-1.</p>}
+                {anexoElegido === "b1" && <p className="sub">El costo de venta (casilla 5) viene del anexo D, en la pestaña Liquidación. El ISR del ejercicio no va en el B-1.</p>}
                 <TablaAnexo casillas={anexoElegido === "a1" ? A1 : B1} anexo={an} id={id} />
               </>
             );
