@@ -238,8 +238,8 @@ Notas de infraestructura que costaron tiempo:
   las fórmulas del Excel (d = b × c %, e = b + d, g = e ÷ f, h = casilla 7, j = h × i, k = menor de g y j, l = e − g; con renta
   negativa el límite es 0); % por antigüedad sugerido (art. 287 k: 100 % años 1–3, 80 % el 4.º, 70 % el 5.º) y períodos = 6 − edad;
   B y C a mano; D desde el B-1 (15 = 4, 17 = 3.1, 18 = 2.3). Liquidación A, B, 1–33 con las fórmulas oficiales; casilla 14 sugerida
-  desde el ISR retenido en cobros del ejercicio; % de recargo e interés a mano (aviso con el recargo sugerido: 10 % + 4 % por mes o
-  fracción). Al marcarlo presentado, el ejercicio siguiente toma la casilla 33 como 22 y las pérdidas pendientes (l) con un período
+  desde el ISR retenido en cobros del ejercicio; el % de recargo (25) viene lleno con el de hoy si ya venció (10 % + 4 % por mes o
+  fracción; pedido del 4-nov) y, una vez presentado, queda el que se presentó; el % de interés (29) a mano. Al marcarlo presentado, el ejercicio siguiente toma la casilla 33 como 22 y las pérdidas pendientes (l) con un período
   menos (y la pérdida fiscal si la casilla 9 fue negativa). Excel/PDF `IR-2_liquidacion_<RNC>_<año>` (`/exportar/ir2?periodo=`).
   Pruebas `pruebas/ir2-liquidacion.test.mjs`; el recorrido `ir2.cjs` llega hasta presentar y ver el arrastre. Esperando el «sí»
   de Joannie para `main`. Sigue la parte 3 (anexo D, impuesto a los activos, H-1/H-2).

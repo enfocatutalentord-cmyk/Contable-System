@@ -7,7 +7,7 @@ import { CATALOGO_RD, nivelDeCodigo, TIPO_POR_CLASE } from "../lib/catalogo-rd.t
 import { insertarAsiento } from "../lib/asientos.ts";
 import { periodoDe } from "../lib/formatos-dgii.ts";
 import { calcularIr2, EDITABLES_IR2, porcentajePerdida, recargoSugerido, venceIr2 } from "../lib/ir2-liquidacion.ts";
-import { deCentavos } from "../lib/montos.ts";
+import { deCentavos, hoyISO } from "../lib/montos.ts";
 
 test("porcentaje de la renta para compensar pérdidas según su antigüedad (art. 287 k)", () => {
   assert.equal(porcentajePerdida(2026, 2025), 10000n);
@@ -163,6 +163,28 @@ test("saldo a favor, y lo presentado pasa al ejercicio siguiente (casilla 22 y p
   assert.equal(s.valores.I12p, 3000n);
   assert.equal(s.valores.I12, porTasa(100_000_000_000n - 250000n, 3000n));
   assert.equal(s.valores.I23, s.valores.I12 - v.I33);
+});
+
+test("presentado tarde: la casilla 25 trae el recargo de hoy; lo escrito manda y lo presentado queda fijo", conBase, async () => {
+  await asiento("2024-05-02", "110103", "410101", 1000000n); // ventas 10,000 en 2024 (vencía el 30-abr-2025)
+  const recargo = recargoSugerido(venceIr2(periodoDe("202412")), hoyISO());
+  assert.ok(recargo >= 1000n, "ya venció");
+  const r = await ir2("202412");
+  assert.equal(r.sugeridos.I25p, recargo);
+  assert.equal(r.valores.I25p, recargo);
+  assert.equal(r.valores.I25, porTasa(r.valores.I23, recargo));
+  assert.equal(r.valores.I31, r.valores.I23 + r.valores.I25);
+  assert.ok(r.avisos.some((a) => a.texto.includes("la casilla 25 trae el recargo")));
+  const escrito = await ir2("202412", { I25p: "10" });
+  assert.equal(escrito.valores.I25p, 1000n, "lo escrito a mano manda");
+  assert.ok(!escrito.avisos.some((a) => a.texto.includes("la casilla 25 trae el recargo")));
+  await leer((tx) => tx`INSERT INTO envios_dgii (empresa_id, formato, periodo, huella, registros, enviado_por, casillas)
+    VALUES (${empresa}, 'IR-2', '202412', ${r.huella}, 0, ${ana}, ${tx.json({ I25p: "50.00" })})`);
+  const presentado = await ir2("202412");
+  assert.equal(presentado.valores.I25p, 5000n, "el recargo presentado no cambia con los meses");
+  assert.ok(!presentado.avisos.some((a) => a.texto.includes("la casilla 25 trae el recargo")));
+  // Sin nada que pagar no hay recargo.
+  assert.equal((await ir2("202412", { I13: "100000" })).valores.I25p, 0n);
 });
 
 const porTasa = (b, t) => (b * t + 5000n) / 10000n;

@@ -274,6 +274,13 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   const dif = v.I12 - creditos;
   v.I23 = dif > 0n ? dif : 0n;
   v.I24 = dif < 0n ? -dif : 0n;
+  // Recargo por declaración tardía: sugerido a la fecha de hoy; una vez presentado queda el que se presentó, para que
+  // el paso de los meses no cambie la declaración.
+  const vence = venceIr2(p);
+  const [actual] = await tx<{ casillas: Record<string, string> | null }[]>`SELECT casillas FROM envios_dgii WHERE formato = 'IR-2' AND periodo = ${p.periodo}`;
+  const recargo = actual?.casillas?.I25p !== undefined ? aCentavos(actual.casillas.I25p) : recargoSugerido(vence, hoyISO());
+  sugeridos.I25p = v.I23 > 0n ? recargo : 0n;
+  if (!escrito("I25p")) v.I25p = sugeridos.I25p;
   v.I25 = porTasa(v.I23, g("I25p"));
   v.I27 = v.I25 + g("I26");
   v.I29 = porTasa(v.I23, g("I29p"));
@@ -285,10 +292,8 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   for (const k of EDITABLES_IR2) if (sugeridos[k] === undefined) sugeridos[k] = s[k] ?? 0n;
   if (v.I8 > 0n && v.I7 > 0n && v.I8 > v.I7) avisos.push({ nivel: "aviso", texto: "Las pérdidas que se compensan (casilla 8) pasan de la renta neta imponible (casilla 7): revisa el anexo E." });
   if (fin > hoyISO()) avisos.push({ nivel: "aviso", texto: "El ejercicio todavía no ha terminado: las cifras pueden cambiar." });
-  const vence = venceIr2(p);
-  const recargo = recargoSugerido(vence, hoyISO());
-  if (v.I23 > 0n && recargo > 0n && !escrito("I25p")) {
-    avisos.push({ nivel: "aviso", texto: `El plazo venció el ${vence.split("-").reverse().join("/")}: si se presenta hoy, el recargo sería del ${deCentavos(recargo)} % (casilla 25) más el interés indemnizatorio (casilla 29).` });
+  if (!actual && v.I23 > 0n && recargo > 0n && !escrito("I25p")) {
+    avisos.push({ nivel: "aviso", texto: `El plazo venció el ${vence.split("-").reverse().join("/")}: la casilla 25 trae el recargo de ${deCentavos(recargo)} % si se presenta hoy (10 % el primer mes y 4 % por cada mes o fracción); cámbialo si se presentará otro día. El interés indemnizatorio (casilla 29) se escribe a mano.` });
   }
   avisos.push({ nivel: "aviso", texto: "Los ajustes fiscales (anexo G), las pérdidas de años sin IR-2 presentado aquí, los anticipos pagados (13) y los créditos se escriben a mano. El costo de venta del anexo D y el impuesto a los activos llegan en la parte 3." });
   const huella = createHash("sha256").update(JSON.stringify(Object.entries(v).sort(), (_, x) => (typeof x === "bigint" ? x.toString() : x))).digest("hex");
