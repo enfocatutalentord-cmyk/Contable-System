@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entregas 1 y 2 en `main`; sigue la entrega 3, H-1 y H-2; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entregas 1 y 2 en `main`; entrega 3, H-1 y H-2, en la rama esperando el «sí»; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -268,7 +268,18 @@ Notas de infraestructura que costaron tiempo:
   se sugiere = casilla 37 del D-2 (fórmula del Excel). Con inventarios 1.6/1.7 en el A-1 la empresa es de manufactura: inventarios
   a 40/41/50 y 47/48/51 y compras a 42/43; aviso si el inventario final del anexo D (38+47+48+51) no coincide con el A-1 (el Excel
   lleva al A-1 la 38+51 a 1.5, la 47 a 1.6 y la 48 a 1.7). Pruebas `pruebas/ir2-depreciacion.test.mjs` y el arrastre en
-  `pruebas/ir2-anexo-d.test.mjs`. En `main` el 4-nov-2026 («sí» de Joannie); sigue la entrega 3 (H-1 y H-2).
+  `pruebas/ir2-anexo-d.test.mjs`. En `main` el 4-nov-2026 («sí» de Joannie).
+  **Entrega 3** (migración 026, `lib/ir2-sociedad.ts`, pestaña «Anexos H-1 y H-2 · Beneficiario final» en `/dgii/ir2?anexo=h`,
+  `app/e/[id]/dgii/ir2/anexos-h.tsx`, acción `guardarSociedad`, permiso «impuestos»): no son montos sino datos de la sociedad, una
+  fila por empresa en `sociedad_ir2` (jsonb `datos`, RLS, auditada) que sirve para todos los años. Secciones y límites del Excel:
+  H-1 A contacto y dirección; B accionistas (15: identificación, nombre, domicilio, % y cargo en el consejo); C beneficiarios por
+  control accionario (30, personas físicas con 20 % o más); H-2 D por control efectivo (15); E actividades (5); F sucursales (10);
+  «Actualización de datos sin cambios» (n.º y fecha de la declaración que se reitera). En C y D el Excel titula la participación con
+  «$» pero sus instrucciones hablan de %: aquí es %. Sin nada guardado, el contacto y la actividad vienen de la ficha del cliente.
+  Cada tabla muestra lo guardado + 3 filas vacías. Revisión: filas sin identificación o nombre (error), participaciones de B que no
+  suman 100 %, persona física (identificación que no es RNC de 9 dígitos) con 20 % o más que no está en C, C con menos de 20 %,
+  falta de contacto o de actividad (avisos); con «sin cambios» solo pide la fecha. Excel/PDF `IR-2_H_<RNC>_<año>` (`/exportar/ir2-h`).
+  Pruebas `pruebas/ir2-sociedad.test.mjs`. Esperando el «sí» de Joannie para `main` (al publicarse se aplica la migración 026).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -382,7 +393,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 134 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 138 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

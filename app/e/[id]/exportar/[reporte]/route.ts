@@ -24,11 +24,12 @@ import { reporteConciliacion } from "@/lib/reporte-conciliacion";
 import { armarEstado, leerFiltrosEstados, TITULOS } from "@/lib/estados-pantalla";
 import { porcentaje, variacion } from "@/lib/estados";
 import { A1, anexoA1, anexoJ, B1 } from "@/lib/ir2";
+import { CONTACTO, datosSociedad, TABLAS_H } from "@/lib/ir2-sociedad";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -299,6 +300,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           deCentavos(f.montoPago), deCentavos(f.sujeto), deCentavos(f.tasa), deCentavos(f.retenido)]),
         totales: ["", "", "", "", "", "Totales", deCentavos(filas.reduce((t, f) => t + f.montoPago, 0n)),
           deCentavos(filas.reduce((t, f) => t + f.sujeto, 0n)), "", deCentavos(filas.reduce((t, f) => t + f.retenido, 0n))],
+      }];
+    }
+    if (reporte === "ir2-h") {
+      // Anexos H-1 y H-2: un renglón por dato escrito, en el orden del formulario.
+      const { datos } = await conEmpresa(id, datosSociedad);
+      const anio = /^\d{4}/.test(sp.ejercicio ?? "") ? sp.ejercicio!.slice(0, 4) : "";
+      const filas: Celda[][] = CONTACTO.filter((c) => datos.contacto[c.k]).map((c) => ["H-1", "A. Datos de contacto", "", c.texto, datos.contacto[c.k]]);
+      for (const t of TABLAS_H) {
+        datos[t.clave].forEach((f, i) => {
+          for (const c of t.campos) if (f[c.k]) filas.push([t.anexo, t.titulo, String(i + 1), c.texto, f[c.k]]);
+        });
+      }
+      if (datos.sinCambios.declaracion) {
+        filas.push(["H-2", "Actualización de datos sin cambios", "", "Se reitera la declaración jurada n.º", datos.sinCambios.declaracion]);
+        filas.push(["H-2", "Actualización de datos sin cambios", "", "De fecha", datos.sinCambios.fecha ? verFecha(datos.sinCambios.fecha) : ""]);
+      }
+      return [`IR-2_H_${empresa.rnc ?? "sin-rnc"}${anio && `_${anio}`}`, {
+        ...base, titulo: "IR-2 · Anexos H-1 y H-2 · Beneficiario final y actualización de datos",
+        detalle: `${anio ? `Ejercicio ${anio} · ` : ""}formulario IR-2 versión 2026`,
+        columnas: [col("Anexo", false, 6), col("Sección", false, 40), col("N.º", false, 5), col("Dato", false, 40), col("Valor", false, 50)],
+        filas,
       }];
     }
     if (reporte.startsWith("ir2-")) {

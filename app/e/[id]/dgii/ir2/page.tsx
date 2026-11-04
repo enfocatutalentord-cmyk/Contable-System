@@ -4,6 +4,7 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { conEmpresa } from "@/lib/db";
 import { Declaracion } from "../declaracion";
+import { AnexosH } from "./anexos-h";
 import { anexoB1ConCostoD } from "@/lib/declaraciones";
 import { A1, anexoA1, anexoJ, B1, type Anexo1, type Casilla } from "@/lib/ir2";
 import { verFecha, verMonto } from "@/lib/montos";
@@ -13,7 +14,7 @@ export const metadata = { title: "IR-2 · Empire Tax’N Legal" };
 
 const ANEXOS: Record<string, string> = {
   a1: "Anexo A-1 · Balance general", b1: "Anexo B-1 · Estado de resultados", j: "Anexo J · Comprobantes",
-  liq: "Liquidación · anexos D, G, E y activos",
+  liq: "Liquidación · anexos D, G, E y activos", h: "Anexos H-1 y H-2 · Beneficiario final",
 };
 
 function TablaAnexo({ casillas, anexo, id }: { casillas: Casilla[]; anexo: Anexo1; id: string }) {
@@ -92,8 +93,9 @@ export default async function Ir2({ params, searchParams }: {
             ))}
           </nav>
           {anexoElegido === "liq" && <Declaracion id={id} formulario="IR-2" mes={datos.e.fin.slice(0, 7).replace("-", "")} incrustada />}
-          {anexoElegido !== "liq" && <p className="sub">Ejercicio del {verFecha(datos.e.inicio)} al {verFecha(datos.e.fin)}. Toca un concepto para ver sus cuentas; la casilla de cada cuenta se cambia en el Catálogo de cuentas.</p>}
-          {anexoElegido !== "liq" && !datos.e.terminado && <p className="aviso">El ejercicio todavía no ha terminado: las cifras pueden cambiar.</p>}
+          {anexoElegido === "h" && <AnexosH id={id} />}
+          {(anexoElegido === "a1" || anexoElegido === "b1" || anexoElegido === "j") && <p className="sub">Ejercicio del {verFecha(datos.e.inicio)} al {verFecha(datos.e.fin)}. Toca un concepto para ver sus cuentas; la casilla de cada cuenta se cambia en el Catálogo de cuentas.</p>}
+          {(anexoElegido === "a1" || anexoElegido === "b1" || anexoElegido === "j") && !datos.e.terminado && <p className="aviso">El ejercicio todavía no ha terminado: las cifras pueden cambiar.</p>}
           {(anexoElegido === "a1" || anexoElegido === "b1") && (() => {
             const an = anexoElegido === "a1" ? datos.a1 : datos.b1;
             return (

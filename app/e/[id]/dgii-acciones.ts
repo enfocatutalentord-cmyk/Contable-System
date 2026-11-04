@@ -6,6 +6,7 @@ import { conEmpresa, mensajeError } from "@/lib/db";
 import { ErrorContable } from "@/lib/asientos";
 import { armarFormato, esFormato, FORMATOS, periodoDe } from "@/lib/formatos-dgii";
 import { calcularDeclaracion, esFormulario, FORMULARIOS, leerManuales } from "@/lib/declaraciones";
+import { leerSociedad } from "@/lib/ir2-sociedad";
 import { deCentavos } from "@/lib/montos";
 import type { Estado } from "../../acciones-cuenta";
 
@@ -103,4 +104,21 @@ export async function quitarDeclaracion(empresaId: string, formulario: string, p
   }
   revalidatePath(`/e/${empresaId}/dgii`, "layout");
   return { ok: "Marca de presentado quitada." };
+}
+
+// IR-2, anexos H-1 y H-2: datos de la sociedad, uno por empresa (se reusan cada año).
+export async function guardarSociedad(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/dgii");
+  const datos = leerSociedad(fd);
+  if (typeof datos === "string") return { error: datos };
+  try {
+    await conEmpresa(empresaId, (tx) => tx`
+      INSERT INTO sociedad_ir2 (empresa_id, datos, actualizado_por, actualizado_en)
+      VALUES (${empresaId}, ${tx.json(datos)}, ${usuario.id}, now())
+      ON CONFLICT (empresa_id) DO UPDATE SET datos = EXCLUDED.datos, actualizado_por = EXCLUDED.actualizado_por, actualizado_en = now()`);
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}/dgii/ir2`);
+  return { ok: "Datos de los anexos H-1 y H-2 guardados." };
 }
