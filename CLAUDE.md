@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 en `main`; parte 3 entrega 1 en la rama, esperando el «sí»; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entrega 1 en `main`; sigue la entrega 2; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -255,7 +255,7 @@ Notas de infraestructura que costaron tiempo:
   descarga del B-1) y casilla 1 de la liquidación. Impuesto a los activos (sector 1): 1 = A-1 6; 2–5 = A-1 2.2, 2.6, 3.2, 4.2; 6 a
   mano; 8 = A-1 5.2; 9 = 1−7+8; 38 = 34−35−36−37; 39 = 1 %; 40 = casilla 12; 41, 44, 45 como el Excel. Todo en la pestaña
   «Liquidación · anexos D, G, E y activos» y en el Excel/PDF de la liquidación. Pruebas `pruebas/ir2-anexo-d.test.mjs` (en
-  `ir2-liquidacion.test.mjs` el costo de 2026 va como D35). Esperando el «sí» de Joannie para `main`; siguen las entregas 2 y 3.
+  `ir2-liquidacion.test.mjs` el costo de 2026 va como D35). En `main` el 4-nov-2026 («sí» de Joannie); siguen las entregas 2 y 3.
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
