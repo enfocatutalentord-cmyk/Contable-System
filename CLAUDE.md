@@ -397,6 +397,18 @@ No se pasa a la siguiente sin su autorización expresa.
   nada se guarda; las descargas piden «exportar» (403). La firma ve todo el registro de la plataforma en Personas y accesos.
   Probado en pantalla con una firma ajena local (sin permiso 404; con permiso ve facturas, franja, descarga 403, nueva factura
   sin permiso, firma 404; al terminar vuelve a 404). En `main` el 4-nov-2026 («sí» de Joannie). **Consola completa.**
+- **Bloque 1 · Ficha única del cliente** (Sistema Empire; estructura con el «sí» de Patricia el 4-nov-2026, en 2 entregas:
+  https://claude.ai/artifact/LQjhLNWMeo28hDHmHbAEBS). **Entrega 1a · Ficha ampliada** (migración 029, `lib/ficha.ts`,
+  `app/e/[id]/ficha-acciones.ts`, `app/e/[id]/empresa/page.tsx` con pestañas `?seccion=`): datos del Documento maestro, sección 5.
+  Sociedad (tipo, constitución, municipio, provincia, capital), socios (`socios_empresa`, hasta 30, las cuotas suman 100 %),
+  contactos (`contactos_empresa`: principal, alterno, representante, gerente; grupo de WhatsApp), operaciones (ventas, facturas y
+  empleados al mes, TSS, e-CF, sistema que usa), empleados (`empleados_empresa`, hasta 300; solo con el permiso «empresa») y
+  relación con Empire (categoría, tipo de cliente, contrato, día de facturación, estado, documentos firmados, modalidad y quién
+  guarda los accesos: las claves de DGII/TSS nunca se guardan). Categoría sugerida por 2 de 3 criterios (`categoriaSugerida`:
+  ventas ≤ 500,000 / ≤ 2,000,000; facturas ≤ 50 / ≤ 200; empleados ≤ 5 / ≤ 20). Logo PNG/JPG ≤ 1 MB en `documentos`
+  (entidad 'empresa', descripción 'logo'). Las tres tablas con RLS e historial. El anexo H-1 del IR-2, sin nada guardado, toma
+  los accionistas de los socios y el municipio y la provincia de la ficha. Pruebas `pruebas/ficha.test.mjs` (148 en total).
+  Esperando el «sí» de Patricia para `main`. Sigue la entrega 1b (Empire como cliente propio, unidades de negocio, lista maestra).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

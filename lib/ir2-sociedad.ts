@@ -124,17 +124,28 @@ export function revisarSociedad(d: DatosH): Aviso[] {
   return avisos;
 }
 
-// Lo guardado, o lo que se sabe de la ficha del cliente si todavía no se ha guardado nada.
+// Lo guardado, o lo que se sabe de la ficha del cliente (contacto, actividad y socios) si todavía no se ha guardado nada.
 export async function datosSociedad(tx: Tx) {
   const [g] = await tx<{ datos: DatosH; actualizado_en: Date; quien: string | null }[]>`
     SELECT s.datos, s.actualizado_en, u.nombre AS quien FROM sociedad_ir2 s LEFT JOIN usuarios u ON u.id = s.actualizado_por`;
   if (g) return { datos: { ...vacios(), ...g.datos }, guardado: { en: g.actualizado_en, quien: g.quien }, deLaFicha: false };
-  const [e] = await tx<{ telefono: string | null; correo: string | null; direccion: string | null; actividad_economica: string | null }[]>`
-    SELECT telefono, correo, direccion, actividad_economica FROM empresas WHERE id = empresa_actual()`;
+  const [e] = await tx<{ telefono: string | null; correo: string | null; direccion: string | null; municipio: string | null; provincia: string | null; actividad_economica: string | null }[]>`
+    SELECT telefono, correo, direccion, municipio, provincia, actividad_economica FROM empresas WHERE id = empresa_actual()`;
   const d = vacios();
   if (e?.telefono) d.contacto.telefono1 = e.telefono;
   if (e?.correo) d.contacto.correo = e.correo;
   if (e?.direccion) d.contacto.calle = e.direccion;
+  if (e?.municipio) d.contacto.municipio = e.municipio;
+  if (e?.provincia) d.contacto.provincia = e.provincia;
   if (e?.actividad_economica) d.E.push({ nombre: e.actividad_economica });
+  // Los accionistas (B) salen de los socios de la ficha del cliente.
+  const socios = await tx<{ nombre: string; cedula: string | null; porcentaje: string | null }[]>`
+    SELECT nombre, cedula, porcentaje::text FROM socios_empresa ORDER BY orden`;
+  for (const s of socios) {
+    const f: Fila = { nombre: s.nombre };
+    if (s.cedula) f.id = s.cedula;
+    if (s.porcentaje) f.participacion = s.porcentaje;
+    d.B.push(f);
+  }
   return { datos: d, guardado: null, deLaFicha: true };
 }
