@@ -13,7 +13,7 @@ import { aCentavos, deCentavos, leerMonto } from "./montos.ts";
 export type Tipo = "monto" | "cantidad" | "porcentaje";
 export type Columna = { clave: string; tipo: Tipo; editable: boolean };
 export type Renglon = { n: number | string; texto: string; columnas: Columna[] };
-export type Seccion = { hoja: "A" | "I" | "G" | "E" | "D" | "X";titulo: string; encabezados: string[]; renglones: Renglon[] };
+export type Seccion = { hoja: "A" | "I" | "G" | "E" | "D" | "D1" | "D2" | "X";titulo: string; encabezados: string[]; renglones: Renglon[] };
 
 const m = (clave: string, editable = false): Columna => ({ clave, tipo: "monto", editable });
 const c = (clave: string, editable = false): Columna => ({ clave, tipo: "cantidad", editable });

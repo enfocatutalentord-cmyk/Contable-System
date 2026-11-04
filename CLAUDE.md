@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entrega 1 en `main`; sigue la entrega 2; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entrega 1 en `main`; entrega 2 en la rama, esperando el «sí»; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -251,11 +251,24 @@ Notas de infraestructura que costaron tiempo:
   `b1ConCostoD` e `inventarioDe` en `lib/ir2.ts`, hojas «D» y «X» en `SECCIONES_IR2`): anexo D I–II (datos informativos 1–8), IV
   (34 y 38 = inventarios 1.5–1.8 del A-1 al cierre anterior y al actual; 35 locales y 36 exterior/B17 sin impuestos en pesos, notas
   B04/E34 restan; 37 ITBIS al costo; 39 = 34+35+36+37−38; «Dtipo» 1/2/3 con aviso si falta) y V manufactura (49, 52; si hay algo
-  escrito ahí manda la 52). `DCV` = costo del anexo D → casilla 5 del B-1 (`anexoB1ConCostoD` en `lib/declaraciones.ts`, pantalla y
+  escrito ahí manda la 52; corregido en la entrega 2: es 39 + 52, como la casilla 5 del B-1 del Excel). `DCV` = costo del anexo D → casilla 5 del B-1 (`anexoB1ConCostoD` en `lib/declaraciones.ts`, pantalla y
   descarga del B-1) y casilla 1 de la liquidación. Impuesto a los activos (sector 1): 1 = A-1 6; 2–5 = A-1 2.2, 2.6, 3.2, 4.2; 6 a
   mano; 8 = A-1 5.2; 9 = 1−7+8; 38 = 34−35−36−37; 39 = 1 %; 40 = casilla 12; 41, 44, 45 como el Excel. Todo en la pestaña
   «Liquidación · anexos D, G, E y activos» y en el Excel/PDF de la liquidación. Pruebas `pruebas/ir2-anexo-d.test.mjs` (en
-  `ir2-liquidacion.test.mjs` el costo de 2026 va como D35). En `main` el 4-nov-2026 («sí» de Joannie); siguen las entregas 2 y 3.
+  `ir2-liquidacion.test.mjs` el costo de 2026 va como D35). En `main` el 4-nov-2026 («sí» de Joannie).
+  **Entrega 2** (sin migración; `lib/ir2-depreciacion.ts`, hojas «D1» y «D2»): anexo D sección III (9–33; claves «D9b» categoría 2 y
+  «D9c» categoría 3; uso propio 25 % y 15 %, arrendamiento y Ley 392-07 50 % y 30 %; 10 = distribución 39/40 del D-2; 18 sugerida de
+  la 41/42; 15, 23 y 31 sugeridas = 11, 19 y 27; balances iniciales 9/17/25 = 16/24/32 del IR-2 anterior presentado). D-1 («U1»…:
+  1 = casilla 38 del D-2 (= 15), 2 = su distribución, 6 sugerida al 5 % (art. 287), detalle de 10 adquisiciones, 10 mejoras y 10
+  retiros con fecha AAAAMMDD, valor, base, proporción y depreciación; totales T65/W65 del Excel = «UTd»/«UTc»). D-2 («T1»…: 26 =
+  1+2−3…−14+15…+22−23−24+25, 31 = 27−28−29−30, 32 = 26−31, 33 = 49, 34 = menor de 32 y 33, 35 = 34 × % escrito «T35p»; 37 inventario a
+  mano, 38–48 vienen de 15, 16, 18, 19, 20, 21, 24, 8, 17, 22, 25; % = monto ÷ 49 y el reparto del ajuste sin perder centavos, que
+  el Excel deja en blanco). Sugeridas desde el A-1 al inicio: 1 (6), 3 (4.2), 5 (2.5+2.6), 6 (3.2), 7 (2.1+2.2−5.1−5.2), 10
+  (2.3−5.3), 11 (2.4−5.4), 27 (7+8+9), 37 (1.5–1.8); y del IR-2 anterior: 15 (D-1 UTc), 16/18 (D 16), 19/20 (D 24). El anexo G 2.2
+  se sugiere = casilla 37 del D-2 (fórmula del Excel). Con inventarios 1.6/1.7 en el A-1 la empresa es de manufactura: inventarios
+  a 40/41/50 y 47/48/51 y compras a 42/43; aviso si el inventario final del anexo D (38+47+48+51) no coincide con el A-1 (el Excel
+  lleva al A-1 la 38+51 a 1.5, la 47 a 1.6 y la 48 a 1.7). Pruebas `pruebas/ir2-depreciacion.test.mjs` y el arrastre en
+  `pruebas/ir2-anexo-d.test.mjs`. Esperando el «sí» de Joannie para `main`; sigue la entrega 3 (H-1 y H-2).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -369,7 +382,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 129 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 134 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

@@ -9,6 +9,7 @@ import { guardarBorradorCompra, registrarCompra } from "../lib/compras.ts";
 import { periodoDe } from "../lib/formatos-dgii.ts";
 import { anexoB1, b1ConCostoD } from "../lib/ir2.ts";
 import { calcularIr2 } from "../lib/ir2-liquidacion.ts";
+import { deCentavos } from "../lib/montos.ts";
 
 const url = process.env.DATABASE_URL;
 const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : null;
@@ -129,7 +130,7 @@ test("anexo D: tipo de inventario y manufactura (49 y 52)", conBase, async () =>
   const r = await ir2("202612", { Dtipo: "1", D40: "1000", D42: "5000", D44: "2000", D47: "500", D50: "300", D51: "800" });
   assert.equal(r.valores.D49, 750000n, "1,000 + 5,000 + 2,000 − 500");
   assert.equal(r.valores.D52, 700000n, "7,500 + 300 − 800");
-  assert.equal(r.valores.DCV, 700000n, "con manufactura manda la casilla 52");
+  assert.equal(r.valores.DCV, r.valores.D39 + 700000n, "casilla 5 del B-1 = 39 + 52, como en el Excel");
 });
 
 test("impuesto a los activos: 1 % de los activos imponibles menos el ISR liquidado", conBase, async () => {
@@ -147,4 +148,22 @@ test("impuesto a los activos: 1 % de los activos imponibles menos el ISR liquida
   assert.equal(e.valores.X38, v.X38 - 100000n - 50000n);
   assert.equal(e.valores.X45, 0n);
   assert.equal(e.valores.X44, 99999900n - e.valores.X41);
+});
+
+test("depreciación: el ajuste de inventario del D-2 va al anexo G 2.2 y lo presentado pasa al ejercicio siguiente", conBase, async () => {
+  const manuales = { Dtipo: "2", T35p: "5", D9b: "60000", D11b: "10000" };
+  const r = await ir2("202612", manuales);
+  const v = r.valores;
+  assert.ok(v.T37 > 0n, "inventario del A-1 al inicio en el D-2");
+  assert.equal(v["G2.2"], v.T37a, "anexo G 2.2 = casilla 37 del D-2");
+  assert.ok(errores(r).some((t) => /ajustes negativos/.test(t)), "sin distribuir en el anexo G, error");
+  const cuadrado = await ir2("202612", { ...manuales, "G3.5n": String(Number(v.T37a) / 100) });
+  assert.deepEqual(errores(cuadrado), []);
+  const casillas = Object.fromEntries(Object.entries(cuadrado.valores).map(([k, x]) => [k, deCentavos(x)]));
+  await leer((tx) => tx`INSERT INTO envios_dgii (empresa_id, formato, periodo, huella, registros, enviado_por, casillas)
+    VALUES (${empresa}, 'IR-2', '202612', ${cuadrado.huella}, 0, ${ana}, ${tx.json(casillas)})`);
+  const s = await ir2("202712");
+  assert.equal(s.valores.D9b, cuadrado.valores.D16b, "balance inicial = casilla 16 del año anterior");
+  assert.equal(s.valores.T16, cuadrado.valores.D16b);
+  assert.match(s.origen.D9b, /IR-2 del ejercicio 2026 \(presentado\)/);
 });

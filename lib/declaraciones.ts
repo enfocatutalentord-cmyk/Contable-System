@@ -36,7 +36,8 @@ export const FORMULARIOS: Record<Formulario, Definicion> = {
   },
   "IR-2": {
     nombre: "IR-2 · Liquidación del ISR anual de sociedades", ruta: "ir2", diaVence: 0, secciones: SECCIONES_IR2, editables: EDITABLES_IR2,
-    hojas: [["D", "Anexo D · Costo de venta"], ["G", "Anexo G · Ajustes fiscales"], ["E", "Anexo E · Datos complementarios"],
+    hojas: [["D", "Anexo D · Depreciación y costo de venta"], ["D1", "Anexo D-1 · Depreciación de la categoría 1"],
+      ["D2", "Anexo D-2 · Ajuste fiscal por inflación"], ["G", "Anexo G · Ajustes fiscales"], ["E", "Anexo E · Datos complementarios"],
       ["I", "Formulario IR-2"], ["X", "Impuesto a los activos"]],
     cifras: [["I7", "Renta neta imponible antes de pérdidas (7)"], ["I11", "Renta neta imponible (11)"], ["I12", "Impuesto liquidado (12)"],
       ["I23", "Diferencia a pagar (23)"], ["I31", "Total a pagar (31)"], ["I33", "Nuevo saldo a favor (33)"],
@@ -44,7 +45,7 @@ export const FORMULARIOS: Record<Formulario, Definicion> = {
     calcular: calcularIr2,
     anual: {
       vence: venceIr2,
-      etiqueta: (k) => ({ G: "Anexo G", E: "Anexo E", D: "Anexo D", X: "Activos, casilla" } as Record<string, string>)[k[0]]
+      etiqueta: (k) => ({ G: "Anexo G", E: "Anexo E", D: "Anexo D", U: "Anexo D-1", T: "Anexo D-2", X: "Activos, casilla" } as Record<string, string>)[k[0]]
         ?.concat(` ${k.slice(1)}`) ?? `Casilla ${k.slice(1)}`,
     },
   },

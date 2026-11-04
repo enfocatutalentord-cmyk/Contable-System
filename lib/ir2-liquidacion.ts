@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Tx } from "./db";
 import { inicioEjercicio } from "./estados.ts";
 import type { Aviso, Periodo } from "./formatos-dgii.ts";
+import { calcularDepreciacion, SECCIONES_D1, SECCIONES_D2, SECCIONES_DEPRECIACION, sugerirDepreciacion } from "./ir2-depreciacion.ts";
 import { anexoA1, anexoB1, b1ConCostoD, comprasDeBienes, inventarioDe } from "./ir2.ts";
 import { porTasa, type Columna, type Resultado, type Seccion } from "./it1.ts";
 import { aCentavos, deCentavos, hoyISO, leerMonto, verMonto } from "./montos.ts";
@@ -50,6 +51,7 @@ const SECCIONES_D: Seccion[] = [
     { n: 7, texto: "Número de establecimientos", columnas: [n("D7", true)] },
     { n: 8, texto: "Importe anual del alquiler RD$", columnas: [m("D8", true)] },
   ] },
+  ...SECCIONES_DEPRECIACION,
   { hoja: "D", titulo: "IV. Costo de venta", encabezados: ["Monto"], renglones: [
     { n: "Tipo", texto: "Tipo de inventario (1 = periódico, 2 = perpetuo, 3 = otros)", columnas: [n("Dtipo", true)] },
     { n: 34, texto: "Inventario inicial (+)", columnas: [m("D34", true)] },
@@ -105,6 +107,8 @@ const SECCIONES_X: Seccion[] = [
 
 export const SECCIONES_IR2: Seccion[] = [
   ...SECCIONES_D,
+  ...SECCIONES_D1,
+  ...SECCIONES_D2,
   { hoja: "G", titulo: "I. Detalle de los ajustes · 1. Positivos", encabezados: ["Monto"], renglones: [
     ...AJUSTES_POSITIVOS.map((texto, i) => ({ n: `1.${i + 1}`, texto, columnas: [m(`G1.${i + 1}`, true)] })),
     { n: "1", texto: "Total ajustes positivos", columnas: [m("G1")] },
@@ -240,16 +244,32 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   const a1 = (await anexoA1(tx, fin, mesCierre)).valores;
 
   // Anexo D, costo de venta: inventarios del A-1 al cierre anterior y al de este ejercicio, y las compras de bienes.
+  // Con inventario de materia prima o en proceso (1.6, 1.7) la empresa es de manufactura: los inventarios van a la
+  // sección V (el Excel lleva al A-1 la 38 + 51 a 1.5, la 47 a 1.6 y la 48 a 1.7) y las compras, a materia prima.
   const finAnterior = new Date(Date.parse(`${inicio}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
-  s.D34 = inventarioDe(await anexoA1(tx, finAnterior, mesCierre));
-  s.D38 = inventarioDe({ valores: a1, detalle: {}, sinCasilla: [] });
+  const a1Inicio = (await anexoA1(tx, finAnterior, mesCierre)).valores;
+  const f = (x: string) => x.split("-").reverse().join("/");
+  const i0 = (c: string) => a1Inicio[c] ?? 0n, i1 = (c: string) => a1[c] ?? 0n;
+  const manufactura = [i0("1.6"), i0("1.7"), i1("1.6"), i1("1.7")].some((x) => x !== 0n);
   const compras = await comprasDeBienes(tx, inicio, fin);
-  s.D35 = compras.locales; s.D36 = compras.exterior; s.D37 = compras.itbisAlCosto;
-  origen.D34 = `Inventarios del anexo A-1 (1.5 a 1.8) al ${finAnterior.split("-").reverse().join("/")}`;
-  origen.D38 = `Inventarios del anexo A-1 (1.5 a 1.8) al ${fin.split("-").reverse().join("/")}`;
-  origen.D35 = "Líneas de bienes de compras registradas a proveedores locales, cargadas a cuentas de inventario o de costo, sin impuestos";
-  origen.D36 = "Igual que la 35, de proveedores del exterior o con comprobante B17";
-  origen.D37 = "ITBIS de esas líneas llevado al costo";
+  const sug = (k: string, x: bigint, t: string) => { s[k] = x; origen[k] = t; };
+  const textoCompras = "Líneas de bienes de compras registradas a proveedores locales, cargadas a cuentas de inventario o de costo, sin impuestos";
+  if (manufactura) {
+    sug("D40", i0("1.6"), `Inventario de materia prima del A-1 (1.6) al ${f(finAnterior)}`);
+    sug("D41", i0("1.7"), `Inventario de productos en proceso del A-1 (1.7) al ${f(finAnterior)}`);
+    sug("D50", i0("1.5") + i0("1.8"), `Inventarios del A-1 (1.5 y 1.8) al ${f(finAnterior)}`);
+    sug("D47", i1("1.6"), `Inventario de materia prima del A-1 (1.6) al ${f(fin)}`);
+    sug("D48", i1("1.7"), `Inventario de productos en proceso del A-1 (1.7) al ${f(fin)}`);
+    sug("D51", i1("1.5") + i1("1.8"), `Inventarios del A-1 (1.5 y 1.8) al ${f(fin)}`);
+    sug("D42", compras.locales, textoCompras);
+    sug("D43", compras.exterior, "Igual que la 42, de proveedores del exterior o con comprobante B17");
+  } else {
+    sug("D34", inventarioDe({ valores: a1Inicio, detalle: {}, sinCasilla: [] }), `Inventarios del anexo A-1 (1.5 a 1.8) al ${f(finAnterior)}`);
+    sug("D38", inventarioDe({ valores: a1, detalle: {}, sinCasilla: [] }), `Inventarios del anexo A-1 (1.5 a 1.8) al ${f(fin)}`);
+    sug("D35", compras.locales, textoCompras);
+    sug("D36", compras.exterior, "Igual que la 35, de proveedores del exterior o con comprobante B17");
+  }
+  sug("D37", compras.itbisAlCosto, "ITBIS de esas líneas llevado al costo");
 
   // Del ejercicio anterior presentado: saldo a favor (33) y pérdidas pendientes de compensar.
   const anterior = periodoIr2Anterior(p.periodo);
@@ -271,6 +291,8 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
     });
     if (arrastre.length > FILAS_PERDIDAS) avisos.push({ nivel: "aviso", texto: "Hay más pérdidas pendientes que filas en el anexo E; revisa cuáles siguen vigentes." });
   }
+  // Depreciación fiscal: patrimonio del D-2 desde el A-1 al inicio y costos fiscales del IR-2 anterior presentado.
+  sugerirDepreciacion(s, origen, a1Inicio, pc, prev?.casillas ? anterior : null);
   // Retenciones de ISR que nos hicieron en los cobros del ejercicio (las de entidades del Estado van en la casilla 14).
   const [ret] = await tx<{ total: string }[]>`
     SELECT COALESCE(sum(round(retencion_isr * tasa, 2)), 0)::text AS total FROM cobros
@@ -290,6 +312,12 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   const suma = (ks: string[]) => ks.reduce((t, k) => t + g(k), 0n);
   const sugeridos: Record<string, bigint> = {};
 
+  // Anexos D-2, D-1 y D sección III; el ajuste de inventario del D-2 (casilla 37) va al anexo G 2.2, como en el Excel.
+  calcularDepreciacion(v, sugeridos, escrito, avisos);
+  sugeridos["G2.2"] = g("T37a");
+  if (!escrito("G2.2")) v["G2.2"] = g("T37a");
+  if (g("T37a")) origen["G2.2"] = "Distribución del ajuste fiscal patrimonial al inventario (casilla 37 del anexo D-2)";
+
   // Anexo G.
   v.G1 = suma(AJUSTES_POSITIVOS.map((_, i) => `G1.${i + 1}`));
   v.G2 = suma(AJUSTES_NEGATIVOS.map((_, i) => `G2.${i + 1}`));
@@ -302,10 +330,13 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   v.D39 = suma(["D34", "D35", "D36", "D37"]) - g("D38");
   v.D49 = suma(["D40", "D41", "D42", "D43", "D44", "D45", "D46"]) - g("D47") - g("D48");
   v.D52 = v.D49 + g("D50") - g("D51");
-  const manufactura = ["D40", "D41", "D42", "D43", "D44", "D45", "D46", "D47", "D48", "D50", "D51"].some((k) => g(k) !== 0n);
-  // El costo de venta del B-1 (casilla 5) viene del anexo D; si no coincide con las cuentas de costo, manda el anexo D
-  // y se avisa (decisión de Joannie, 4-nov-2026).
-  v.DCV = manufactura ? v.D52 : v.D39;
+  // El costo de venta del B-1 (casilla 5) es la 39 + la 52, como en el Excel; si no coincide con las cuentas de costo,
+  // manda el anexo D y se avisa (decisión de Joannie, 4-nov-2026).
+  v.DCV = v.D39 + v.D52;
+  const inventarioFinalD = suma(["D38", "D47", "D48", "D51"]);
+  if (inventarioFinalD !== i1("1.5") + i1("1.6") + i1("1.7") + i1("1.8")) {
+    avisos.push({ nivel: "aviso", texto: `Anexo D: el inventario final (38 + 47 + 48 + 51 = RD$${verMonto(inventarioFinalD)}) no coincide con los inventarios del A-1 al cierre (1.5 a 1.8); en el formulario oficial el A-1 toma su inventario del anexo D.` });
+  }
   const costoContable = b1["5"] ?? 0n;
   const tipo = g("Dtipo");
   if (![0n, 100n, 200n, 300n].includes(tipo)) avisos.push({ nivel: "error", texto: "Anexo D: el tipo de inventario es 1 (periódico), 2 (perpetuo) o 3 (otros)." });
@@ -412,7 +443,7 @@ export async function calcularIr2(tx: Tx, p: Periodo, manuales: Record<string, s
   if (!actual && v.I23 > 0n && recargo > 0n && !escrito("I25p")) {
     avisos.push({ nivel: "aviso", texto: `El plazo venció el ${vence.split("-").reverse().join("/")}: la casilla 25 trae el recargo de ${deCentavos(recargo)} % si se presenta hoy (10 % el primer mes y 4 % por cada mes o fracción); cámbialo si se presentará otro día. El interés indemnizatorio (casilla 29) se escribe a mano.` });
   }
-  avisos.push({ nivel: "aviso", texto: "Los ajustes fiscales (anexo G), las pérdidas de años sin IR-2 presentado aquí, los anticipos pagados (13) y los créditos se escriben a mano. La depreciación fiscal del anexo D (D-1 y D-2) y los anexos H-1 y H-2 llegan en las próximas entregas." });
+  avisos.push({ nivel: "aviso", texto: "Los ajustes fiscales (anexo G), las pérdidas de años sin IR-2 presentado aquí, los anticipos pagados (13) y los créditos se escriben a mano. Los anexos H-1 y H-2 llegan en la próxima entrega." });
   const huella = createHash("sha256").update(JSON.stringify(Object.entries(v).sort(), (_, x) => (typeof x === "bigint" ? x.toString() : x))).digest("hex");
   return { valores: v, sugeridos, origen, avisos, huella };
 }
