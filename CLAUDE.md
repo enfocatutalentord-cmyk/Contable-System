@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entrega 1 en `main`; entrega 2 en la rama, esperando el «sí»; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entregas 1 y 2 en `main`; sigue la entrega 3, H-1 y H-2; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -268,7 +268,7 @@ Notas de infraestructura que costaron tiempo:
   se sugiere = casilla 37 del D-2 (fórmula del Excel). Con inventarios 1.6/1.7 en el A-1 la empresa es de manufactura: inventarios
   a 40/41/50 y 47/48/51 y compras a 42/43; aviso si el inventario final del anexo D (38+47+48+51) no coincide con el A-1 (el Excel
   lleva al A-1 la 38+51 a 1.5, la 47 a 1.6 y la 48 a 1.7). Pruebas `pruebas/ir2-depreciacion.test.mjs` y el arrastre en
-  `pruebas/ir2-anexo-d.test.mjs`. Esperando el «sí» de Joannie para `main`; sigue la entrega 3 (H-1 y H-2).
+  `pruebas/ir2-anexo-d.test.mjs`. En `main` el 4-nov-2026 («sí» de Joannie); sigue la entrega 3 (H-1 y H-2).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
