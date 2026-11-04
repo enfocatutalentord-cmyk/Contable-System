@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 31-oct-2026 (Fases 5 y 7 completas; IR-2 parte 1 en `main`; parte 2 en la rama, esperando el «sí»).
+Última actualización: 4-nov-2026 (Fases 5 y 7 completas; IR-2 partes 1 y 2 en `main`; sigue la parte 3).
 
 ## Con quién y cómo
 
@@ -241,8 +241,8 @@ Notas de infraestructura que costaron tiempo:
   desde el ISR retenido en cobros del ejercicio; el % de recargo (25) viene lleno con el de hoy si ya venció (10 % + 4 % por mes o
   fracción; pedido del 4-nov) y, una vez presentado, queda el que se presentó; el % de interés (29) a mano. Al marcarlo presentado, el ejercicio siguiente toma la casilla 33 como 22 y las pérdidas pendientes (l) con un período
   menos (y la pérdida fiscal si la casilla 9 fue negativa). Excel/PDF `IR-2_liquidacion_<RNC>_<año>` (`/exportar/ir2?periodo=`).
-  Pruebas `pruebas/ir2-liquidacion.test.mjs`; el recorrido `ir2.cjs` llega hasta presentar y ver el arrastre. Esperando el «sí»
-  de Joannie para `main`. Sigue la parte 3 (anexo D, impuesto a los activos, H-1/H-2).
+  Pruebas `pruebas/ir2-liquidacion.test.mjs`; el recorrido `ir2.cjs` llega hasta presentar y ver el arrastre. En `main` el
+  4-nov-2026 («sí» de Joannie, junto con el recargo prellenado). Sigue la parte 3 (anexo D, impuesto a los activos, H-1/H-2).
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
@@ -351,7 +351,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 124 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 125 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma
