@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { esUuid, exigirDuena } from "@/lib/acceso";
 import { verFecha } from "@/lib/montos";
-import { ACCIONES, detalleFirma, registrar, registroPlataforma } from "@/lib/plataforma";
-import { reactivarFirma, suspenderFirma } from "../acciones";
+import { ACCIONES, detalleFirma, permisoSupervision, registrar, registroPlataforma, supervisionVigente } from "@/lib/plataforma";
+import { iniciarSupervision, reactivarFirma, suspenderFirma, terminarSupervision } from "../acciones";
 
 export const metadata = { title: "Firma · Consola de la plataforma" };
 
@@ -20,7 +20,7 @@ export default async function DetalleFirma({ params }: { params: Promise<{ fid: 
   const d = await detalleFirma(fid);
   if (!d) notFound();
   await registrar(usuario, d.firma, "ver_firma");
-  const registro = await registroPlataforma(fid);
+  const [registro, permiso, supervision] = await Promise.all([registroPlataforma(fid), permisoSupervision(fid), supervisionVigente(usuario.id, fid)]);
   const { firma } = d;
   return (
     <main className="contenido">
@@ -51,6 +51,25 @@ export default async function DetalleFirma({ params }: { params: Promise<{ fid: 
         )}
       </section>
 
+      <section className="tarjeta" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Supervisión en solo lectura</h2>
+        {supervision ? (
+          <>
+            <p className="exito">Supervisión abierta hasta el {fechaHora(supervision.expira)} · motivo: {supervision.motivo}. Entra al cliente desde la lista de abajo.</p>
+            <form action={terminarSupervision.bind(null, firma.id)}><button>Terminar la supervisión</button></form>
+          </>
+        ) : permiso ? (
+          <>
+            <p className="sub">La firma la permite {permiso.hasta ? `hasta el ${fechaHora(permiso.hasta)}` : "hasta que la quite"}. La entrada dura una hora y la firma ve el motivo.</p>
+            <Formulario accion={iniciarSupervision.bind(null, firma.id)} boton="Entrar como supervisora">
+              <label>Para qué entras<input name="motivo" required minLength={5} maxLength={300} /></label>
+            </Formulario>
+          </>
+        ) : (
+          <p className="sub">La firma no ha permitido la supervisión. Un administrador de la firma la permite en Personas y accesos.</p>
+        )}
+      </section>
+
       <h2>Administradores</h2>
       <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
         <table>
@@ -67,7 +86,7 @@ export default async function DetalleFirma({ params }: { params: Promise<{ fid: 
         <table>
           <thead><tr><th>Cliente</th><th>RNC</th><th>Estado</th></tr></thead>
           <tbody>
-            {d.clientes.map((c, i) => <tr key={i}><td>{c.nombre}</td><td>{c.rnc ?? "—"}</td><td>{c.activa ? "Activo" : "Inactivo"}</td></tr>)}
+            {d.clientes.map((c) => <tr key={c.id}><td>{supervision ? <Link href={`/e/${c.id}`}>{c.nombre}</Link> : c.nombre}</td><td>{c.rnc ?? "—"}</td><td>{c.activa ? "Activo" : "Inactivo"}</td></tr>)}
             {!d.clientes.length && <tr><td colSpan={3} className="sub">Sin clientes.</td></tr>}
           </tbody>
         </table>

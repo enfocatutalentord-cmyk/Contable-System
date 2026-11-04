@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
-import { contactoPlataforma, detalleFirma, esDuenaPlataforma, firmasPlataforma, registrar, registroPlataforma } from "../lib/plataforma.ts";
+import { contactoPlataforma, correosAdministradores, detalleFirma, esDuenaPlataforma, firmasPlataforma, permisoSupervision, registrar, registroPlataforma, supervisionVigente } from "../lib/plataforma.ts";
 
 const url = process.env.DATABASE_URL;
 const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : null;
@@ -64,4 +64,30 @@ test("suspensión y registro: se guarda quién, qué y por qué; el registro no 
   await assert.rejects(sql`UPDATE registro_plataforma SET motivo = 'otro' WHERE id = ${r.id}`, /no se cambia ni se borra/);
   await assert.rejects(sql`DELETE FROM registro_plataforma WHERE id = ${r.id}`, /no se cambia ni se borra/);
   await sql`UPDATE firmas SET suspendida_en = NULL, suspendida_motivo = NULL, suspendida_por = NULL WHERE id = ${firma}`;
+});
+
+test("supervisión: solo con permiso vigente de la firma, por una hora y sin terminar; al quitar el permiso se acaba", conBase, async () => {
+  const yo = { id: luis, nombre: "Luis", email: `luis-plat-${marca}@x.do`, dosPasos: true };
+  assert.equal(await permisoSupervision(firma), null);
+  await sql`INSERT INTO supervisiones (usuario_id, firma_id, motivo) VALUES (${luis}, ${firma}, 'Revisar el 606')`;
+  assert.equal(await supervisionVigente(luis, firma), null, "sin permiso de la firma no vale");
+  await sql`INSERT INTO permisos_supervision (firma_id, hasta, otorgado_por) VALUES (${firma}, now() + interval '24 hours', ${ana})`;
+  const p = await permisoSupervision(firma);
+  assert.equal(p.quien, "Ana");
+  const s = await supervisionVigente(luis, firma);
+  assert.equal(s.motivo, "Revisar el 606");
+  assert.ok(s.expira.getTime() - s.inicio.getTime() === 3_600_000, "dura una hora");
+  await registrar(yo, { id: firma, nombre: `Firma plataforma ${marca}` }, "supervisar", "Revisar el 606");
+  assert.equal((await registroPlataforma(firma))[0].accion, "supervisar");
+  // Vencida, terminada o con el permiso vencido: ya no vale.
+  await sql`UPDATE supervisiones SET expira = now() - interval '1 minute' WHERE firma_id = ${firma}`;
+  assert.equal(await supervisionVigente(luis, firma), null, "pasó la hora");
+  await sql`INSERT INTO supervisiones (usuario_id, firma_id, motivo) VALUES (${luis}, ${firma}, 'Otra revisión')`;
+  assert.ok(await supervisionVigente(luis, firma));
+  await sql`UPDATE permisos_supervision SET hasta = now() - interval '1 minute' WHERE firma_id = ${firma}`;
+  assert.equal(await permisoSupervision(firma), null, "permiso vencido");
+  assert.equal(await supervisionVigente(luis, firma), null, "con el permiso vencido se acaba");
+  await sql`DELETE FROM permisos_supervision WHERE firma_id = ${firma}`;
+  await assert.rejects(sql`INSERT INTO supervisiones (usuario_id, firma_id, motivo) VALUES (${luis}, ${firma}, 'x')`, /check/i, "motivo de al menos 5 letras");
+  assert.deepEqual((await correosAdministradores(firma)).map((a) => a.nombre), ["Ana"], "el aviso va a los administradores");
 });

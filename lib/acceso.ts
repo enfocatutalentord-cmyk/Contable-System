@@ -5,7 +5,7 @@ import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
 import { pestanaDeRuta, puedeVer, TODAS_LAS_PESTANAS } from "./pestanas";
-import { esDuenaPlataforma } from "./plataforma";
+import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 
 export type Empresa = {
   id: string; nombre: string; rnc: string | null; moneda: string; fecha_bloqueo: string | null;
@@ -20,6 +20,7 @@ export type Acceso = {
   usuario: Usuario; empresa: Empresa; permisos: Permiso[]; perfil: string; adminFirma: boolean;
   pestanas: string[] | null; // pestañas que ve su rol; null = todas
   paraClientes: boolean;     // rol de usuario de la empresa cliente (no del equipo de la firma)
+  supervision?: Supervision; // la dueña de la plataforma supervisando en solo lectura, con permiso de la firma
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,7 +40,12 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
       LEFT JOIN miembros m ON m.empresa_id = e.id AND m.usuario_id = ${usuario.id}
       LEFT JOIN perfiles p ON p.id = m.perfil_id
      WHERE e.id = ${empresaId}`;
-  if (!fila || (!fila.administrador && !fila.permisos)) notFound();
+  if (!fila) {
+    const s = await accesoSupervision(usuario, empresaId);
+    if (s) return s;
+    notFound();
+  }
+  if (!fila.administrador && !fila.permisos) notFound();
   const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, ...empresa } = fila;
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
@@ -64,6 +70,20 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     paraClientes: !administrador && !!para_clientes,
   };
 });
+
+// Supervisión de la plataforma: la dueña (con dos pasos), una supervisión suya vigente en esa firma y el permiso de la firma
+// vigente. Recibe solo el permiso «ver»: el servidor rechaza cualquier acción que guarde, emita, anule o descargue.
+async function accesoSupervision(usuario: Usuario, empresaId: string): Promise<Acceso | null> {
+  if (!usuario.dosPasos || !(await esDuenaPlataforma(usuario.email))) return null;
+  const [e] = await db()<Empresa[]>`
+    SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
+           f.nombre AS firma, e.requiere_aprobacion, e.activa
+      FROM empresas e JOIN firmas f ON f.id = e.firma_id WHERE e.id = ${empresaId}`;
+  if (!e) return null;
+  const supervision = await supervisionVigente(usuario.id, e.firma_id);
+  if (!supervision) return null;
+  return { usuario, empresa: e, adminFirma: false, perfil: "Supervisión de la plataforma (solo lectura)", permisos: ["ver"], pestanas: null, paraClientes: false, supervision };
+}
 
 // Para server actions y páginas que requieren un permiso puntual. La pestaña se revisa aparte porque una acción del
 // servidor se puede llamar desde cualquier página: así, quien no ve Asientos tampoco contabiliza un asiento por otra vía.

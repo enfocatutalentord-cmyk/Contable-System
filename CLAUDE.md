@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 completo y Consola de la plataforma entrega 1 en `main`; sigue la entrega 2 de la consola; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 completo y Consola entrega 1 en `main`; Consola entrega 2 en la rama, esperando el «sí»; e-CF para después, pedido del 4-nov; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -349,7 +349,7 @@ No se pasa a la siguiente sin su autorización expresa.
   variables › Actions. Costos revisados ese día: solo se paga Vercel Pro (US$20 por persona); Neon, GitHub y Gmail en plan gratis;
   sugerido pasar Neon a Launch (~US$5–15/mes) cuando haya cobro real (historial de 7 días y sin tope de 1 GB; los adjuntos se
   guardan en la base). La app corre en `iad1` (Washington): confirmar que Neon esté en AWS US East.
-- **Factura electrónica (e-CF):** obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
+- **Factura electrónica (e-CF):** el 4-nov-2026 se pidió dejarla para después. Obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
@@ -372,9 +372,17 @@ No se pasa a la siguiente sin su autorización expresa.
   suspende o reactiva con motivo y su registro; /plataforma/registro. `firmas.suspendida_*`: `accesoEmpresa` y `accesoFirma`
   llevan a /suspendida (los datos se conservan; /empresas oculta las suspendidas). `registro_plataforma` (ver detalle, suspender,
   reactivar; con el nombre de la firma) no se cambia ni se borra (trigger). Enlace desde Mi cuenta solo para la dueña. Pruebas
-  `pruebas/plataforma.test.mjs` (cierran la conexión de lib/db.ts). En `main` el 4-nov-2026 («sí» de Joannie). **Entrega 2**:
-  permiso de supervisión en Personas y accesos, aviso por correo, modo solo lectura con franja, sesión de 1 h y registro visible
-  para la firma.
+  `pruebas/plataforma.test.mjs` (cierran la conexión de lib/db.ts). En `main` el 4-nov-2026 («sí» de Joannie). **Entrega 2**
+  (migración 028): `permisos_supervision` (la da un administrador de la firma en Personas y accesos › «Supervisión de la plataforma»
+  por 24 h, 7 días o hasta quitarla; `darPermisoSupervision`/`quitarPermisoSupervision` en `app/firma/acciones.ts`, avisan por
+  correo a los administradores; quitarla termina la supervisión en curso) y `supervisiones` (motivo ≥ 5 letras, 1 h). En
+  /plataforma/[fid] «Entrar como supervisora» (con permiso vigente) y la lista de clientes pasa a enlaces. `accesoEmpresa` tiene un
+  camino nuevo (`accesoSupervision`): dueña con dos pasos + supervisión vigente + permiso vigente → solo el permiso «ver», perfil
+  «Supervisión de la plataforma (solo lectura)», sin pantallas de la firma; franja dorada fija arriba (`Marco.franja`,
+  `.franja-supervision`) con la hora de fin, el motivo y «Terminar». Ninguna acción del cliente se conforma con «ver», así que
+  nada se guarda; las descargas piden «exportar» (403). La firma ve todo el registro de la plataforma en Personas y accesos.
+  Probado en pantalla con una firma ajena local (sin permiso 404; con permiso ve facturas, franja, descarga 403, nueva factura
+  sin permiso, firma 404; al terminar vuelve a 404). Esperando el «sí» de Joannie para `main` (aplica la migración 028).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
@@ -406,7 +414,7 @@ su postgres -c "psql -c \"CREATE ROLE contable LOGIN PASSWORD 'contable' CREATED
 echo 'DATABASE_URL=postgres://contable:contable@localhost:5432/contable' > .env.local
 npm install
 DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm run migrar
-DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 141 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
+DATABASE_URL=postgres://contable:contable@localhost:5432/contable npm test   # 142 pruebas (base, montos, cálculos, fiscal, ventas, compras y seguridad)
 npm run build && npx next start -p 3100
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/fase1.cjs   # recorridos completos (base vacía)
 PLAYWRIGHT=/opt/node-tools/node_modules/playwright node pruebas/navegador/tributaria.cjs   # crea su propia firma

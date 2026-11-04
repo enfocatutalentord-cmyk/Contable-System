@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { accesoFirma, esUuid } from "@/lib/acceso";
 import { ErrorContable } from "@/lib/asientos";
-import { conUsuario, mensajeError } from "@/lib/db";
+import { conUsuario, db, mensajeError } from "@/lib/db";
 import { enviarCorreo } from "@/lib/correo";
 import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
 import { avisarCambio, quitarDosPasos } from "@/lib/cuenta-dos-pasos";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
 import { esPestana, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
+import { correosAdministradores, registrar } from "@/lib/plataforma";
 import type { Estado } from "../acciones-cuenta";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -234,4 +235,52 @@ export async function reiniciarDosPasos(firmaId: string, personaId: string, _: E
     "Se cerraron tus sesiones. Al entrar, configúrala de nuevo en Mi cuenta con tu celular.");
   revalidatePath(`/firma/${firmaId}/equipo`);
   return { ok: "Verificación en dos pasos quitada. La persona la configura de nuevo al entrar." };
+}
+
+// Supervisión de la plataforma: un administrador de la firma la permite por 24 horas, 7 días o hasta quitarla, y la quita
+// cuando quiera (también termina cualquier supervisión en curso). Cada cambio va al registro y se avisa a los administradores.
+const DURACIONES: Record<string, { horas: number | null; texto: string }> = {
+  "24h": { horas: 24, texto: "por 24 horas" }, "7d": { horas: 24 * 7, texto: "por 7 días" }, siempre: { horas: null, texto: "hasta que se quite" },
+};
+
+async function avisarSupervision(firmaId: string, firmaNombre: string, asunto: string, parrafo: string) {
+  for (const a of await correosAdministradores(firmaId)) {
+    await enviarCorreo({ para: a.email, asunto, titulo: asunto, parrafos: [`Hola, ${a.nombre}.`, parrafo, `Firma: ${firmaNombre}. Lo ves en Personas y accesos.`],
+      boton: { texto: "Ver Personas y accesos", url: `${await urlApp()}/firma/${firmaId}/equipo` } });
+  }
+}
+
+export async function darPermisoSupervision(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario, firma } = await accesoFirma(firmaId);
+  const d = DURACIONES[texto(fd, "duracion")];
+  if (!d) return { error: "Elige por cuánto tiempo." };
+  try {
+    await db()`
+      INSERT INTO permisos_supervision (firma_id, hasta, otorgado_por)
+      VALUES (${firmaId}, ${d.horas === null ? null : new Date(Date.now() + d.horas * 3_600_000)}, ${usuario.id})
+      ON CONFLICT (firma_id) DO UPDATE SET hasta = EXCLUDED.hasta, otorgado_por = EXCLUDED.otorgado_por, otorgado_en = now()`;
+    await registrar(usuario, firma, "permiso_dado", d.texto);
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  await avisarSupervision(firmaId, firma.nombre, "Se permitió la supervisión de la plataforma",
+    `${usuario.nombre} permitió que la dueña de la plataforma vea los datos de la firma en solo lectura ${d.texto}. Cada entrada pide un motivo, dura una hora y queda registrada.`);
+  revalidatePath(`/firma/${firmaId}/equipo`);
+  return { ok: `Supervisión permitida ${d.texto}.` };
+}
+
+export async function quitarPermisoSupervision(firmaId: string, _: Estado): Promise<Estado> {
+  const { usuario, firma } = await accesoFirma(firmaId);
+  try {
+    const r = await db()`DELETE FROM permisos_supervision WHERE firma_id = ${firmaId}`;
+    if (r.count === 0) return { error: "La supervisión no estaba permitida." };
+    await db()`UPDATE supervisiones SET terminada_en = now() WHERE firma_id = ${firmaId} AND terminada_en IS NULL AND expira > now()`;
+    await registrar(usuario, firma, "permiso_quitado");
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  await avisarSupervision(firmaId, firma.nombre, "Se quitó el permiso de supervisión",
+    `${usuario.nombre} quitó el permiso de supervisión de la plataforma. Si había una supervisión en curso, terminó.`);
+  revalidatePath(`/firma/${firmaId}/equipo`);
+  return { ok: "Permiso de supervisión quitado." };
 }

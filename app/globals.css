@@ -258,3 +258,8 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .estado-financiero .fila-total td { font-weight: 700; border-top: 2px solid var(--borde); background: var(--aviso-fondo); }
 .centro-reportes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .centro-reportes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+/* Supervisión de la plataforma: franja fija arriba, en dorado, para que no se olvide que es solo lectura. */
+.franja-supervision { position: sticky; top: 0; z-index: 20; display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; background: var(--aviso-fondo); color: var(--aviso-texto); border-bottom: 2px solid #B88A40; padding: 8px 16px; }
+.franja-supervision button { padding: 4px 10px; }

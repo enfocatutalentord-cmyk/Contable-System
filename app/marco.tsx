@@ -9,7 +9,7 @@ import { SelectorCliente } from "./selector-cliente";
 // Marco único de la aplicación: el mismo menú en toda la firma y, arriba, el selector de cliente.
 // Con «Todos los clientes» se ven las pantallas de la firma; al elegir un cliente, cada pestaña muestra solo lo suyo
 // (como el selector de cliente de QuickBooks Online Accountant).
-export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditoria, pestanas = null, soloCliente = false, children }: {
+export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditoria, pestanas = null, soloCliente = false, franja, children }: {
   firma: { id: string; nombre: string };
   clientes: { id: string; nombre: string }[];
   actual: string | null;
@@ -19,6 +19,7 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
   auditoria: boolean;
   pestanas?: string[] | null;
   soloCliente?: boolean;
+  franja?: React.ReactNode; // aviso fijo arriba (supervisión de la plataforma)
   children: React.ReactNode;
 }) {
   return (
@@ -33,6 +34,7 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
         </MenuMovil>
       </nav>
       <div className="principal">
+        {franja}
         <header className="barra-cliente">
           <SelectorCliente firmaId={firma.id} clientes={clientes} actual={actual} todos={!soloCliente} />
           <span className="firma-nombre">{firma.nombre}</span>

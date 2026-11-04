@@ -1,6 +1,7 @@
 import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
+import { SupervisionFirma } from "./supervision";
 import { agregarPersona, enviarAcceso, guardarAccesos, quitarDeFirma, reiniciarDosPasos } from "../../acciones";
 
 export const metadata = { title: "Personas y accesos · Empire Tax’N Legal" };
@@ -117,6 +118,7 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
       ))}
         </section>
       ))}
+      <SupervisionFirma fid={fid} />
     </>
   );
 }

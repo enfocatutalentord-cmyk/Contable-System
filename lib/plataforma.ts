@@ -32,7 +32,10 @@ export async function firmasPlataforma(): Promise<FirmaPlataforma[]> {
 }
 
 export type Registro = { id: string; usuario_nombre: string; firma_id: string | null; firma_nombre: string | null; accion: string; motivo: string | null; en: Date };
-export const ACCIONES: Record<string, string> = { ver_firma: "Vio el detalle", suspender: "Suspendió", reactivar: "Reactivó" };
+export const ACCIONES: Record<string, string> = {
+  ver_firma: "Vio el detalle", suspender: "Suspendió", reactivar: "Reactivó", permiso_dado: "Permitió la supervisión",
+  permiso_quitado: "Quitó el permiso de supervisión", supervisar: "Entró como supervisora", terminar_supervision: "Terminó la supervisión",
+};
 
 export async function registroPlataforma(firmaId?: string): Promise<Registro[]> {
   return firmaId
@@ -52,7 +55,32 @@ export async function detalleFirma(firmaId: string) {
   const administradores = await db()<{ nombre: string; email: string; dos_pasos: boolean }[]>`
     SELECT u.nombre, u.email, (u.dos_pasos_desde IS NOT NULL) AS dos_pasos FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
      WHERE mf.firma_id = ${firmaId} AND mf.administrador ORDER BY u.nombre`;
-  const clientes = await db()<{ nombre: string; rnc: string | null; activa: boolean }[]>`
-    SELECT nombre, rnc, activa FROM empresas WHERE firma_id = ${firmaId} ORDER BY activa DESC, nombre`;
+  const clientes = await db()<{ id: string; nombre: string; rnc: string | null; activa: boolean }[]>`
+    SELECT id, nombre, rnc, activa FROM empresas WHERE firma_id = ${firmaId} ORDER BY activa DESC, nombre`;
   return { firma, administradores, clientes };
+}
+
+// Supervisión (entrega 2): la firma la permite por un tiempo; cada entrada de la dueña dura una hora.
+export type Permiso = { hasta: Date | null; otorgado_en: Date; quien: string | null };
+export async function permisoSupervision(firmaId: string): Promise<Permiso | null> {
+  const [p] = await db()<Permiso[]>`
+    SELECT p.hasta, p.otorgado_en, u.nombre AS quien FROM permisos_supervision p LEFT JOIN usuarios u ON u.id = p.otorgado_por
+     WHERE p.firma_id = ${firmaId} AND (p.hasta IS NULL OR p.hasta > now())`;
+  return p ?? null;
+}
+
+export type Supervision = { id: string; firma_id: string; motivo: string; inicio: Date; expira: Date };
+// La supervisión vigente de esta persona en esta firma: sin terminar, antes de la hora y con el permiso de la firma vigente.
+export async function supervisionVigente(usuarioId: string, firmaId: string): Promise<Supervision | null> {
+  const [s] = await db()<Supervision[]>`
+    SELECT s.id, s.firma_id, s.motivo, s.inicio, s.expira FROM supervisiones s
+      JOIN permisos_supervision p ON p.firma_id = s.firma_id AND (p.hasta IS NULL OR p.hasta > now())
+     WHERE s.usuario_id = ${usuarioId} AND s.firma_id = ${firmaId} AND s.terminada_en IS NULL AND s.expira > now()
+     ORDER BY s.inicio DESC LIMIT 1`;
+  return s ?? null;
+}
+
+export async function correosAdministradores(firmaId: string): Promise<{ email: string; nombre: string }[]> {
+  return db()<{ email: string; nombre: string }[]>`
+    SELECT u.email, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id WHERE mf.firma_id = ${firmaId} AND mf.administrador`;
 }
