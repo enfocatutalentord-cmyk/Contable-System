@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (IR-2 partes 1 y 2 y parte 3 entregas 1 y 2 en `main`; entrega 3, H-1 y H-2, en la rama esperando el «sí»; respaldos sin activar).
+Última actualización: 4-nov-2026 (IR-2 completo en `main`: partes 1, 2 y 3 con sus tres entregas; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -279,7 +279,7 @@ Notas de infraestructura que costaron tiempo:
   Cada tabla muestra lo guardado + 3 filas vacías. Revisión: filas sin identificación o nombre (error), participaciones de B que no
   suman 100 %, persona física (identificación que no es RNC de 9 dígitos) con 20 % o más que no está en C, C con menos de 20 %,
   falta de contacto o de actividad (avisos); con «sin cambios» solo pide la fecha. Excel/PDF `IR-2_H_<RNC>_<año>` (`/exportar/ir2-h`).
-  Pruebas `pruebas/ir2-sociedad.test.mjs`. Esperando el «sí» de Joannie para `main` (al publicarse se aplica la migración 026).
+  Pruebas `pruebas/ir2-sociedad.test.mjs`. En `main` el 4-nov-2026 («sí» de Joannie). **IR-2 completo.**
 - **Firmas** (`migraciones/003_plataforma.sql`): una firma contable (`firmas`) tiene clientes (`empresas.firma_id`), equipo
   (`miembros_firma`, con marca de administrador) y **perfiles** con permisos configurables (`perfiles.permisos`: ver, registrar,
   contabilizar, revertir, catálogo, cerrar, reabrir, adjuntar, exportar, auditoría, empresa, usuarios; `lib/permisos.ts`).
