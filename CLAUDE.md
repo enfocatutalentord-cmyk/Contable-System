@@ -476,7 +476,7 @@ No se pasa a la siguiente sin su autorización expresa.
   anticipos), columna Permuta del 607 y casilla 17 del IT-1 (`COLUMNA_COBRO`); en el cobro, «Lo recibido va a» lista gastos y
   activos (sin bancos ni cuentas por cobrar). Descargas `/exportar/propuesta?id=` (Excel/PDF con precio de lista, descuento, precio
   final, impuestos, total y el detalle) y `/exportar/recibo-anticipo?id=`. Pruebas `pruebas/propuestas.test.mjs` (173 en total).
-  Esperando el «sí» de Patricia para `main`.
+  En `main` el 4-nov-2026 («sí» de Patricia). **Bloque 2 completo** (salvo carta EMP-L01 y mensajes, bloques 3 y 5).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
