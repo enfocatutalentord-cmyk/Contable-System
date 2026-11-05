@@ -85,6 +85,11 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
                   <label style={{ flex: "1 1 200px" }}>Municipio<input name="municipio" defaultValue={v(f.municipio)} /></label>
                   <label style={{ flex: "1 1 200px" }}>Provincia<input name="provincia" defaultValue={v(f.provincia)} /></label>
                 </div>
+                <div className="fila">
+                  <label>Vence el registro mercantil<input name="vence_registro_mercantil" type="date" defaultValue={v(f.vence_registro_mercantil)} /></label>
+                  <label>Vence el nombre comercial (ONAPI)<input name="vence_nombre_comercial" type="date" defaultValue={v(f.vence_nombre_comercial)} /></label>
+                  <label>Próxima asamblea ordinaria<input name="fecha_asamblea" type="date" defaultValue={v(f.fecha_asamblea)} /></label>
+                </div>
               </>)}
             </Formulario>
             <h3>Logo y membrete</h3>

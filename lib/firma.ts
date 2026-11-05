@@ -1,3 +1,4 @@
+import { alertasDeEmpresa, type Alerta } from "./alertas";
 import { antiguedad } from "./cxc";
 import { antiguedadCxp } from "./cxp";
 import { conEmpresa, db } from "./db";
@@ -32,6 +33,13 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
      WHERE e.firma_id = ${firmaId} AND (${conInactivos} OR e.activa)
        AND (${administrador} OR EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = e.id AND m.usuario_id = ${usuarioId}))
      ORDER BY e.id = f.empresa_propia_id DESC, e.activa DESC, e.nombre`;
+}
+
+// Las alertas de todos los clientes de la firma (bloque 3b), con el cliente de cada una.
+export async function alertasDeFirma(clientes: ClienteFirma[], hoy: string): Promise<(Alerta & { cliente: ClienteFirma })[]> {
+  const listas = await Promise.all(clientes.map((c) => conEmpresa(c.id, (tx) => alertasDeEmpresa(tx, { empresaId: c.id, hoy, propia: c.propia }))));
+  return clientes.flatMap((c, i) => listas[i].map((a) => ({ ...a, cliente: c })))
+    .sort((x, y) => (x.nivel === y.nivel ? x.orden.localeCompare(y.orden) : x.nivel === "urgente" ? -1 : 1));
 }
 
 export type Resumen = {

@@ -494,6 +494,19 @@ No se pasa a la siguiente sin su autorización expresa.
   (ver, registrar, contabilizar, adjuntar, exportar; sin Productos y servicios, impuestos, catálogo ni ficha editable) creado en
   todas las firmas; `/bitacora` y `/notificaciones` sumadas a Contador, Auxiliar y Facturación. Pruebas `pruebas/bitacora.test.mjs`
   (178 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 3b (cronograma y alertas).
+  **Entrega 3b · Cronograma y alertas** (migración 035, `lib/tareas.ts`, `lib/alertas.ts`, `app/firma/tareas-acciones.ts`,
+  pantallas `/firma/[fid]/tareas` y `/firma/[fid]/alertas`, recuadro «Alertas» en el Inicio de la firma). `plantillas_tarea` por
+  firma (sin RLS, siempre filtrada por `firma_id`; el cronograma de la sección 9 sembrado con `crear_plantillas_tarea`, también al
+  crear una firma; día del mes desde/hasta o día de la semana; alcance firma, todos los clientes, con TSS o con iguala; lo edita un
+  administrador). `tareas` (una por plantilla, cliente y período; `generarTareas` al abrir la pantalla en el mes en curso o
+  siguientes; la empresa propia no cuenta; responsable y hecha/reabrir; la de un cliente, al hacerse, deja una gestión en su
+  bitácora). Ficha › Sociedad: `vence_registro_mercantil`, `vence_nombre_comercial` (alerta 60 días antes) y `fecha_asamblea`
+  (30 días). `alertasDeEmpresa` (no se guardan; se van al resolverse): comprobantes con 10 o menos o rango a 30 días; declaraciones
+  del mes anterior confirmadas en el perfil fiscal (606/607/608 día 15, IT-1 día 20, IR-17 día 10; 7 días antes) sin
+  `envios_dgii`; IR-2 a 30 días de los 120 del cierre; notificaciones por vencer; desde el día 10 sin documentos del cliente en el
+  mes; sin formalizar; cumpleaños de contactos (hoy o mañana) y aniversario con la firma (7 días); en la empresa propia, igualas
+  vencidas sin cobrar y los avisos de los acuerdos. Prospectos y agenda de citas quedan para después. Pruebas
+  `pruebas/tareas-alertas.test.mjs` (181 en total). Esperando el «sí» de Patricia para `main`.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

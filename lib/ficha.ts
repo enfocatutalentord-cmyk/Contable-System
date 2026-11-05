@@ -73,6 +73,10 @@ export function leerSociedad(fd: FormData) {
   return {
     tipo_sociedad: txt(fd, "tipo_sociedad"), fecha_constitucion: fecha(txt(fd, "fecha_constitucion"), "Fecha de constitución"),
     municipio: txt(fd, "municipio"), provincia: txt(fd, "provincia"), capital_social: monto(txt(fd, "capital_social"), "Capital social"),
+    // Bloque 3b: para las alertas (60 días antes; la asamblea, 30 días antes).
+    vence_registro_mercantil: fecha(txt(fd, "vence_registro_mercantil"), "Vence el registro mercantil"),
+    vence_nombre_comercial: fecha(txt(fd, "vence_nombre_comercial"), "Vence el nombre comercial"),
+    fecha_asamblea: fecha(txt(fd, "fecha_asamblea"), "Próxima asamblea ordinaria"),
   };
 }
 
@@ -158,7 +162,9 @@ export async function leerFicha(tx: Tx, empresaId: string, conEmpleados: boolean
            grupo_whatsapp, ventas_mes::text, facturas_mes, empleados_mes, tiene_tss, emite_ecf, sistema_usa, categoria, tipo_cliente,
            to_char(fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato, dia_facturacion, estado_cliente,
            to_char(ficha_firmada, 'YYYY-MM-DD') AS ficha_firmada, to_char(hoja_firmada, 'YYYY-MM-DD') AS hoja_firmada,
-           to_char(contrato_firmado, 'YYYY-MM-DD') AS contrato_firmado, modalidad, custodio_accesos
+           to_char(contrato_firmado, 'YYYY-MM-DD') AS contrato_firmado, modalidad, custodio_accesos,
+           to_char(vence_registro_mercantil, 'YYYY-MM-DD') AS vence_registro_mercantil, to_char(vence_nombre_comercial, 'YYYY-MM-DD') AS vence_nombre_comercial,
+           to_char(fecha_asamblea, 'YYYY-MM-DD') AS fecha_asamblea
       FROM empresas WHERE id = ${empresaId}`;
   const socios = await tx<Socio[]>`SELECT nombre, cedula, telefono, porcentaje::text FROM socios_empresa ORDER BY orden`;
   const contactos = await tx<Contacto[]>`

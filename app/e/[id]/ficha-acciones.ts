@@ -35,7 +35,8 @@ export async function guardarFichaSociedad(empresaId: string, _: Estado, fd: For
   if (esError(d)) return d;
   return guardar(empresaId, "Datos de la sociedad guardados.", (tx) => tx`
     UPDATE empresas SET tipo_sociedad = ${d.tipo_sociedad}, fecha_constitucion = ${d.fecha_constitucion}, municipio = ${d.municipio},
-           provincia = ${d.provincia}, capital_social = ${d.capital_social} WHERE id = ${empresaId}`);
+           provincia = ${d.provincia}, capital_social = ${d.capital_social}, vence_registro_mercantil = ${d.vence_registro_mercantil},
+           vence_nombre_comercial = ${d.vence_nombre_comercial}, fecha_asamblea = ${d.fecha_asamblea} WHERE id = ${empresaId}`);
 }
 
 export async function guardarFichaOperaciones(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
