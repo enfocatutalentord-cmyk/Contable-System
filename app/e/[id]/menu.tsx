@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FUERA_DEL_MENU, PESTANAS_CLIENTE, puedeVer } from "@/lib/pestanas";
+import { FUERA_DEL_MENU, GRUPO_PRIVADO, PESTANAS_CLIENTE, puedeVer } from "@/lib/pestanas";
 
 // pestanas: las que ve el rol de la persona en el cliente elegido (null = todas). soloCliente: usuario de una empresa cliente,
 // que no ve las pantallas de la firma.
@@ -18,7 +18,9 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const administracion: [string, string][] = admin
     ? [[`${firma}/clientes`, "Clientes de la firma"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]]
     : [];
-  const cliente = PESTANAS_CLIENTE.map((s) => ({
+  // Lo de la socia solo aparece dentro de la empresa propia.
+  const enPropia = !!propia && empresaId === propia.id;
+  const cliente = PESTANAS_CLIENTE.filter((s) => s.grupo !== GRUPO_PRIVADO || enPropia).map((s) => ({
     ...s,
     enlaces: s.enlaces.filter(([r]) => !FUERA_DEL_MENU.includes(r) && puedeVer(pestanas, r) && (r !== "/historial" || auditoria || !base)),
   }));

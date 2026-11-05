@@ -10,7 +10,7 @@ import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
 import { avisarCambio, quitarDosPasos } from "@/lib/cuenta-dos-pasos";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
-import { esPestana, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
+import { esPestana, pestanasAGuardar } from "@/lib/pestanas";
 import { correosAdministradores, registrar } from "@/lib/plataforma";
 import type { Estado } from "../acciones-cuenta";
 
@@ -131,8 +131,9 @@ export async function guardarPerfil(firmaId: string, _: Estado, fd: FormData): P
   if (!nombre) return { error: "Escribe el nombre del rol." };
   if (marcadas.length === 0) return { error: "Marca al menos una pestaña." };
   if (!permisos.includes("ver")) permisos.unshift("ver");
-  // Todas marcadas se guarda como «todas» (NULL), así las pestañas que se agreguen después también las ve.
-  const pestanas = TODAS_LAS_PESTANAS.every((r) => marcadas.includes(r)) ? null : TODAS_LAS_PESTANAS.filter((r) => marcadas.includes(r));
+  // Todas las comunes marcadas se guarda como «todas» (NULL), así las pestañas que se agreguen después también las ve; las
+  // privadas de la socia solo si se marcan a propósito.
+  const pestanas = pestanasAGuardar(marcadas);
   try {
     await conUsuario(usuario.id, async (tx) => {
       if (id) {

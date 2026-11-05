@@ -3,6 +3,7 @@ import { aPesos, tasaDeTexto } from "./calculos.ts";
 import type { Tx } from "./db";
 import { FORMAS_PAGO } from "./compras.ts";
 import { CONCEPTOS_IR17 } from "./fiscal.ts";
+import { dividendosDelPeriodo } from "./socia.ts";
 import { periodoAnterior, type Aviso, type Periodo } from "./formatos-dgii.ts";
 import { porTasa, type Columna, type Resultado, type Seccion } from "./it1.ts";
 import { aCentavos, deCentavos, leerMonto } from "./montos.ts";
@@ -91,6 +92,13 @@ export async function calcularIr17(tx: Tx, p: Periodo, manuales: Record<string, 
     if (f.tasa !== tasaForm) {
       avisos.push({ nivel: "aviso", texto: `Pago ${f.pagoNumero}: «${f.retencion}» se retuvo al ${deCentavos(f.tasa)} %, pero el formulario usa el ${deCentavos(tasaForm)} % para la casilla ${f.codigo}.` });
     }
+  }
+  // Dividendos de la liquidación de la cuenta corriente de la socia (bloque 7a): concepto 5, monto sujeto = dividendo bruto.
+  const dividendos = await dividendosDelPeriodo(tx, p.inicio, p.fin);
+  if (dividendos.bruto > 0n) {
+    s.R5 = (s.R5 ?? 0n) + dividendos.bruto;
+    retenidoPorConcepto[5] = (retenidoPorConcepto[5] ?? 0n) + dividendos.retencion;
+    origen.R5 = origen.R5 ? `${origen.R5} y dividendos de la cuenta de la socia` : "Dividendos de la liquidación de la cuenta corriente de la socia";
   }
   // Saldo a favor anterior: casilla 34 del IR-17 del mes anterior marcado como presentado.
   const anterior = periodoAnterior(`${p.inicio.slice(0, 7)}-01`);

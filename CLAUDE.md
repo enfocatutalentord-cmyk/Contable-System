@@ -631,6 +631,31 @@ No se pasa a la siguiente sin su autorización expresa.
   real; 7c metas de ahorro, deudas personales y panel). Solo lo ve el rol Administrador. Preguntas: Excel PRESUPUESTO 2026
   (necesario para 7b y 7c), si lo ve solo Patricia, retención de dividendos (confirmar tasa con la Ley 30-26), recurrentes como
   borrador, una cuenta de ahorros para todas las metas, meta diaria por días hábiles.
+  «sí» de Patricia del 5-nov a empezar por la 7a con las respuestas recomendadas (recurrentes como borrador; el sistema propone
+  las dos opciones de liquidación). **Entrega 7a · Pagos a su cuenta y cuenta de la socia** (migración 042, `lib/salidas.ts`,
+  `lib/plantillas.ts`, `lib/socia.ts`, `lib/propia.ts`, `app/e/[id]/socia-acciones.ts`, `app/e/[id]/plantillas-acciones.ts`).
+  **Pestañas privadas** (`PESTANAS_PRIVADAS` en `lib/pestanas.ts`: `/salidas` «Registrar salidas» y `/socia` «Cuenta de la socia»,
+  grupo «Cuenta de la socia», solo dentro de la empresa propia): las ven el administrador de la firma y el rol base Administrador;
+  un rol con «todas» (NULL) ya no las incluye (`pestanasDelRol`, también para la supervisión), y en Roles y permisos se marcan a
+  propósito (`pestanasAGuardar`: NULL solo si marcó todas las comunes y ninguna privada). `salidas` (número por empresa; tipo
+  oficina/personal/deuda/ahorro/traspaso; sale de un banco o caja en pesos de 1101 o de una cuenta bancaria; oficina → gasto o
+  costo con unidad; personal y deuda → «Cuenta corriente – …» bajo 1102 con categoría, la deuda con acreedor; ahorro y traspaso →
+  otra cuenta de efectivo; asiento `origen = 'salida'` contabilizado, permiso «contabilizar»; anular con motivo, permiso
+  «revertir», anula el asiento). `lineas_asiento.categoria_personal` (la escriben `insertarAsiento`, los borradores y las
+  reversiones; categorías sugeridas en `CATEGORIAS_PERSONALES`, se puede escribir otra). Vista previa del asiento antes de
+  guardar; aviso de que un gasto con NCF va en Compras para el 606. Descarga `/exportar/salidas`. `plantillas_asiento`
+  (pestaña `/plantillas` «Asientos frecuentes» en Contabilidad, para todas las empresas; no se sumó a Contador ni Auxiliar):
+  sin programar («Usar» abre Nuevo asiento con sus líneas, `?plantilla=`) o mensual (día 1–30, el 30 es el último día; desde,
+  hasta): al abrir la pantalla `prepararRecurrentes` crea los borradores que tocan (hasta 12 atrasados, `asientos.plantilla_id`
+  y `periodo` únicos), avisa si el mes está cerrado y la desactiva al pasar su fecha final; «Contabilizar los marcados» (con
+  aprobación obligatoria, no lo hace quien lo preparó). «Guardar como plantilla» en el detalle de cualquier asiento. Cuenta de la
+  socia: estado de cuenta (saldo inicial, cargos, abonos, saldo, por categoría con %, filtro por categoría, Excel/PDF
+  `/exportar/socia`) y liquidación de los dos últimos ejercicios terminados (`liquidaciones_socia`, permiso «cerrar»; deshacer,
+  «reabrir»): dividendos (bruto = neto ÷ 0.90 para que se rebaje justo lo elegido; asiento `origen = 'liquidacion'`: 310301 al
+  debe, cuenta corriente y 210203 «ISR retenido a terceros por pagar» al haber; exige ganancias acumuladas suficientes a la
+  fecha; la retención del 10 % es el concepto 5 del formulario IR-17-2026 y `calcularIr17` la suma sola a la casilla 5 del mes)
+  o dejar el saldo como cuenta por cobrar (sin asiento). Pruebas `pruebas/salidas-socia.test.mjs` (205 en total). Probado en
+  pantalla con la empresa propia local. Pendiente: el «sí» de Patricia; la 7b y la 7c necesitan el Excel PRESUPUESTO 2026.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

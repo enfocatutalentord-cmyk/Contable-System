@@ -10,7 +10,9 @@ export const PESTANAS_CLIENTE: Seccion[] = [
                                ["/clientes", "Clientes y contactos"], ["/servicios", "Productos y servicios"]] },
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
                                 ["/proveedores", "Proveedores"]] },
-  { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/bancos", "Bancos"], ["/cierres", "Cierre del mes"]] },
+  { grupo: "Contabilidad", enlaces: [["/asientos", "Asientos"], ["/plantillas", "Asientos frecuentes"], ["/bancos", "Bancos"], ["/cierres", "Cierre del mes"]] },
+  // Solo en la empresa propia y solo para el rol Administrador (bloque 7a): lo personal de la socia.
+  { grupo: "Cuenta de la socia", enlaces: [["/salidas", "Registrar salidas"], ["/socia", "Cuenta de la socia"]] },
   { grupo: "Reportes", enlaces: [["/reportes", "Centro de reportes"], ["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"], ["/estados", "Estados financieros"]] },
   { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
   {
@@ -28,12 +30,31 @@ export const TODAS_LAS_PESTANAS = PESTANAS_CLIENTE.flatMap((s) => s.enlaces.map(
 
 export const esPestana = (v: string) => TODAS_LAS_PESTANAS.includes(v);
 
+// Pestañas privadas (montos personales de la socia, Documento maestro, sección 3): solo las ve el rol Administrador o un rol que
+// las tenga marcadas a propósito. Un rol con «todas» (vacío) no las incluye; así Solo lectura y la Coordinadora no las ven.
+export const PESTANAS_PRIVADAS = ["/salidas", "/socia"];
+export const GRUPO_PRIVADO = "Cuenta de la socia";
+
+// Lo que ve un rol en un cliente: null = todo (administrador). Un rol sin lista ve todo menos lo privado.
+export function pestanasDelRol(pestanas: string[] | null, administrador: boolean): string[] | null {
+  if (administrador) return null;
+  if (!pestanas) return TODAS_LAS_PESTANAS.filter((r) => !PESTANAS_PRIVADAS.includes(r));
+  return pestanas.filter((p) => TODAS_LAS_PESTANAS.includes(p));
+}
+
+// Lo que se guarda al editar un rol: «todas» (NULL) si marcó todas las comunes y ninguna privada; si no, la lista.
+export function pestanasAGuardar(marcadas: string[]): string[] | null {
+  const comunes = TODAS_LAS_PESTANAS.filter((r) => !PESTANAS_PRIVADAS.includes(r));
+  if (comunes.every((r) => marcadas.includes(r)) && !marcadas.some((r) => PESTANAS_PRIVADAS.includes(r))) return null;
+  return TODAS_LAS_PESTANAS.filter((r) => marcadas.includes(r));
+}
+
 // Descargas de Excel y PDF: cada reporte pertenece a la pestaña donde se ve.
 const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
   antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
   "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii", it1: "/dgii", ir17: "/dgii", ir6: "/dgii",
-  facturas: "/facturas", factura: "/facturas", "reporte-mensual": "/bitacora", proyeccion: "/dgii", cobros: "/cobros", bitacora: "/bitacora", "lista-precios": "/servicios", propuesta: "/propuestas", "recibo-anticipo": "/anticipos", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo", "conciliacion-banco": "/bancos", "estado-financiero": "/estados", ir2: "/dgii", "ir2-a1": "/dgii", "ir2-b1": "/dgii", "ir2-j": "/dgii", "ir2-h": "/dgii",
+  facturas: "/facturas", factura: "/facturas", "reporte-mensual": "/bitacora", proyeccion: "/dgii", cobros: "/cobros", bitacora: "/bitacora", "lista-precios": "/servicios", socia: "/socia", salidas: "/salidas", propuesta: "/propuestas", "recibo-anticipo": "/anticipos", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo", "conciliacion-banco": "/bancos", "estado-financiero": "/estados", ir2: "/dgii", "ir2-a1": "/dgii", "ir2-b1": "/dgii", "ir2-j": "/dgii", "ir2-h": "/dgii",
 };
 
 // Pestaña a la que pertenece una dirección dentro del cliente (/facturas/nueva → /facturas; /cxc/estado → /cxc/estado;

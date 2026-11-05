@@ -7,7 +7,10 @@ import type { Cuenta } from "@/lib/cuentas";
 import { aCentavos, deCentavos, leerMonto, verMonto } from "@/lib/montos";
 import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
-export type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string };
+// categoria: categoría personal de la línea (cuenta corriente de la socia); viaja sin mostrarse para no perderla al editar.
+export type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string; categoria?: string };
+// Modo plantilla (bloque 7a): en vez de fecha, el nombre y cada cuánto se repite.
+export type DatosPlantilla = { nombre: string; frecuencia: "ninguna" | "mensual"; dia: number | null; desde: string; hasta: string | null };
 const vacia = (): Linea => ({ cuentaId: "", descripcion: "", debe: "", haber: "", unidad: "" });
 
 export function FormularioAsiento({
@@ -18,6 +21,7 @@ export function FormularioAsiento({
   puedeContabilizar,
   inicial,
   unidades = [],
+  plantilla,
 }: {
   accion: (estado: EstadoAsiento, fd: FormData) => Promise<EstadoAsiento>;
   cuentas: Cuenta[];
@@ -26,8 +30,10 @@ export function FormularioAsiento({
   puedeContabilizar: boolean;
   inicial?: { fecha: string; concepto: string; referencia: string; lineas: Linea[] };
   unidades?: UnidadOpcion[];
+  plantilla?: DatosPlantilla;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const [frecuencia, setFrecuencia] = useState(plantilla?.frecuencia ?? "ninguna");
   const [lineas, setLineas] = useState<Linea[]>(inicial?.lineas.length ? [...inicial.lineas, ...(inicial.lineas.length < 2 ? [vacia()] : [])] : [vacia(), vacia()]);
 
   const total = (campo: "debe" | "haber") =>
@@ -59,8 +65,25 @@ export function FormularioAsiento({
 
   return (
     <form onSubmit={alEnviar(enviar)}>
+      {plantilla && (
+        <div className="fila" style={{ marginBottom: 12 }}>
+          <label style={{ flex: "2 1 240px" }}>Nombre de la plantilla<input name="nombre" required maxLength={100} defaultValue={plantilla.nombre} placeholder="Ej.: Pago de luz" /></label>
+          <label>Se repite
+            <select name="frecuencia" value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as "ninguna" | "mensual")}>
+              <option value="ninguna">No: se usa a mano</option>
+              <option value="mensual">Cada mes (prepara un borrador)</option>
+            </select>
+          </label>
+          {frecuencia === "mensual" && <>
+            <label style={{ width: 110 }}>Día del mes<input type="number" name="dia" min={1} max={30} required defaultValue={plantilla.dia ?? 30} /></label>
+            <label>Desde<input type="month" name="desde" required defaultValue={plantilla.desde} /></label>
+            <label>Hasta (opcional)<input type="date" name="hasta" defaultValue={plantilla.hasta ?? ""} /></label>
+          </>}
+        </div>
+      )}
+      {plantilla && frecuencia === "mensual" && <p className="sub" style={{ marginTop: -4 }}>El día 30 es siempre el último día del mes. Cada mes queda un borrador en Asientos frecuentes para contabilizarlo con un clic.</p>}
       <div className="fila" style={{ marginBottom: 16 }}>
-        <label>Fecha<input type="date" name="fecha" defaultValue={inicial?.fecha ?? hoy} min={bloqueo ? siguienteDia(bloqueo) : undefined} required /></label>
+        {!plantilla && <label>Fecha<input type="date" name="fecha" defaultValue={inicial?.fecha ?? hoy} min={bloqueo ? siguienteDia(bloqueo) : undefined} required /></label>}
         <label style={{ flex: "2 1 280px" }}>Concepto<input name="concepto" required defaultValue={inicial?.concepto} placeholder="Ej.: Asiento de apertura" /></label>
         <label style={{ flex: "1 1 160px" }}>Referencia<input name="referencia" defaultValue={inicial?.referencia} placeholder="Factura, cheque…" /></label>
       </div>
@@ -109,14 +132,15 @@ export function FormularioAsiento({
       </div>
       <div className="fila" style={{ marginTop: 12 }}>
         <button type="button" onClick={() => setLineas((ls) => [...ls, { ...vacia(), unidad: ls[ls.length - 1]?.unidad ?? "" }])}>+ Agregar línea</button>
-        <button name="accion" value="borrador" disabled={enviando}>{enviando ? "Guardando…" : "Guardar borrador"}</button>
-        {puedeContabilizar && (
+        {plantilla && <button className="primario" disabled={enviando}>{enviando ? "Guardando…" : "Guardar plantilla"}</button>}
+        {!plantilla && <button name="accion" value="borrador" disabled={enviando}>{enviando ? "Guardando…" : "Guardar borrador"}</button>}
+        {!plantilla && puedeContabilizar && (
           <button className="primario" name="accion" value="contabilizar" disabled={enviando || diferencia !== 0n || totalDebe === 0n}>
             {enviando ? "Guardando…" : "Contabilizar"}
           </button>
         )}
       </div>
-      {!puedeContabilizar && <p className="sub" style={{ marginTop: 8 }}>Se guardará como borrador para que otra persona con permiso lo contabilice.</p>}
+      {!plantilla && !puedeContabilizar && <p className="sub" style={{ marginTop: 8 }}>Se guardará como borrador para que otra persona con permiso lo contabilice.</p>}
       {estado.duplicado && (
         <label className="aviso" style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
           <input type="checkbox" name="confirmar_duplicado" style={{ minHeight: 0 }} /> Es otro asiento distinto: registrarlo de todas formas

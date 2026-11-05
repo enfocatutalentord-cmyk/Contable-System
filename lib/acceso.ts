@@ -4,7 +4,7 @@ import { cache } from "react";
 import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
-import { pestanaDeRuta, puedeVer, TODAS_LAS_PESTANAS } from "./pestanas";
+import { pestanaDeRuta, pestanasDelRol, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 
 export type Empresa = {
@@ -31,9 +31,10 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null })[]>`
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
-           f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes
+           f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes,
+           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador
       FROM empresas e
       JOIN firmas f ON f.id = e.firma_id
       JOIN miembros_firma mf ON mf.firma_id = e.firma_id AND mf.usuario_id = ${usuario.id}
@@ -46,11 +47,11 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     notFound();
   }
   if (!fila.administrador && !fila.permisos) notFound();
-  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, ...empresa } = fila;
+  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, ...empresa } = fila;
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
   exigirDosPasos(usuario, exigir_dos_pasos);
-  const visibles = administrador || !pestanas ? null : pestanas.filter((p) => TODAS_LAS_PESTANAS.includes(p));
+  const visibles = pestanasDelRol(pestanas, administrador || !!rol_administrador);
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
@@ -82,7 +83,7 @@ async function accesoSupervision(usuario: Usuario, empresaId: string): Promise<A
   if (!e) return null;
   const supervision = await supervisionVigente(usuario.id, e.firma_id);
   if (!supervision) return null;
-  return { usuario, empresa: e, adminFirma: false, perfil: "Supervisión de la plataforma (solo lectura)", permisos: ["ver"], pestanas: null, paraClientes: false, supervision };
+  return { usuario, empresa: e, adminFirma: false, perfil: "Supervisión de la plataforma (solo lectura)", permisos: ["ver"], pestanas: pestanasDelRol(null, false), paraClientes: false, supervision };
 }
 
 // Para server actions y páginas que requieren un permiso puntual. La pestaña se revisa aparte porque una acción del

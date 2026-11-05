@@ -5,6 +5,7 @@ import { accesoEmpresa, esUuid } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { puedeVer } from "@/lib/pestanas";
 import { contabilizarBorrador, descartarBorrador, revertir } from "../../acciones";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
@@ -24,7 +25,7 @@ export default async function VerAsiento({ params, searchParams }: {
   const { id, aid } = await params;
   const sp = await searchParams;
   if (!esUuid(aid)) notFound();
-  const { permisos, empresa, usuario } = await accesoEmpresa(id);
+  const { permisos, empresa, usuario, pestanas } = await accesoEmpresa(id);
 
   const datos = await conEmpresa(id, async (tx) => {
     const [a] = await tx<{
@@ -123,6 +124,9 @@ export default async function VerAsiento({ params, searchParams }: {
             <Formulario accion={descartarBorrador.bind(null, id, aid)} boton="Descartar borrador" className="fila"><span /></Formulario>
           )}
         </div>
+      )}
+      {puede(permisos, "registrar") && puedeVer(pestanas, "/plantillas") && lineas.length >= 2 && (
+        <p style={{ marginTop: 12 }}><Link href={`/e/${id}/plantillas/nueva?desde=${aid}`}>Guardar como plantilla</Link> <span className="sub">para repetirlo a mano o cada mes</span></p>
       )}
       {borrador && propioConAprobacion && <p className="sub" style={{ marginTop: 8 }}>Este borrador lo registraste tú: en esta empresa debe contabilizarlo otra persona.</p>}
       {borrador && enCierre && <p className="aviso" style={{ marginTop: 8 }}>La fecha cae en un período cerrado: cámbiala para poder contabilizarlo.</p>}

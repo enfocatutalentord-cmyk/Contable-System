@@ -35,8 +35,10 @@ import { CONTACTO, datosSociedad, TABLAS_H } from "@/lib/ir2-sociedad";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
+import { cuentasDeSocia, esTipoSalida, listarSalidas, TIPOS_SALIDA } from "@/lib/salidas";
+import { estadoDeCuenta, tablaEstadoSocia } from "@/lib/socia";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -55,6 +57,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const periodo = `Del ${verFecha(desde)} al ${verFecha(hasta)}`;
 
   const armar = async (): Promise<[string, Tabla] | null> => {
+    if (reporte === "socia" && esUuid(sp.cuenta ?? "") && fechaValida(sp.desde) && fechaValida(sp.hasta)) {
+      // Estado de cuenta de la cuenta corriente de la socia (bloque 7a). La pestaña es privada: la revisa accesoEmpresa.
+      const r = await conEmpresa(id, async (tx) => {
+        const c = (await cuentasDeSocia(tx)).find((x) => x.id === sp.cuenta);
+        return c ? { c, e: await estadoDeCuenta(tx, c.id, sp.desde, sp.hasta, sp.categoria?.trim() || null) } : null;
+      });
+      if (!r) return null;
+      return [`cuenta-socia-${sp.desde}-${sp.hasta}`, tablaEstadoSocia(r.e, { ...base, cuenta: r.c.nombre, desde: sp.desde, hasta: sp.hasta, categoria: sp.categoria?.trim() || null })];
+    }
+    if (reporte === "salidas" && fechaValida(sp.desde) && fechaValida(sp.hasta)) {
+      const tipo = sp.tipo && esTipoSalida(sp.tipo) ? sp.tipo : null;
+      const salidas = await conEmpresa(id, (tx) => listarSalidas(tx, sp.desde, sp.hasta, tipo));
+      const vigentes = salidas.filter((s) => !s.anulada);
+      return [`salidas-${sp.desde}-${sp.hasta}`, {
+        ...base, titulo: "Salidas de dinero", detalle: `Del ${verFecha(sp.desde)} al ${verFecha(sp.hasta)}${tipo ? ` · ${TIPOS_SALIDA[tipo].nombre}` : ""}`, horizontal: true,
+        columnas: [col("N.º", false, 6), col("Fecha", false, 12), col("Tipo", false, 22), col("Detalle", false, 40), col("Sale de", false, 26), col("Va a", false, 30), col("Monto", true, 14), col("Estado", false, 12)],
+        filas: salidas.map((s) => [s.numero, verFecha(s.fecha), TIPOS_SALIDA[s.tipo].nombre, [s.categoria, s.acreedor, s.descripcion].filter(Boolean).join(" · "),
+          s.origen, s.destino, Number(s.monto), s.anulada ? "Anulada" : "Vigente"]),
+        totales: ["", "", "", "", "", "Total vigente", Number(deCentavos(vigentes.reduce((t, s) => t + aCentavos(s.monto), 0n))), ""],
+      }];
+    }
     if (reporte === "diario") {
       const lineas = await conEmpresa(id, (tx) => libroDiario(tx, desde, hasta));
       const td = lineas.reduce((s, l) => s + Number(l.debe), 0);

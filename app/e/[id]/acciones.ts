@@ -24,7 +24,7 @@ function texto(fd: FormData, campo: string): string {
 }
 
 export type EstadoAsiento = Estado & { duplicado?: string };
-type LineaForm = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string };
+type LineaForm = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string; categoria?: string };
 
 function leerLineas(fd: FormData): LineaAsiento[] | string {
   let crudas: LineaForm[];
@@ -43,7 +43,8 @@ function leerLineas(fd: FormData): LineaAsiento[] | string {
     if ((aCentavos(debe) > 0n) && (aCentavos(haber) > 0n)) return `Línea ${i + 1}: pon el monto en el debe o en el haber, no en ambos.`;
     const unidadId = leerUnidad(l.unidad);
     if (unidadId === undefined) return `Línea ${i + 1}: la unidad de negocio no es válida.`;
-    lineas.push({ cuentaId: l.cuentaId, descripcion: l.descripcion?.trim() || null, debe: aCentavos(debe), haber: aCentavos(haber), unidadId });
+    lineas.push({ cuentaId: l.cuentaId, descripcion: l.descripcion?.trim() || null, debe: aCentavos(debe), haber: aCentavos(haber), unidadId,
+                  categoria: String(l.categoria ?? "").trim().slice(0, 80) || null });
   }
   return lineas;
 }

@@ -3,7 +3,7 @@ import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
 import { PERMISOS } from "@/lib/permisos";
-import { PESTANAS_CLIENTE, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
+import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
 import { eliminarPerfil, guardarPerfil } from "../../acciones";
 
 export const metadata = { title: "Roles y permisos · Empire Tax’N Legal" };
@@ -18,7 +18,7 @@ export default async function Perfiles({ params }: { params: Promise<{ fid: stri
     SELECT p.id, p.nombre, p.permisos, p.pestanas, p.para_clientes, p.sistema, (SELECT count(*)::int FROM miembros m WHERE m.perfil_id = p.id) AS usos
       FROM perfiles p WHERE p.firma_id = ${fid} ORDER BY p.para_clientes, p.sistema DESC, p.nombre`;
   const esAdmin = (p: Perfil) => p.sistema && p.nombre === "Administrador";
-  const ve = (p: Perfil, r: string) => esAdmin(p) || !p.pestanas || p.pestanas.includes(r);
+  const ve = (p: Perfil, r: string) => esAdmin(p) || (p.pestanas ? p.pestanas.includes(r) : !PESTANAS_PRIVADAS.includes(r));
 
   const casillasPestanas = (p?: Perfil) => (
     <fieldset className="pestanas-rol">
