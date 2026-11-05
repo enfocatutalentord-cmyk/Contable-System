@@ -572,8 +572,9 @@ No se pasa a la siguiente sin su autorización expresa.
   gastos sin factura ≥ 10 %; utilidad del último mes ±50 % del promedio; proyección ±30 % del ejercicio anterior; revisión 2 meses
   antes del cierre). «Preparar para el cliente» (permiso «impuestos») guarda `proyecciones_fiscales` (una por empresa y mes, con
   notas) y aparece «Enviar por WhatsApp» con el mensaje «Proyección IR-2» y enlace seguro tipo 'proyeccion' al PDF de lo preparado
-  (`tablaProyeccion`). Pruebas `pruebas/proyeccion.test.mjs` (190 en total). Pendiente: el «sí» de Patricia; confirmar los umbrales;
-  la escala del IR-1 para personas físicas.
+  (`tablaProyeccion`). Pruebas `pruebas/proyeccion.test.mjs` (190 en total). En `main` el 5-nov-2026 («sí» de Patricia).
+  **Bloque 4 completo.** Pendiente: confirmar los umbrales; la escala del IR-1 para personas físicas; el Excel del reporte mensual.
+  Sigue el bloque 5 (expediente y biblioteca de documentos): presentar la propuesta antes.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
