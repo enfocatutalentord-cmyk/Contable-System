@@ -594,7 +594,8 @@ No se pasa a la siguiente sin su autorización expresa.
   equipo; volante y respuesta en `documentos` entidad 'tramite'; RLS e historial; trigger `gestion_tramite` anota en la bitácora al
   registrar y al cerrar); alerta «Trámites» 5 días antes y urgente al vencer (`alertasDeEmpresa`). Empresa nueva: «Abrir la lista de
   pasos» (`empresas.en_constitucion`, `pasos_constitucion` con los 9 pasos del manual: estado, fecha, responsable, nota y documento,
-  que va a 01). Pruebas `pruebas/expediente.test.mjs` (195 en total). Pendiente: el «sí» de Patricia.
+  que va a 01). Pruebas `pruebas/expediente.test.mjs` (195 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 5b
+  (biblioteca de documentos): necesita las plantillas del manual en Word y las respuestas 2 a 4 de la propuesta.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
