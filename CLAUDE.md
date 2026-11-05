@@ -596,6 +596,12 @@ No se pasa a la siguiente sin su autorización expresa.
   pasos» (`empresas.en_constitucion`, `pasos_constitucion` con los 9 pasos del manual: estado, fecha, responsable, nota y documento,
   que va a 01). Pruebas `pruebas/expediente.test.mjs` (195 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 5b
   (biblioteca de documentos): necesita las plantillas del manual en Word y las respuestas 2 a 4 de la propuesta.
+- **Bloque 6 · Formularios en línea y diagnóstico** (propuesta del 5-nov-2026 en https://claude.ai/artifact/5TNogQFAyekF9cTMPnSSXW,
+  esperando el «sí» de Patricia; 2 entregas: 6a formularios en línea con enlace seguro (F01 Ficha de Registro, F03 Constitución, F04
+  Solicitud de Servicio), revisión antes de cargar a la ficha, expediente o pasos de empresa nueva, y lista de solicitudes con
+  estados y «Cotizar» → propuesta; 6b levantamiento con anexos, estado de situación inicial, diagnóstico por área y propuesta de
+  categoría y precio). Referentes: organizers de TaxDome y onboarding de Karbon. Faltan: EMP-F01/F03/F04, levantamiento y anexos
+  1–5, lista EMP-P01; preguntas: quién acepta, firma de la Hoja de Acuerdo, duración del enlace.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
