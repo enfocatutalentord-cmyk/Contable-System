@@ -12,7 +12,7 @@ export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; 
 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
-  formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
+  prospecto: "Prospecto", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
   tramite: "Trámites", solicitud: "Solicitudes y formularios",
 };
 
@@ -104,7 +104,10 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
       { clave: n.tipo === "tss" ? "notificacion_tss" : "constancia", ref: { tipo: "notificacion", id: n.id } });
   }
 
-  if (!d.propia && e && e.estado_cliente !== "retirado") {
+  // Prospecto que se registró por la aplicación (bloque 8a): solo el seguimiento; lo demás empieza cuando pase a cliente.
+  if (!d.propia && e?.estado_cliente === "prospecto") {
+    poner("prospecto", "aviso", "Prospecto: dar seguimiento y, cuando firme el contrato, pasarlo a cliente", `${base}/solicitudes`);
+  } else if (!d.propia && e && e.estado_cliente !== "retirado") {
     // Documentos del cliente no recibidos: desde el día 10, nada subido en el mes.
     if (Number(hoy.slice(8)) >= 10) {
       const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM recepciones WHERE subido_en >= date_trunc('month', ${hoy}::date)`;

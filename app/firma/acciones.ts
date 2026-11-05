@@ -184,7 +184,9 @@ export async function guardarFirma(firmaId: string, _: Estado, fd: FormData): Pr
   const exigir = fd.get("exigir_dos_pasos") === "on";
   if (exigir && !usuario.dosPasos) return { error: "Para exigir la verificación en dos pasos, actívala primero en tu cuenta (Mi cuenta)." };
   try {
-    await conUsuario(usuario.id, (tx) => tx`UPDATE firmas SET nombre = ${nombre}, rnc = ${rnc || null}, exigir_dos_pasos = ${exigir} WHERE id = ${firmaId}`);
+    // alta_clientes: la página pública «Crear mi cuenta» de la aplicación (bloque 8a).
+    await conUsuario(usuario.id, (tx) => tx`UPDATE firmas SET nombre = ${nombre}, rnc = ${rnc || null}, exigir_dos_pasos = ${exigir},
+                                                 alta_clientes = ${fd.get("alta_clientes") === "on"} WHERE id = ${firmaId}`);
   } catch (e) {
     return { error: mensajeError(e) };
   }

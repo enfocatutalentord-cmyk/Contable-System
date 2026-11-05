@@ -668,6 +668,29 @@ No se pasa a la siguiente sin su autorización expresa.
   para el 607); 8c lectura automática con IA (necesita la llave en Vercel). Preguntas: cuenta abierta o por invitación, quién pasa a
   cliente, quién aprueba facturas, ventas externas al 607, firma sencilla de la Hoja de Acuerdo, nombre de la app. Fuera: Parte B,
   inventario, auditoría en campo, talleres, e-CF y bóveda, envío por correo y pantalla de normas.
+  «sí» de Patricia del 5-nov a empezar por la 8a con las respuestas recomendadas (registro abierto con verificación del correo; pasa a
+  cliente la coordinadora o Patricia). **Entrega 8a · Cuenta del cliente y pantalla de inicio** (migración 043, `lib/prospectos.ts`,
+  `lib/prospectos-alta.ts`, `lib/inicio-cliente.ts`, `app/unirse/[fid]` y `app/unirse/acciones.ts` públicos, `app/e/[id]/cliente-acciones.ts`,
+  `app/e/[id]/inicio-cliente.tsx`, `app/e/[id]/solicitudes/cliente.tsx`, `app/e/[id]/instalar.tsx`, `app/manifest.ts`, iconos en
+  `public/app/`). `firmas.alta_clientes` (Clientes de la firma › Datos de la firma, con la dirección para compartir `/unirse/<firma>`).
+  En la página pública cualquiera crea su cuenta (nombre, correo, teléfono, negocio, RNC o cédula, acepto de la Ley 172-13): se crean el
+  usuario, `miembros_firma`, la empresa con `crearEmpresa` (`estado_cliente = 'prospecto'`, nuevo; `alta_app`), el contacto principal
+  y el acceso con el rol base nuevo **«Cliente · Prospecto»** (ver, adjuntar; Inicio, Solicitudes y Mis documentos); le llega el enlace
+  de un solo uso para verificar el correo y crear la contraseña, y a los administradores un correo. Con un correo que ya existe responde
+  lo mismo y le recuerda cómo entrar (sin otra empresa). `altas_prospecto` limita a 5 por hora por dirección y 2 por correo (solo la
+  conexión dueña). Sin `GMAIL_CLAVE_APP` y fuera de Vercel, el enlace se escribe en el registro del servidor para probar. El prospecto no
+  cuenta en tareas, Impuestos del mes ni «Nuevos este mes»; la lista maestra tiene la cifra «Prospectos de la aplicación» y la alerta
+  «Prospecto: dar seguimiento». En Solicitudes y formularios del equipo, recuadro del prospecto con **«Pasar a cliente»** (permiso
+  «registrar»; `pasarACliente`: estado activo, `paso_a_cliente`, contrato e inicio con la fecha si no tenían, y las personas con el rol
+  de prospecto pasan a **«Cliente · Con aplicación»** (ver, adjuntar, exportar), con correo de aviso). El cliente ve en su menú Inicio,
+  Mis documentos y Mis solicitudes (`NOMBRES_CLIENTE`): pedir un servicio de la lista de precios de la empresa propia o un requerimiento
+  (`pedirServicio`, origen «Aplicación»), llenar su Ficha de Registro o Constitución (`llenarFormulario` abre `/f/<token>`) y ver el
+  estado de lo pedido. Inicio del cliente (solo esos dos roles; Cliente · Consulta sigue igual): documentos del mes, impuestos por pagar
+  (notificaciones sin pagar con su PDF), saldo y facturas con Empire (`cuentaConFirma`, ahora exportada), reporte aprobado y proyección
+  (descargas `/e/[id]/mis-documentos/<tipo>/<id>`), avisos y espacio para los talleres; el prospecto ve la bienvenida. Instalable
+  (manifiesto, iconos del símbolo inverso sobre el verde, `apple-touch-icon`, aviso «Agregar a inicio» en el iPhone). Pruebas
+  `pruebas/prospectos.test.mjs` (210 en total). Probado en pantalla en tamaño de celular: registro, contraseña, pedir servicio, ficha,
+  pestañas bloqueadas, Pasar a cliente e inicio con una notificación de prueba. Pendiente: el «sí» de Patricia; la 8b (carga de facturas).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

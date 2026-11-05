@@ -5,10 +5,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: PRODUCTO,
   description: "Sistema contable de Empire Tax’N Legal para firmas que administran empresas en República Dominicana",
+  // Instalable en el celular (bloque 8a): icono y nombre en la pantalla de inicio del iPhone.
+  icons: { apple: "/app/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Empire", statusBarStyle: "default" },
 };
 
 // Tamaño fijo tipo aplicación en el celular: ancho del equipo, sin zoom al entrar ni al tocar un campo.
-export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false, themeColor: "#003D19" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

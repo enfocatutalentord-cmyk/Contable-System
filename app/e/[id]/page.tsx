@@ -4,6 +4,8 @@ import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { puedeVer } from "@/lib/pestanas";
+import { ROL_CLIENTE_APP, ROL_PROSPECTO } from "@/lib/prospectos";
+import { InicioClienteApp } from "./inicio-cliente";
 import { antiguedad } from "@/lib/cxc";
 import { antiguedadCxp } from "@/lib/cxp";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
@@ -14,7 +16,9 @@ export default async function InicioEmpresa({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { sin_permiso, sin_pestana } = await searchParams;
-  const { empresa, permisos, pestanas } = await accesoEmpresa(id);
+  const { empresa, permisos, pestanas, perfil, usuario } = await accesoEmpresa(id);
+  // El prospecto y el cliente con aplicación ven su propia pantalla de inicio (bloque 8a).
+  if (perfil === ROL_PROSPECTO || perfil === ROL_CLIENTE_APP) return <InicioClienteApp id={id} nombre={empresa.nombre} usuario={usuario.nombre} />;
   const ve = (r: string) => puedeVer(pestanas, r);
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;

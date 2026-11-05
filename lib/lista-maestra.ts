@@ -34,7 +34,7 @@ export function filtrarClientes<T extends ClienteLista>(clientes: T[], f: Filtro
     && (!buscar || sinAcentos(c.nombre).includes(buscar) || (c.rnc ?? "").includes(buscar.replace(/\D/g, "") || "\0")));
 }
 
-export type ResumenLista = { activos: number; nuevos: number; retiradosOEnCero: number; noFormalizados: number };
+export type ResumenLista = { activos: number; nuevos: number; retiradosOEnCero: number; noFormalizados: number; prospectos: number };
 
 // Nuevos: con inicio de contrato (o, sin fecha, con alta en el sistema) en el mes de `hoy`.
 export function resumenLista(clientes: ClienteLista[], hoy: string): ResumenLista {
@@ -42,8 +42,9 @@ export function resumenLista(clientes: ClienteLista[], hoy: string): ResumenList
   const deLaFirma = clientes.filter((c) => !c.propia);
   return {
     activos: deLaFirma.filter((c) => c.activa && c.estado_cliente === "activo").length,
-    nuevos: deLaFirma.filter((c) => (c.fecha_inicio_contrato ?? c.creada).slice(0, 7) === mes).length,
+    nuevos: deLaFirma.filter((c) => c.estado_cliente !== "prospecto" && (c.fecha_inicio_contrato ?? c.creada).slice(0, 7) === mes).length,
     retiradosOEnCero: deLaFirma.filter((c) => c.estado_cliente === "retirado" || c.estado_cliente === "en_cero").length,
-    noFormalizados: deLaFirma.filter((c) => c.estado_cliente !== "retirado" && !c.formalizado).length,
+    noFormalizados: deLaFirma.filter((c) => c.estado_cliente !== "retirado" && c.estado_cliente !== "prospecto" && !c.formalizado).length,
+    prospectos: deLaFirma.filter((c) => c.estado_cliente === "prospecto").length,
   };
 }

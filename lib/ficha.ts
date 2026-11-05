@@ -6,7 +6,7 @@ import { aCentavos, deCentavos, leerMonto } from "./montos.ts";
 
 export const CATEGORIAS: Record<string, string> = { pequena: "Pequeña", mediana: "Mediana", grande: "Grande", emprendedor: "Emprendedor" };
 export const TIPOS_CLIENTE: Record<string, string> = { iguala: "Fijo con iguala", por_trabajo: "Por trabajo", esporadico: "Esporádico o nuevo" };
-export const ESTADOS_CLIENTE: Record<string, string> = { activo: "Activo", en_cero: "En cero", sin_operaciones: "Sin operaciones", retirado: "Retirado" };
+export const ESTADOS_CLIENTE: Record<string, string> = { activo: "Activo", en_cero: "En cero", sin_operaciones: "Sin operaciones", retirado: "Retirado", prospecto: "Prospecto (sin contrato)" };
 export const MODALIDADES: Record<string, string> = {
   aplicacion: "1 · Con la aplicación de Empire", sistema_propio: "2 · Con sistema propio y contabilidad de Empire", independiente: "3 · Con sistema independiente",
 };

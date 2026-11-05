@@ -31,7 +31,7 @@ test("lista maestra: resumen sin la empresa propia y filtros", () => {
     cli({ nombre: "Taller Gómez", estado_cliente: "retirado", responsable_id: "r1" }),
     cli({ nombre: "Farmacia Sur", activa: false }),
   ];
-  assert.deepEqual(resumenLista(lista, "2026-11-04"), { activos: 1, nuevos: 2, retiradosOEnCero: 2, noFormalizados: 2 });
+  assert.deepEqual(resumenLista(lista, "2026-11-04"), { activos: 1, nuevos: 2, retiradosOEnCero: 2, noFormalizados: 2, prospectos: 0 });
   const f = (sp) => filtrarClientes(lista, leerFiltrosLista(sp)).map((c) => c.nombre);
   assert.deepEqual(f({ categoria: "mediana" }), ["Ferretería Higüey"]);
   assert.deepEqual(f({ categoria: "ninguno", estado: "activo" }), ["Empire Tax’N Legal SRL", "Farmacia Sur"]);

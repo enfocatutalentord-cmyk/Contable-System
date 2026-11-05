@@ -46,7 +46,7 @@ async function montos(tx: Tx, sql: "ventas" | "notas" | "compras", desde: string
 }
 
 // Facturas de la empresa propia a este cliente (su cuenta con la firma): se leen con la conexión dueña fijando la propia.
-async function cuentaConFirma(empresaId: string, periodo: string, hasta: string): Promise<DatosReporte["cuenta"]> {
+export async function cuentaConFirma(empresaId: string, periodo: string, hasta: string): Promise<DatosReporte["cuenta"]> {
   const [f] = await db()<{ propia: string | null }[]>`
     SELECT fi.empresa_propia_id AS propia FROM empresas e JOIN firmas fi ON fi.id = e.firma_id WHERE e.id = ${empresaId}`;
   if (!f?.propia || f.propia === empresaId) return null;

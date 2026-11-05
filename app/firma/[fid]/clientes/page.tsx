@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
+import { urlApp } from "@/lib/enlaces";
 import { db } from "@/lib/db";
 import { CATEGORIAS, ESTADOS_CLIENTE, MODALIDADES, TIPOS_CLIENTE } from "@/lib/ficha";
 import { clientesDeFirma } from "@/lib/firma";
@@ -17,6 +18,7 @@ export default async function Clientes({ params, searchParams }: {
   const { fid } = await params;
   const sp = await searchParams;
   const { firma, usuario } = await accesoFirma(fid);
+  const origen = await urlApp();
   const [todos, equipo] = await Promise.all([
     clientesDeFirma(fid, usuario.id, true, true),
     db()<{ id: string; nombre: string }[]>`
@@ -45,6 +47,7 @@ export default async function Clientes({ params, searchParams }: {
         <div className="tarjeta cifra"><div className="etiqueta">Nuevos este mes</div><div className="valor">{r.nuevos}</div></div>
         <div className="tarjeta cifra"><div className="etiqueta">Retirados o en cero</div><div className="valor">{r.retiradosOEnCero}</div></div>
         <Link className="tarjeta cifra" href={filtro("formalizacion", "no")}><div className="etiqueta">Sin formalizar</div><div className="valor">{r.noFormalizados}</div></Link>
+        {r.prospectos > 0 && <Link className="tarjeta cifra" href={filtro("estado", "prospecto")}><div className="etiqueta">Prospectos de la aplicación</div><div className="valor">{r.prospectos}</div></Link>}
       </div>
       <p className="sub">El total a facturar llega con las igualas (bloque 2). «Sin formalizar»: falta la fecha de la ficha, la hoja de acuerdo o el contrato firmados.</p>
 
@@ -126,6 +129,11 @@ export default async function Clientes({ params, searchParams }: {
             <input type="checkbox" name="exigir_dos_pasos" defaultChecked={firma.exigir_dos_pasos} style={{ minHeight: 0 }} />
             Exigir verificación en dos pasos a todo el equipo y a los usuarios de los clientes (quien no la tenga, la activa al entrar)
           </label>
+          <label style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: "1 1 100%" }}>
+            <input type="checkbox" name="alta_clientes" defaultChecked={firma.alta_clientes} style={{ minHeight: 0 }} />
+            Abrir la página «Crear mi cuenta» de la aplicación: quien se registre queda como prospecto
+          </label>
+          {firma.alta_clientes && <p className="sub" style={{ flex: "1 1 100%", margin: 0 }}>Dirección para compartir (web, redes, WhatsApp): <code>{`${origen}/unirse/${fid}`}</code></p>}
         </Formulario>
       </div>
     </>

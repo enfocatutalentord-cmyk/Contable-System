@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FUERA_DEL_MENU, GRUPO_PRIVADO, PESTANAS_CLIENTE, puedeVer } from "@/lib/pestanas";
 
+// Cómo se llaman las pestañas para el cliente en su aplicación (bloque 8a).
+const NOMBRES_CLIENTE: Record<string, string> = { "": "Inicio", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes" };
+
 // pestanas: las que ve el rol de la persona en el cliente elegido (null = todas). soloCliente: usuario de una empresa cliente,
 // que no ve las pantallas de la firma.
 // propia: la empresa propia de la firma (su contabilidad), que va arriba como módulo aparte.
@@ -51,7 +54,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
           )}
           {s.enlaces.map(([r, nombre]) => (
             <Link key={r} href={base ? base + r : `${firma}/elegir?a=${encodeURIComponent(r || "/")}`}
-              aria-current={activoCliente(r) ? "page" : undefined}>{soloCliente && r === "/recepcion" ? "Mis documentos" : nombre}</Link>
+              aria-current={activoCliente(r) ? "page" : undefined}>{soloCliente ? (NOMBRES_CLIENTE[r] ?? nombre) : nombre}</Link>
           ))}
         </div>
       ))}

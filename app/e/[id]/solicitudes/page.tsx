@@ -15,6 +15,8 @@ import { puede } from "@/lib/permisos";
 import {
   aceptarFormularioAccion, cambiarEstadoSolicitud, cotizarSolicitud, crearFormulario, descartarFormularioAccion, enlaceParaCopiar, registrarSolicitud,
 } from "../solicitudes-acciones";
+import { pasarAClienteAccion } from "../cliente-acciones";
+import { SolicitudesCliente } from "./cliente";
 
 const ETIQUETAS: Record<string, string> = {
   nombre: "Razón social", nombre_comercial: "Nombre comercial", rnc: "RNC", direccion: "Dirección", telefono: "Teléfono", correo: "Correo",
@@ -33,10 +35,14 @@ const valor = (v: unknown) => (v === true ? "Sí" : v === false ? "No" : v === "
 
 // Solicitudes y formularios del cliente (bloque 6a): los formularios en línea que se le envían (Ficha de Registro, Constitución,
 // Solicitud de Servicio), su revisión antes de cargarlos, y todo lo que pide el cliente en una sola lista.
-export default async function Solicitudes({ params }: { params: Promise<{ id: string }> }) {
+export default async function Solicitudes({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paso_a_cliente?: string }> }) {
   const { id } = await params;
-  const { empresa, permisos, usuario } = await accesoEmpresa(id);
+  const { paso_a_cliente } = await searchParams;
+  const { empresa, permisos, usuario, paraClientes } = await accesoEmpresa(id);
+  // El cliente o el prospecto ve su propia versión: pedir, llenar sus formularios y ver cómo va (bloque 8a).
+  if (paraClientes) return <SolicitudesCliente id={id} firmaId={empresa.firma_id} />;
   const datos = await conEmpresa(id, async (tx) => ({
+    estado: (await tx<{ estado_cliente: string; alta_app: Date | null }[]>`SELECT estado_cliente, alta_app FROM empresas WHERE id = ${id}`)[0],
     formularios: await listarFormularios(tx),
     solicitudes: await listarSolicitudes(tx),
     ficha: await leerFicha(tx, id, false),
@@ -57,6 +63,20 @@ export default async function Solicitudes({ params }: { params: Promise<{ id: st
         Los formularios en línea que llena {empresa.nombre} desde el celular y todo lo que pide, en un solo lugar. Lo recibido no entra a la ficha hasta
         que alguien de la firma lo acepta.
       </p>
+      {paso_a_cliente !== undefined && datos.estado.estado_cliente !== "prospecto" && (
+        <p className="exito" role="status">
+          Pasó a cliente.{paso_a_cliente !== "0" && " Su usuario ya tiene el rol «Cliente · Con aplicación» y le avisamos por correo."}
+        </p>
+      )}
+      {datos.estado.estado_cliente === "prospecto" && (
+        <div className="aviso" style={{ marginBottom: 16 }}>
+          <p style={{ marginTop: 0 }}>
+            Prospecto{datos.estado.alta_app ? ` que creó su cuenta en la aplicación el ${fechaHora(datos.estado.alta_app)}` : ""}: todavía no tiene contrato.
+            Cuando lo firme, pásalo a cliente; su misma cuenta toma el rol «Cliente · Con aplicación» y le avisamos por correo.
+          </p>
+          {registra && <Formulario accion={pasarAClienteAccion.bind(null, id)} boton="Pasar a cliente" className="fila"><span /></Formulario>}
+        </div>
+      )}
 
       {porRevisar.map((f) => {
         const r = f.respuestas ?? {};

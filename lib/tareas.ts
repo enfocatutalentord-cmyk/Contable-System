@@ -41,7 +41,7 @@ export async function generarTareas(tx: Tx, firmaId: string, mes: string): Promi
   const clientes = await tx<{ id: string; tiene_tss: boolean | null; tipo_cliente: string | null }[]>`
     SELECT e.id, e.tiene_tss, e.tipo_cliente FROM empresas e JOIN firmas f ON f.id = e.firma_id
      WHERE e.firma_id = ${firmaId} AND e.activa AND e.id IS DISTINCT FROM f.empresa_propia_id
-       AND e.estado_cliente IS DISTINCT FROM 'retirado'`;
+       AND e.estado_cliente NOT IN ('retirado', 'prospecto')`;
   let creadas = 0;
   for (const p of plantillas) {
     const para = p.alcance === "firma" ? [null]
