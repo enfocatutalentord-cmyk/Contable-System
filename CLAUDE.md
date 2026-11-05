@@ -546,7 +546,8 @@ No se pasa a la siguiente sin su autorización expresa.
   la notificación si sigue pendiente. `revisiones_compra` (revisada o «corregir» con nota; quién y cuándo; permiso «contabilizar»):
   tarjeta en el detalle de la compra, columna «Revisión» y filtro «Sin revisar» en Compras, aviso en Reportes DGII. «Cerrar el mes»
   (permiso «cerrar», solo con todo presentado o en cero) pone `fecha_bloqueo` = fin de mes y anota la gestión en la bitácora.
-  Pruebas `pruebas/impuestos-mes.test.mjs` (188 en total). Pendiente: el «sí» de Patricia.
+  Pruebas `pruebas/impuestos-mes.test.mjs` (188 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 4b (reporte mensual):
+  antes, que Patricia suba el Excel «Reporte de Cliente Mensual - IR2» y diga quién aprueba el reporte.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
