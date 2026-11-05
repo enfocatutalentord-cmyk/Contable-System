@@ -442,7 +442,7 @@ No se pasa a la siguiente sin su autorización expresa.
   tabla con precio general y por categoría, filtro por grupo y descarga «Lista de precios» (`/exportar/lista-precios`, por
   grupo, sin ITBIS). Factura: al elegir el servicio toma el precio de la categoría del cliente (`precioDe`) y su unidad; al
   cambiar de cliente se recalculan las líneas con servicio; aviso si el cliente no tiene categoría. Pruebas
-  `pruebas/precios.test.mjs` (159 en total). Esperando el «sí» de Patricia para `main`. La lista queda vacía hasta que llegue EMP-P01.
+  `pruebas/precios.test.mjs` (159 en total). En `main` el 4-nov-2026 («sí» de Patricia). Sigue la 2b (igualas). La lista queda vacía hasta que llegue EMP-P01.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
