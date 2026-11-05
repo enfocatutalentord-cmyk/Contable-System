@@ -561,7 +561,19 @@ No se pasa a la siguiente sin su autorización expresa.
   vuelve a aprobado). «Quitar la aprobación» retira los enlaces. PDF con `tablaReporte` (secciones en negrita) en
   `/exportar/reporte-mensual?mes=` y en `/d/[token]`. Pruebas `pruebas/reporte-mensual.test.mjs` (189 en total). En `main` el 5-nov-2026
   («sí» de Patricia). Pendiente: confirmar quién aprueba (se dejó Patricia, permiso «empresa») y ajustar al Excel cuando lo suba.
-  Sigue la 4c (proyección IR-2/IR-1 y alertas fiscales): para personas físicas hace falta la escala vigente del IR-1.
+  **Entrega 4c · Proyección de cierre fiscal** (migración 039, `lib/proyeccion.ts`, `app/e/[id]/proyeccion-acciones.ts`, pantalla
+  `/e/[id]/dgii/proyeccion?mes=AAAA-MM`, tarjeta en Reportes DGII, descarga `/exportar/proyeccion?mes=`). `proyeccionDe`: ejercicio
+  según `mes_cierre` hasta el mes elegido; por mes ingresos (4), costos (5) y gastos (6 sin 63) de los asientos contabilizados sin
+  los de cierre; proyección = (utilidad acumulada ÷ meses con datos) × 12 (fórmula del documento maestro); ISR estimado: persona
+  jurídica 27 % (30 % si los ingresos proyectados llegan a `UMBRAL_30` del IR-2), menos las retenciones de ISR de los cobros;
+  persona física: no se estima hasta tener la escala del IR-1 (aviso). Costos y gastos por subgrupo de 4 dígitos, compras del 606 por
+  tipo de gasto, gastos de asientos manuales o del banco sin factura (sin contar nómina, TSS, INFOTEP ni depreciación, por nombre de
+  cuenta) y utilidad del ejercicio anterior. Alertas con umbrales sugeridos en `UMBRALES` (costos y gastos ≥ 95 % de los ingresos;
+  gastos sin factura ≥ 10 %; utilidad del último mes ±50 % del promedio; proyección ±30 % del ejercicio anterior; revisión 2 meses
+  antes del cierre). «Preparar para el cliente» (permiso «impuestos») guarda `proyecciones_fiscales` (una por empresa y mes, con
+  notas) y aparece «Enviar por WhatsApp» con el mensaje «Proyección IR-2» y enlace seguro tipo 'proyeccion' al PDF de lo preparado
+  (`tablaProyeccion`). Pruebas `pruebas/proyeccion.test.mjs` (190 en total). Pendiente: el «sí» de Patricia; confirmar los umbrales;
+  la escala del IR-1 para personas físicas.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

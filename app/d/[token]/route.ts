@@ -3,6 +3,7 @@ import { aPdf } from "@/lib/exportar";
 import { enlaceVigente } from "@/lib/mensajes-db";
 import { tablaFactura, tablaPropuesta } from "@/lib/pdf-documentos";
 import { tablaReporte, type DatosReporte } from "@/lib/reporte-mensual";
+import { tablaProyeccion, type Proyeccion } from "@/lib/proyeccion";
 
 // Descarga sin sesión desde el enlace seguro de WhatsApp (bloque 3c). El enlace vale 30 días y se puede retirar antes; solo se
 // guarda su hash. Entrega un único documento: la factura, la propuesta o el PDF subido (como la notificación de pago).
@@ -32,6 +33,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
     const [{ nombre, rnc }] = await tx<{ nombre: string; rnc: string | null }[]>`SELECT nombre, rnc FROM empresas WHERE id = ${e.empresa_id}`;
     const ahora = new Date().toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
     const base = { empresa: nombre + (rnc ? ` · RNC ${rnc}` : ""), generado: `Descargado el ${ahora}` };
+    if (e.tipo === "proyeccion") {
+      const [p] = await tx<{ datos: Proyeccion; notas: string | null; periodo: string }[]>`
+        SELECT datos, notas, periodo FROM proyecciones_fiscales WHERE id = ${e.ref_id}`;
+      return p ? { nombre: `proyeccion-${p.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaProyeccion(p.datos, p.notas, base))) } : null;
+    }
     if (e.tipo === "reporte") {
       const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string }[]>`
         SELECT datos, notas, periodo FROM reportes_mensuales WHERE id = ${e.ref_id} AND estado IN ('aprobado', 'enviado')`;

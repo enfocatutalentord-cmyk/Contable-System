@@ -95,6 +95,14 @@ export default async function ReportesDgii({ params, searchParams }: {
         <p className="sub" style={{ marginBottom: 0 }}>Anexos A-1 (balance), B-1 (estado de resultados) y J (comprobantes) del ejercicio, tomados de la contabilidad.</p>
       </section>
 
+      <section className="tarjeta formato-dgii">
+        <div className="entre">
+          <h2 style={{ margin: 0 }}>Proyección de cierre fiscal</h2>
+          <Link className="boton" href={`/e/${id}/dgii/proyeccion?mes=${p.periodo.slice(0, 4)}-${p.periodo.slice(4)}`}>Ver la proyección</Link>
+        </div>
+        <p className="sub" style={{ marginBottom: 0 }}>Lo acumulado del ejercicio, el resultado proyectado al cierre, el ISR estimado y alertas antes del cierre.</p>
+      </section>
+
       <section className="tarjeta" style={{ marginTop: 16 }}>
         <h2 style={{ marginTop: 0 }}>Cómo enviarlos</h2>
         <ol className="pasos">
