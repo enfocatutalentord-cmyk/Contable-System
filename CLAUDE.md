@@ -477,6 +477,13 @@ No se pasa a la siguiente sin su autorización expresa.
   activos (sin bancos ni cuentas por cobrar). Descargas `/exportar/propuesta?id=` (Excel/PDF con precio de lista, descuento, precio
   final, impuestos, total y el detalle) y `/exportar/recibo-anticipo?id=`. Pruebas `pruebas/propuestas.test.mjs` (173 en total).
   En `main` el 4-nov-2026 («sí» de Patricia). **Bloque 2 completo** (salvo carta EMP-L01 y mensajes, bloques 3 y 5).
+- **Bloque 3 · Operación diaria** (propuesta en https://claude.ai/artifact/2GmNCZP4Wnm5re7MbSkKkk, «sí» de Patricia del 4-nov-2026
+  a empezar por la 3a; 3 entregas: 3a bitácora y notificaciones de pago, 3b cronograma y alertas, 3c WhatsApp). Respuestas del
+  4-nov: **crear el rol Coordinadora** (bitácora, grupos, igualas, cobros, notificaciones, digita compras y ventas; sin presupuesto
+  personal, cuenta corriente de Patricia, precios ni declaraciones); los enlaces de descarga duran **30 días**; agregar a la ficha
+  las fechas de vencimiento del **registro mercantil y del nombre comercial (ONAPI)** (alerta 60 días antes). **3a sin empezar**
+  (solo se revisaron tablas: `envios_dgii`, `recepciones`, `documentos_entidad_check`; las vistas de la firma recorren los clientes
+  con `conEmpresa`, como `/firma/[fid]/documentos`). Faltan los ejemplos de notificaciones TSS y DGII para leerlas solas.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
