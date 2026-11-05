@@ -655,7 +655,8 @@ No se pasa a la siguiente sin su autorización expresa.
   debe, cuenta corriente y 210203 «ISR retenido a terceros por pagar» al haber; exige ganancias acumuladas suficientes a la
   fecha; la retención del 10 % es el concepto 5 del formulario IR-17-2026 y `calcularIr17` la suma sola a la casilla 5 del mes)
   o dejar el saldo como cuenta por cobrar (sin asiento). Pruebas `pruebas/salidas-socia.test.mjs` (205 en total). Probado en
-  pantalla con la empresa propia local. Pendiente: el «sí» de Patricia; la 7b y la 7c necesitan el Excel PRESUPUESTO 2026.
+  pantalla con la empresa propia local. En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 7b (presupuesto del mes): la 7b y la
+  7c necesitan el Excel PRESUPUESTO 2026.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
