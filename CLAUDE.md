@@ -574,7 +574,13 @@ No se pasa a la siguiente sin su autorización expresa.
   notas) y aparece «Enviar por WhatsApp» con el mensaje «Proyección IR-2» y enlace seguro tipo 'proyeccion' al PDF de lo preparado
   (`tablaProyeccion`). Pruebas `pruebas/proyeccion.test.mjs` (190 en total). En `main` el 5-nov-2026 («sí» de Patricia).
   **Bloque 4 completo.** Pendiente: confirmar los umbrales; la escala del IR-1 para personas físicas; el Excel del reporte mensual.
-  Sigue el bloque 5 (expediente y biblioteca de documentos): presentar la propuesta antes.
+- **Bloque 5 · Expediente y biblioteca de documentos** (propuesta del 5-nov-2026 en https://claude.ai/artifact/8B6pHXvfbnAmWc5gXnU89n,
+  esperando el «sí» de Patricia; 3 entregas: 5a expediente digital (carpetas 01–06 del manual + «Documentos del cliente», con lo que
+  el sistema ya genera en su carpeta), trámites DGII/TSS/Cámara/ONAPI con volante, plazo de 30 días y alertas 5 días antes, y lista
+  de 9 pasos de empresa nueva; 5b biblioteca con plantillas y campos de la ficha, referencia ETL-XX-AAAA-NNNN, PDF y Word; 5c lectura
+  de PDF y redacción con IA, después, con la llave de IA). Preguntas: plantillas del manual en Word, lugar de la fecha formal,
+  formato de la referencia, Word además de PDF, trámites fuera de la DGII, pasar el Drive actual. Fuera: auditoría NIA, control
+  interno, estados desde balanza en Excel, formularios oficiales llenados.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
