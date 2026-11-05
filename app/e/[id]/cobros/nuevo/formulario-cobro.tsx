@@ -18,11 +18,12 @@ const cent = (v: string) => {
 };
 const texto = (c: number) => (c / 100).toFixed(2);
 
-export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenciones, hoy, clienteInicial, facturaInicial, banco }: {
+export function FormularioCobro({ accion, clientes, pendientes, cuentas, cuentasPermuta = [], retenciones, hoy, clienteInicial, facturaInicial, banco }: {
   accion: (estado: Estado, fd: FormData) => Promise<Estado>;
   clientes: Cliente[];
   pendientes: Pendiente[];
   cuentas: Cuenta[];
+  cuentasPermuta?: Cuenta[]; // trueque: gastos y activos donde va lo recibido
   retenciones: Retencion[];
   hoy: string;
   clienteInicial: string;
@@ -31,6 +32,8 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenci
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [clienteId, setClienteId] = useState(clienteInicial);
+  const [forma, setForma] = useState("transferencia");
+  const permuta = forma === "permuta";
   const [fecha, setFecha] = useState(banco?.fecha ?? hoy);
   const deCliente = useMemo(() => pendientes.filter((p) => p.cliente_id === clienteId), [pendientes, clienteId]);
   const monedas = [...new Set(deCliente.map((p) => p.moneda))];
@@ -152,18 +155,29 @@ export function FormularioCobro({ accion, clientes, pendientes, cuentas, retenci
         </p>
       </div>
       <div className="fila" style={{ marginBottom: 12 }}>
-        <label style={{ flex: "1 1 240px" }}>Entró a
-          <select name="cuenta_destino" required defaultValue={banco?.cuentaId ?? cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
-            <option value="" disabled>Elige banco o caja…</option>
-            {cuentas.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
-          </select>
-        </label>
         <label>Forma de pago
-          <select name="forma_pago" defaultValue="transferencia">
+          <select name="forma_pago" value={forma} onChange={(e) => setForma(e.target.value)}>
             <option value="transferencia">Transferencia</option><option value="cheque">Cheque</option>
-            <option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option>
+            <option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option>
+            {cuentasPermuta.length > 0 && <option value="permuta">Trueque (permuta)</option>}
+            <option value="otro">Otro</option>
           </select>
         </label>
+        {permuta ? (
+          <label key="permuta" style={{ flex: "1 1 260px" }}>Lo recibido va a
+            <select name="cuenta_destino" required defaultValue="">
+              <option value="" disabled>Elige el gasto o el activo…</option>
+              {cuentasPermuta.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
+            </select>
+          </label>
+        ) : (
+          <label key="banco" style={{ flex: "1 1 240px" }}>Entró a
+            <select name="cuenta_destino" required defaultValue={banco?.cuentaId ?? cuentas.find((c) => c.codigo === "110103")?.id ?? ""}>
+              <option value="" disabled>Elige banco o caja…</option>
+              {cuentas.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
+            </select>
+          </label>
+        )}
         <label style={{ flex: "1 1 180px" }}>Referencia<input name="referencia" placeholder="N.º de transferencia o cheque" defaultValue={banco?.referencia ?? ""} /></label>
       </div>
       <label>Notas<textarea name="notas" rows={2} /></label>

@@ -19,11 +19,13 @@ export default async function NuevoCobro({ params, searchParams }: {
   const sp = await searchParams;
   await exigirPermiso(id, "contabilizar", "/cobros");
   const hoy = hoyISO();
-  const { clientes, pendientes, cuentas, bases, retenciones, banco } = await conEmpresa(id, async (tx) => ({
+  const { clientes, pendientes, cuentas, cuentasPermuta, bases, retenciones, banco } = await conEmpresa(id, async (tx) => ({
     banco: sp.movimiento && esUuid(sp.movimiento) ? await datosParaDocumento(tx, sp.movimiento) : null,
     clientes: await tx<{ id: string; nombre: string; retenciones: string[] }[]>`SELECT id, nombre, retenciones FROM clientes ORDER BY nombre`,
     pendientes: await pendientesAl(tx, "9999-12-31"),
     cuentas: (await listarCuentas(tx)).filter((c) => c.de_detalle && c.activa && c.codigo.startsWith("1101")),
+    // Trueque: lo recibido va a un gasto o a un activo, que se elige en cada cobro (decisión de Patricia del 4-nov-2026).
+    cuentasPermuta: (await listarCuentas(tx)).filter((c) => c.de_detalle && c.activa && ["gasto", "costo", "activo"].includes(c.tipo) && !c.codigo.startsWith("1101") && !c.codigo.startsWith("1102")),
     // Bases de las retenciones: el ITBIS facturado y el monto sin impuestos de cada factura.
     bases: Object.fromEntries((await tx<{ id: string; itbis: string; subtotal: string }[]>`
       SELECT id, itbis::text, subtotal::text FROM facturas WHERE tipo_ncf <> 'B04' AND estado = 'emitida'`).map((r) => [r.id, r])),
@@ -52,6 +54,7 @@ export default async function NuevoCobro({ params, searchParams }: {
           saldo: deCentavos(p.saldo), cliente_id: p.cliente_id,
         }))}
         cuentas={cuentas}
+        cuentasPermuta={banco ? [] : cuentasPermuta}
         retenciones={retenciones}
         hoy={hoy}
         clienteInicial={clienteInicial}

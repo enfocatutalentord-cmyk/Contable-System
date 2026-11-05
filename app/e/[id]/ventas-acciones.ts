@@ -281,7 +281,7 @@ export async function crearCobro(empresaId: string, _: Estado, fd: FormData): Pr
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
   if (tasa === null) return { error: "Escribe la tasa del dólar del día del cobro." };
   if (recibido === null) return { error: "Revisa los montos." };
-  if (!["efectivo", "transferencia", "cheque", "tarjeta", "otro"].includes(formaPago)) return { error: "Elige la forma de pago." };
+  if (!["efectivo", "transferencia", "cheque", "tarjeta", "permuta", "otro"].includes(formaPago)) return { error: "Elige la forma de pago." };
   let aplicaciones: { facturaId: string; monto: bigint }[];
   let retenciones: { retencionId: string; monto: bigint }[];
   try {

@@ -13,6 +13,8 @@ import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
 import { anularComprobante, crearNotaCredito, descartarFactura, emitirBorrador } from "../../ventas-acciones";
 import { crearRecurrente } from "../../igualas-acciones";
+import { aplicarAnticipoAccion } from "../../propuestas-acciones";
+import { listarAnticipos } from "@/lib/anticipos";
 import { FRECUENCIAS } from "@/lib/igualas";
 
 type Factura = {
@@ -67,10 +69,13 @@ export default async function VerFactura({ params, searchParams }: {
       SELECT 'Nota de crédito', n.ncf, '/facturas/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text
         FROM facturas n WHERE n.factura_origen_id = ${fid} AND n.estado = 'emitida' AND NOT n.anulada
       ORDER BY 4`;
-    return { f, lineas, porImpuesto, movimientos };
+    // Anticipos del cliente con saldo (bloque 2c), para aplicarlos a esta factura.
+    const [{ cliente_id }] = await tx<{ cliente_id: string }[]>`SELECT cliente_id FROM facturas WHERE id = ${fid}`;
+    const anticipos = (await listarAnticipos(tx, cliente_id)).filter((a) => !a.anulado && Number(a.saldo) > 0);
+    return { f, lineas, porImpuesto, movimientos, anticipos };
   });
   if (!datos) notFound();
-  const { f, lineas, porImpuesto, movimientos } = datos;
+  const { f, lineas, porImpuesto, movimientos, anticipos } = datos;
   const borrador = f.estado === "borrador";
   const esNota = f.tipo_ncf === "B04";
   const simbolo = f.moneda === "USD" ? "US$" : "RD$";
@@ -219,6 +224,22 @@ export default async function VerFactura({ params, searchParams }: {
               </Formulario>
             </>
           ) : <p className="sub">Este comprobante está en un período cerrado y no se puede anular.</p>}
+        </div>
+      )}
+
+      {!borrador && !esNota && !f.anulada && f.moneda === "DOP" && saldo > 0 && anticipos.length > 0 && puede(permisos, "contabilizar") && (
+        <div className="no-imprimir tarjeta" style={{ margin: "16px 0" }}>
+          <h2 style={{ marginTop: 0 }}>Aplicar anticipo</h2>
+          <p className="sub">El cliente tiene anticipos sin aplicar. Al aplicarlo se rebaja el saldo de esta factura con un cobro desde «Anticipos de clientes».</p>
+          <Formulario accion={aplicarAnticipoAccion.bind(null, id, f.id)} boton="Aplicar anticipo" className="fila">
+            <label style={{ flex: "2 1 240px" }}>Anticipo
+              <select name="anticipo" defaultValue={anticipos[0].id}>
+                {anticipos.map((a) => <option key={a.id} value={a.id}>N.º {a.numero} del {verFecha(a.fecha)} · saldo RD${verMonto(a.saldo)}</option>)}
+              </select>
+            </label>
+            <label style={{ width: 150 }}>Monto<input name="monto" inputMode="decimal" defaultValue={Math.min(saldo, Number(anticipos[0].saldo)).toFixed(2)} required /></label>
+            <label>Fecha<input type="date" name="fecha" defaultValue={hoyISO() < f.fecha ? f.fecha : hoyISO()} min={f.fecha} required /></label>
+          </Formulario>
         </div>
       )}
 

@@ -460,7 +460,23 @@ No se pasa a la siguiente sin su autorización expresa.
   «Repetir esta factura» en el detalle (copia cliente, líneas, impuestos y unidad; solo DOP), frecuencia mensual/quincenal/
   trimestral/anual o a solicitud, próxima y hasta; al abrir Facturas recurrentes se preparan las que tocan (hasta 12 atrasadas) y
   avanza la próxima; «Preparar ahora», pausa y eliminar. Pruebas `pruebas/igualas.test.mjs` (168 en total). En `main` el 4-nov-2026
-  («sí» de Patricia). Pendiente del bloque 2: carta EMP-L01 y mensajes (bloques 3 y 5), entrega 2c (propuestas y anticipos).
+  («sí» de Patricia). Pendiente del bloque 2: carta EMP-L01 y mensajes (bloques 3 y 5).
+  **Entrega 2c · Propuestas, anticipos y trueque** (migración 033, `lib/propuestas.ts`, `lib/anticipos.ts`,
+  `app/e/[id]/propuestas-acciones.ts`, pestañas `/propuestas` y `/anticipos` en Ventas; agregadas a Contador, Auxiliar y Facturación,
+  y `/anticipos` a Cliente · Consulta). Respuesta de Patricia del 4-nov: en el trueque la cuenta de lo recibido **se elige en cada
+  cobro**. `propuestas` + `lineas_propuesta` (número por empresa; precio de lista de la categoría del cliente, descuento por línea a
+  la vista, precio final; requisitos, anticipo %, forma de pago, entrega, válida hasta; estados borrador → enviada → aceptada o
+  rechazada, «vencida» si pasó la fecha; aceptada o rechazada no cambia de líneas, trigger). Aceptada: «Convertir en factura»
+  (borrador con el precio final y el descuento dicho en la descripción, nota «Según la propuesta n.º») o «Convertir en iguala»
+  (acuerdo normal con el servicio de la primera línea y el total final). `totalesPropuesta`, `montoAnticipo` (sobre el total con
+  impuestos). `anticipos` (número por empresa; asiento `origen = 'anticipo'`: banco o caja contra 210501 «Anticipos de clientes»;
+  con permuta, contra el gasto o activo elegido); se aplican desde la factura emitida («Aplicar anticipo»): `aplicarAnticipo` usa
+  `registrarCobro` con `anticipoId` y la cuenta 210501 como destino (`cobros.anticipo_id`), así rebaja el saldo y va al 607 con la
+  forma del anticipo; saldo = monto − cobros vigentes; no se anula si ya se aplicó. Trueque: forma de cobro `permuta` (cobros y
+  anticipos), columna Permuta del 607 y casilla 17 del IT-1 (`COLUMNA_COBRO`); en el cobro, «Lo recibido va a» lista gastos y
+  activos (sin bancos ni cuentas por cobrar). Descargas `/exportar/propuesta?id=` (Excel/PDF con precio de lista, descuento, precio
+  final, impuestos, total y el detalle) y `/exportar/recibo-anticipo?id=`. Pruebas `pruebas/propuestas.test.mjs` (173 en total).
+  Esperando el «sí» de Patricia para `main`.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

@@ -260,7 +260,7 @@ export async function calcularIt1(tx: Tx, p: Periodo, manuales: Record<string, s
     for (const mv of cobros.filter((x) => x.documento === f.id)) {
       const v = aPesos(mv.aplicado, tasa);
       cobrado += v;
-      sumar({ efectivo: "A12", cheque: "A13", tarjeta: "A14", otrasFormas: "A18" }[COLUMNA_COBRO[mv.forma] ?? "otrasFormas"], v);
+      sumar({ efectivo: "A12", cheque: "A13", tarjeta: "A14", permuta: "A17", otrasFormas: "A18" }[COLUMNA_COBRO[mv.forma] ?? "otrasFormas"], v);
     }
     sumar("A15", mas(total - cobrado));
     // IV. Por tipo de ingreso (sin impuestos).

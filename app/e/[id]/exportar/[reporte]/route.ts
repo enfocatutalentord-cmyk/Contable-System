@@ -1,4 +1,7 @@
 import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
+import { aLinea, lineasDe, montoAnticipo, totalesPropuesta } from "@/lib/propuestas";
+import { FORMAS_ANTICIPO } from "@/lib/anticipos";
+import { listarImpuestos } from "@/lib/fiscal";
 import { accesoEmpresa } from "@/lib/acceso";
 import { bitacora } from "@/lib/asientos";
 import { ACCIONES, describir, historial, nombresHistorial, TABLAS } from "@/lib/auditoria";
@@ -30,7 +33,7 @@ import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|lista-precios|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|lista-precios|propuesta|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -409,6 +412,56 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         ...base, titulo: "Catálogo de cuentas", detalle: `${cuentas.length} cuentas`,
         columnas: [col("Código", false, 12), col("Cuenta", false, 46), col("Tipo", false, 12), col("Nivel", false, 7), col("Uso", false, 10), col("Estado", false, 10)],
         filas: cuentas.map((c) => [c.codigo, `${"  ".repeat(c.nivel - 1)}${c.nombre}`, tipos[c.tipo] ?? c.tipo, c.nivel, c.de_detalle ? "Detalle" : "Grupo", c.activa ? "Activa" : "Inactiva"]),
+      }];
+    }
+    if (reporte === "propuesta" && esUuid(sp.id ?? "")) {
+      // Propuesta de servicios (bloque 2c): precio de lista, descuento y precio final a la vista, con requisitos y anticipo.
+      const r = await conEmpresa(id, async (tx) => {
+        const [p] = await tx<{ numero: number; cliente: string; rnc: string | null; fecha: string; valida_hasta: string; requisitos: string | null;
+          anticipo_pct: string; forma_pago: string | null; entrega: string | null; notas: string | null }[]>`
+          SELECT p.numero, c.nombre AS cliente, c.rnc, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, to_char(p.valida_hasta, 'YYYY-MM-DD') AS valida_hasta,
+                 p.requisitos, p.anticipo_pct::text, p.forma_pago, to_char(p.entrega, 'YYYY-MM-DD') AS entrega, p.notas
+            FROM propuestas p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ${sp.id}`;
+        if (!p) return null;
+        return { p, lineas: await lineasDe(tx, sp.id), impuestos: new Map((await listarImpuestos(tx)).map((i) => [i.id, i])) };
+      });
+      if (!r) return null;
+      const { p } = r;
+      const t = totalesPropuesta(r.lineas.map(aLinea), r.impuestos);
+      const anticipo = montoAnticipo(t.total, p.anticipo_pct);
+      const filas: Celda[][] = r.lineas.map((l) => {
+        const x = aLinea(l);
+        return [l.descripcion, Number(l.cantidad), l.precio_lista, l.descuento, deCentavos(x.precioLista - x.descuento)];
+      });
+      const negritas = [filas.length, filas.length + 1];
+      filas.push(["Impuestos", "", "", "", deCentavos(t.impuestos)], ["Total", "", "", "", deCentavos(t.total)]);
+      const enUnaLinea = (x: string) => x.split(/\s+/).join(" ");
+      const detalle = [
+        `Para ${p.cliente}${p.rnc ? ` (RNC ${p.rnc})` : ""}`, `fecha ${verFecha(p.fecha)}`, `válida hasta ${verFecha(p.valida_hasta)}`,
+        `anticipo ${Number(p.anticipo_pct)} % (RD$${deCentavos(anticipo)})`, p.forma_pago ? `forma de pago: ${p.forma_pago}` : "",
+        p.entrega ? `entrega estimada ${verFecha(p.entrega)}` : "", p.requisitos ? `requisitos: ${enUnaLinea(p.requisitos)}` : "",
+        p.notas ? enUnaLinea(p.notas) : "",
+      ].filter(Boolean).join(" · ");
+      return [`propuesta-${p.numero}`, {
+        ...base, titulo: `Propuesta de servicios n.º ${p.numero}`, detalle, negritas,
+        columnas: [col("Servicio", false, 46), col("Cantidad", true), col("Precio de lista", true), col("Descuento", true), col("Precio final", true)],
+        filas, totales: ["Subtotal", "", deCentavos(t.lista), deCentavos(t.descuento), deCentavos(t.subtotal)],
+      }];
+    }
+    if (reporte === "recibo-anticipo" && esUuid(sp.id ?? "")) {
+      const [a] = await conEmpresa(id, (tx) => tx<{ numero: number; cliente: string; rnc: string | null; fecha: string; monto: string; forma_pago: string;
+        referencia: string | null; propuesta: number | null; anulado: boolean; notas: string | null }[]>`
+        SELECT a.numero, c.nombre AS cliente, c.rnc, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, a.monto::text, a.forma_pago, a.referencia,
+               p.numero AS propuesta, a.anulado, a.notas
+          FROM anticipos a JOIN clientes c ON c.id = a.cliente_id LEFT JOIN propuestas p ON p.id = a.propuesta_id WHERE a.id = ${sp.id}`);
+      if (!a) return null;
+      return [`recibo-anticipo-${a.numero}`, {
+        ...base, titulo: `Recibo de anticipo n.º ${a.numero}${a.anulado ? " (ANULADO)" : ""}`,
+        detalle: [`Recibimos de ${a.cliente}${a.rnc ? ` (RNC ${a.rnc})` : ""}`, `el ${verFecha(a.fecha)}`, `forma de pago: ${FORMAS_ANTICIPO[a.forma_pago] ?? a.forma_pago}`,
+                  a.referencia ? `referencia ${a.referencia}` : ""].filter(Boolean).join(" · "),
+        columnas: [col("Concepto", false, 60), col("Monto", true)],
+        filas: [[`Anticipo${a.propuesta ? ` de la propuesta n.º ${a.propuesta}` : ""}${a.notas ? ` · ${a.notas}` : ""}; se aplicará a la factura del servicio`, a.monto]],
+        totales: ["Total recibido", a.monto],
       }];
     }
     if (reporte === "lista-precios") {

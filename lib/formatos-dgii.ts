@@ -236,8 +236,8 @@ export const COLUMNAS_607: [keyof Fila607, string, "texto" | "monto"][] = [
 ];
 
 // Forma de cobro registrada → columna del 607.
-export const COLUMNA_COBRO: Record<string, "efectivo" | "cheque" | "tarjeta" | "otrasFormas"> = {
-  efectivo: "efectivo", transferencia: "cheque", cheque: "cheque", tarjeta: "tarjeta", otro: "otrasFormas",
+export const COLUMNA_COBRO: Record<string, "efectivo" | "cheque" | "tarjeta" | "permuta" | "otrasFormas"> = {
+  efectivo: "efectivo", transferencia: "cheque", cheque: "cheque", tarjeta: "tarjeta", permuta: "permuta", otro: "otrasFormas",
 };
 
 export async function formato607(tx: Tx, p: Periodo): Promise<{ filas: Detalle607[]; consumo: ResumenConsumo; avisos: Aviso[] }> {

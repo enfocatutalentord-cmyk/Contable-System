@@ -340,6 +340,7 @@ export async function registrarCobro(
     empresaId: string; usuarioId: string; clienteId: string; fecha: string; moneda: "DOP" | "USD"; tasa: bigint;
     cuentaDestinoId: string; formaPago: string; referencia: string | null; notas: string | null;
     recibido: bigint; retenciones: RetencionCobro[]; aplicaciones: Aplicacion[];
+    anticipoId?: string | null; // aplicar un anticipo: el cobro sale de la cuenta de anticipos (bloque 2c)
   },
 ): Promise<number> {
   const aplicaciones = d.aplicaciones.filter((a) => a.monto > 0n);
@@ -355,7 +356,22 @@ export async function registrarCobro(
   if (!cliente) throw new ErrorContable("El cliente no existe");
   const [destino] = await tx<{ tipo: string; de_detalle: boolean; activa: boolean }[]>`
     SELECT tipo, de_detalle, activa FROM cuentas WHERE id = ${d.cuentaDestinoId}`;
-  if (!destino || destino.tipo !== "activo" || !destino.de_detalle || !destino.activa) {
+  if (d.anticipoId) {
+    // El anticipo ya entró al banco; ahora pasa de «Anticipos de clientes» a la factura.
+    const [a] = await tx<{ cliente_id: string; cuenta_anticipo_id: string; anulado: boolean; saldo: string }[]>`
+      SELECT a.cliente_id, a.cuenta_anticipo_id, a.anulado,
+             (a.monto - COALESCE((SELECT sum(c.recibido) FROM cobros c WHERE c.anticipo_id = a.id AND NOT c.anulado), 0))::text AS saldo
+        FROM anticipos a WHERE a.id = ${d.anticipoId} FOR UPDATE`;
+    if (!a || a.anulado || a.cliente_id !== d.clienteId) throw new ErrorContable("El anticipo no existe, está anulado o es de otro cliente");
+    if (a.cuenta_anticipo_id !== d.cuentaDestinoId) throw new ErrorContable("El anticipo se aplica desde su propia cuenta");
+    if (d.moneda !== "DOP") throw new ErrorContable("Los anticipos son en pesos");
+    if (d.recibido > aCentavos(a.saldo)) throw new ErrorContable("El monto pasa del saldo del anticipo");
+  } else if (d.formaPago === "permuta") {
+    // Trueque: lo recibido va a la cuenta que se elige (un gasto o un activo de la empresa).
+    if (!destino || !["activo", "gasto", "costo"].includes(destino.tipo) || !destino.de_detalle || !destino.activa) {
+      throw new ErrorContable("Elige la cuenta de lo que se recibió en trueque (un gasto o un activo)");
+    }
+  } else if (!destino || destino.tipo !== "activo" || !destino.de_detalle || !destino.activa) {
     throw new ErrorContable("Elige la cuenta de banco o caja donde entró el dinero");
   }
   const vigentes = new Map((await listarRetenciones(tx, d.fecha)).map((r) => [r.id, r]));
@@ -402,10 +418,10 @@ export async function registrarCobro(
   const suma = (imp: string) => detalle.filter((r) => r.conf.impuesto === imp).reduce((s, r) => s + r.monto, 0n);
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO cobros (empresa_id, numero, cliente_id, fecha, moneda, tasa, cuenta_destino_id, forma_pago, referencia,
-                        recibido, retencion_itbis, retencion_isr, notas, asiento_id, creado_por)
+                        recibido, retencion_itbis, retencion_isr, notas, asiento_id, creado_por, anticipo_id)
     VALUES (${d.empresaId}, ${numero}, ${d.clienteId}, ${d.fecha}, ${d.moneda}, ${tasaTexto(d.tasa)}, ${d.cuentaDestinoId},
             ${d.formaPago}, ${d.referencia}, ${deCentavos(d.recibido)}, ${deCentavos(suma("itbis"))},
-            ${deCentavos(suma("isr"))}, ${d.notas}, ${asiento.id}, ${d.usuarioId})
+            ${deCentavos(suma("isr"))}, ${d.notas}, ${asiento.id}, ${d.usuarioId}, ${d.anticipoId ?? null})
     RETURNING id`;
   for (const a of aplicaciones) {
     await tx`INSERT INTO aplicaciones_cobro (cobro_id, factura_id, empresa_id, monto)
