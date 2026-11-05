@@ -602,6 +602,25 @@ No se pasa a la siguiente sin su autorización expresa.
   estados y «Cotizar» → propuesta; 6b levantamiento con anexos, estado de situación inicial, diagnóstico por área y propuesta de
   categoría y precio). Referentes: organizers de TaxDome y onboarding de Karbon. Faltan: EMP-F01/F03/F04, levantamiento y anexos
   1–5, lista EMP-P01; preguntas: quién acepta, firma de la Hoja de Acuerdo, duración del enlace.
+  «sí» de Patricia del 5-nov a empezar por la 6a sin los formularios (campos del documento maestro y de la ficha; se ajustan cuando
+  lleguen); se usaron las recomendadas: la coordinadora revisa y carga, el enlace dura 30 días. **Entrega 6a · Formularios en línea
+  y solicitudes** (migración 041, `lib/formularios.ts`, `app/f/[token]` y `app/f/acciones.ts` públicos, `app/e/[id]/solicitudes-acciones.ts`,
+  pestaña `/solicitudes` «Solicitudes y formularios» en «Cliente elegido», sumada a Contador, Auxiliar, Coordinadora y Facturación;
+  pantalla `/firma/[fid]/solicitudes`). `formularios` (ficha F01, constitución F03, solicitud F04; `token_hash` que se pone al
+  mandarlo por WhatsApp —ref 'formulario', mensajes «Ficha de Registro», «Formulario de constitución» y el nuevo «Solicitud de
+  servicio» (`crear_plantillas_mensaje_extra`, para que Patricia lo revise)— o con «Enlace para copiar»; uno nuevo anula el
+  anterior; vence a los 30 días; sin FORCE RLS para buscarlo por hash). El cliente llena `/f/<token>` desde el celular, sin cuenta;
+  `leerRespuestas` usa los mismos nombres de campo y lectores de la ficha (cédulas, 100 %, fechas; constitución: capital ≥
+  RD$100,000, al menos un nombre y el gerente); se envía una sola vez; adjuntos en `documentos` entidad 'formulario'. Ficha y
+  constitución quedan «recibido» (gestión en la bitácora y alerta «Solicitudes y formularios»); la revisión muestra lo enviado junto
+  a lo que hay y se carga por secciones (empresa, sociedad, socios, contactos, operaciones, adjuntos); lo que vino en blanco no borra
+  lo que había; los contactos se unen por rol; los adjuntos pasan a 01 (si el mismo archivo ya estaba, no se repite) y se muestra la
+  categoría sugerida. Constitución: abre los 9 pasos, carga capital, socios, gerente, TSS y deja los nombres propuestos en la nota
+  del paso 1. Solicitud: entra directo a `solicitudes` (servicio de la lista de precios de la empresa propia, qué, para qué, para
+  cuándo, prioridad; también se anotan las de WhatsApp, escrito o llamada; recibida → cotizada → en proceso → entregada o
+  descartada; gestiones al entrar y al entregarse; alerta urgente si pasa su fecha). «Cotizar» crea el borrador de propuesta en la
+  empresa propia con el precio de la categoría del cliente (sin servicio, en 0). Pruebas `pruebas/formularios.test.mjs` (198 en
+  total). Pendiente: el «sí» de Patricia; ajustar las preguntas a EMP-F01/F03/F04 cuando las suba.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

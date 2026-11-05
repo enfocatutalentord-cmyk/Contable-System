@@ -13,7 +13,7 @@ export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
   formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
-  tramite: "Trámites",
+  tramite: "Trámites", solicitud: "Solicitudes y formularios",
 };
 
 // Declaraciones mensuales que el sistema puede ver presentadas («Marcar como presentado» en Reportes DGII) y su día de vencimiento.
@@ -86,6 +86,15 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
       `Trámite ante ${inst} (${t.tipo}) ${t.plazo < hoy ? `venció sin respuesta el ${verFecha(t.plazo)}` : faltan(hoy, t.plazo).replace("vence", "vence el plazo")}`,
       `${base}/expediente?ver=tramites`, t.plazo);
   }
+
+  // Solicitudes del cliente con su fecha pasada y formularios en línea recibidos sin revisar (bloque 6a).
+  for (const s of await tx<{ descripcion: string; servicio: string | null; fecha: string }[]>`
+      SELECT descripcion, servicio, to_char(fecha_requerida, 'YYYY-MM-DD') AS fecha FROM solicitudes
+       WHERE estado NOT IN ('entregada', 'descartada') AND fecha_requerida < ${hoy}::date`) {
+    poner("solicitud", "urgente", `Solicitud atrasada (era para el ${verFecha(s.fecha)}): ${s.servicio ?? s.descripcion.slice(0, 80)}`, `${base}/solicitudes`, s.fecha);
+  }
+  const [{ recibidos }] = await tx<{ recibidos: number }[]>`SELECT count(*)::int AS recibidos FROM formularios WHERE estado = 'recibido'`;
+  if (recibidos) poner("solicitud", "aviso", `${recibidos === 1 ? "Un formulario en línea recibido" : `${recibidos} formularios en línea recibidos`} por revisar`, `${base}/solicitudes`);
 
   // Notificaciones de pago sin pagar cerca de la fecha límite.
   for (const n of await tx<{ id: string; tipo: string; periodo: string; monto: string; fecha_limite: string; estado: string }[]>`

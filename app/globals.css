@@ -294,3 +294,10 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .carpetas-expediente .carpeta { display: flex; flex-direction: column; gap: 4px; padding: 12px; color: inherit; text-decoration: none; }
 .carpetas-expediente .carpeta span { color: var(--suave); font-size: 0.9rem; }
 .carpetas-expediente .carpeta.elegida { border-color: var(--dorado); box-shadow: inset 0 0 0 1px var(--dorado); }
+
+/* Formulario en línea para el cliente (bloque 6a). */
+.formulario-publico { min-height: 100vh; background: var(--fondo, #f6f3ec); }
+.formulario-cliente fieldset { border: 1px solid var(--borde); margin: 0 0 12px; }
+.formulario-cliente legend { padding: 0 6px; }
+.revision-formulario fieldset { border: 1px solid var(--borde); border-radius: 8px; margin: 0 0 10px; padding: 8px 12px; }
+.revision-formulario table { width: 100%; }

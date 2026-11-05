@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cambiarNotificacion } from "./bitacora.ts";
+import { ponerEnlace } from "./formularios.ts";
 import { db, type Tx } from "./db.ts";
 import { nombrePeriodo } from "./igualas.ts";
 import { type Datos, HORAS_DESHACER, llenar, telefonoWa } from "./mensajes.ts";
@@ -11,7 +12,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -45,7 +46,7 @@ async function deCliente(tx: Tx, clienteId: string): Promise<Destinatario> {
   return { nombre: null, empresa: c?.nombre ?? "", telefono: telefonoWa(c?.telefono), grupo: null };
 }
 
-export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion"; refId: string; titulo: string } | null };
+export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "formulario"; refId: string; titulo: string } | null };
 
 // Datos del documento para llenar el mensaje y, si lleva PDF, qué se comparte por el enlace seguro. Corre en conEmpresa.
 export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promise<Preparado> {
@@ -86,6 +87,14 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
       destinatario: await deCliente(tx, p.cliente_id), datos: { servicio: p.servicio ?? "" },
       enlace: { tipo: "propuesta", refId: ref.id, titulo: `Propuesta n.º ${p.numero}` },
     };
+  }
+  if (ref.tipo === "formulario") {
+    // Formulario en línea (bloque 6a): el enlace es el del formulario (/f/…), no un documento.
+    const [f] = await tx<{ tipo: string; estado: string }[]>`SELECT tipo, estado FROM formularios WHERE id = ${ref.id}`;
+    if (!f || f.estado !== "pendiente") throw new ErrorMensaje("Ese formulario ya se respondió o se cerró.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    const titulo = ({ ficha: "Ficha de Registro", constitucion: "Formulario de Constitución", solicitud: "Solicitud de Servicio" } as Record<string, string>)[f.tipo];
+    return { destinatario, datos: {}, enlace: { tipo: "formulario", refId: ref.id, titulo } };
   }
   if (ref.tipo === "expediente") {
     // Un documento del expediente (bloque 5a): sale con «Documento listo» y su nombre.
@@ -140,7 +149,9 @@ export async function registrarEnvio(tx: Tx, d: {
   const texto = d.texto.trim();
   if (!texto || texto.length > 4000) throw new ErrorMensaje("El mensaje va de 1 a 4,000 caracteres.");
   let enlaceId: string | null = null;
-  if (d.enlace && d.token && texto.includes(d.token)) {
+  if (d.enlace?.tipo === "formulario" && d.token && texto.includes(d.token)) {
+    await ponerEnlace(tx, d.enlace.refId, d.token);
+  } else if (d.enlace && d.token && texto.includes(d.token)) {
     [{ id: enlaceId }] = await tx<{ id: string }[]>`
       INSERT INTO enlaces_documento (empresa_id, token_hash, tipo, ref_id, titulo, creado_por)
       VALUES (${d.empresaId}, ${hashToken(d.token)}, ${d.enlace.tipo}, ${d.enlace.refId}, ${d.enlace.titulo}, ${d.usuarioId}) RETURNING id`;

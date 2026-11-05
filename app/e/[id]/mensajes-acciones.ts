@@ -12,7 +12,7 @@ import {
 // Bloque 3, entrega 3c: «Enviar por WhatsApp». Se arma el mensaje, la persona lo revisa y abre WhatsApp; al abrirlo queda en la
 // bitácora (con un deshacer). Pide el permiso «exportar» (comparte un PDF) y no lo usan los usuarios de los clientes.
 
-const TIPOS_REF = ["factura", "cobro", "propuesta", "notificacion", "reporte", "proyeccion", "expediente"];
+const TIPOS_REF = ["factura", "cobro", "propuesta", "notificacion", "reporte", "proyeccion", "expediente", "formulario"];
 
 async function acceso(empresaId: string) {
   const a = await exigirPermiso(empresaId, "exportar");
@@ -46,7 +46,7 @@ export async function prepararMensaje(empresaId: string, clave: string, refEntra
     if (!plantilla) return { error: "Ese mensaje no está en la configuración de la firma." };
     const p = await conEmpresa(empresaId, (tx) => datosDe(tx, empresaId, ref));
     const token = p.enlace ? nuevoToken() : null;
-    const url = token ? `${await urlApp()}/d/${token}` : null;
+    const url = token ? `${await urlApp()}/${p.enlace?.tipo === "formulario" ? "f" : "d"}/${token}` : null;
     const texto = armarTexto(plantilla.texto, p, url, leerExtra(extra));
     return {
       clave, nombre: plantilla.nombre, texto, faltan: faltantes(texto), telefono: p.destinatario.telefono, contacto: p.destinatario.nombre,

@@ -44,13 +44,16 @@ export async function leerArchivos(fd: FormData, campo = "archivos", maximo = 10
 
 // Guarda archivos en el expediente (o en otra entidad, como el volante de un trámite). Devuelve los ids.
 export async function guardarArchivos(tx: Tx, d: {
-  empresaId: string; usuarioId: string; archivos: Archivo[]; entidad?: "expediente" | "tramite"; entidadId?: string;
+  empresaId: string; usuarioId: string; archivos: Archivo[]; entidad?: "expediente" | "tramite" | "formulario"; entidadId?: string;
   carpeta: string | null; anio: number | null; descripcion: string | null;
 }): Promise<string[]> {
   const ids: string[] = [];
   for (const a of d.archivos) {
     const tipo = tipoDeArchivo(a.bytes, a.nombre);
     if (!tipo) throw new ErrorExpediente(`«${a.nombre}» no es PDF, JPG, PNG, Word (.docx) ni Excel (.xlsx).`);
+    const [repetido] = await tx`SELECT 1 FROM documentos WHERE empresa_id = ${d.empresaId} AND entidad = ${d.entidad ?? "expediente"}
+                                  AND entidad_id = ${d.entidadId ?? d.empresaId} AND sha256 = ${huella(a.bytes)} AND NOT eliminado`;
+    if (repetido) throw new ErrorExpediente(`«${a.nombre}» ya está guardado (el mismo archivo).`);
     const [r] = await tx<{ id: string }[]>`
       INSERT INTO documentos (empresa_id, entidad, entidad_id, nombre, tipo, tamano, sha256, contenido, descripcion, subido_por, carpeta, anio)
       VALUES (${d.empresaId}, ${d.entidad ?? "expediente"}, ${d.entidadId ?? d.empresaId}, ${nombreSeguro(a.nombre)}, ${tipo}, ${a.bytes.length},
