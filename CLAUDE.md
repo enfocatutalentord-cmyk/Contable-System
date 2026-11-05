@@ -493,7 +493,7 @@ No se pasa a la siguiente sin su autorización expresa.
   cliente, notificaciones por enviar, sin pagar por vencer y gestiones atrasadas (`resumenCliente`). Rol base **Coordinadora**
   (ver, registrar, contabilizar, adjuntar, exportar; sin Productos y servicios, impuestos, catálogo ni ficha editable) creado en
   todas las firmas; `/bitacora` y `/notificaciones` sumadas a Contador, Auxiliar y Facturación. Pruebas `pruebas/bitacora.test.mjs`
-  (178 en total). Esperando el «sí» de Patricia para `main`.
+  (178 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 3b (cronograma y alertas).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
