@@ -622,6 +622,15 @@ No se pasa a la siguiente sin su autorización expresa.
   empresa propia con el precio de la categoría del cliente (sin servicio, en 0). Pruebas `pruebas/formularios.test.mjs` (198 en
   total). En `main` el 5-nov-2026 («sí» de Patricia). Pendiente: ajustar las preguntas a EMP-F01/F03/F04 cuando las suba. Sigue la 6b
   (levantamiento y diagnóstico): necesita el levantamiento con sus anexos 1–5 y la lista EMP-P01.
+- **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
+  esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
+  transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,
+  ahorro, traspaso) que arma el asiento, categoría personal en la línea, plantillas de asientos sin programar y recurrentes como
+  borrador, estado de cuenta de la socia y liquidación al cierre (dividendos contra 310301 con retención o cuenta por cobrar);
+  7b presupuesto por mes con real automático, Dentro/Excedido/Sin presupuesto, partidas pagadas/pendientes y presupuesto contra
+  real; 7c metas de ahorro, deudas personales y panel). Solo lo ve el rol Administrador. Preguntas: Excel PRESUPUESTO 2026
+  (necesario para 7b y 7c), si lo ve solo Patricia, retención de dividendos (confirmar tasa con la Ley 30-26), recurrentes como
+  borrador, una cuenta de ahorros para todas las metas, meta diaria por días hábiles.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
