@@ -546,8 +546,21 @@ No se pasa a la siguiente sin su autorización expresa.
   la notificación si sigue pendiente. `revisiones_compra` (revisada o «corregir» con nota; quién y cuándo; permiso «contabilizar»):
   tarjeta en el detalle de la compra, columna «Revisión» y filtro «Sin revisar» en Compras, aviso en Reportes DGII. «Cerrar el mes»
   (permiso «cerrar», solo con todo presentado o en cero) pone `fecha_bloqueo` = fin de mes y anota la gestión en la bitácora.
-  Pruebas `pruebas/impuestos-mes.test.mjs` (188 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 4b (reporte mensual):
-  antes, que Patricia suba el Excel «Reporte de Cliente Mensual - IR2» y diga quién aprueba el reporte.
+  Pruebas `pruebas/impuestos-mes.test.mjs` (188 en total). En `main` el 5-nov-2026 («sí» de Patricia).
+  **Entrega 4b · Reporte mensual** («sí» de Patricia del 5-nov a empezarla sin el Excel «Reporte de Cliente Mensual - IR2», con las
+  siete secciones del documento maestro; se ajusta cuando llegue). Migración 038, `lib/reporte-mensual.ts`, `app/e/[id]/reporte-acciones.ts`,
+  pantalla `/e/[id]/bitacora/reporte?mes=AAAA-MM` (botón «Reporte mensual» en la Bitácora; misma pestaña), lista de la firma
+  `/firma/[fid]/reportes`. `armarReporte`: 1 servicios (gestiones del mes), 2 facturas emitidas, notas y compras (cantidad, ITBIS,
+  total en pesos), 3 ITBIS (casillas del IT-1 presentado o, si no, calculado: I21, I25, I38/I33, I34), 4 retenciones (I67 e IR-17 R37
+  con vencimientos), 5 declaraciones del mes (`estadoDelMes`) y notificaciones, 6 pendientes del cliente (sin documentos del mes,
+  compras por corregir, notificaciones vencidas sin pagar, saldo con la firma; las declaraciones por presentar no, son de la firma),
+  7 cuenta con la firma (facturas de la empresa propia al cliente enlazado: las del mes y las que deben; conexión dueña). Solo con lo
+  que declara según su perfil. `reportes_mensuales` (uno por empresa y mes; RLS, historial): borrador con notas para el cliente
+  (permiso «registrar») → revisado («cerrar») → aprobado («empresa», solo Administrador: Patricia; guarda `datos` y `huella`, avisa
+  «Cambió después de aprobado») → enviado (al registrar el WhatsApp «Reporte mensual» con enlace seguro tipo 'reporte'; deshacer lo
+  vuelve a aprobado). «Quitar la aprobación» retira los enlaces. PDF con `tablaReporte` (secciones en negrita) en
+  `/exportar/reporte-mensual?mes=` y en `/d/[token]`. Pruebas `pruebas/reporte-mensual.test.mjs` (189 en total). Pendiente: el «sí»
+  de Patricia; confirmar quién aprueba (se dejó Patricia, permiso «empresa») y ajustar al Excel cuando lo suba.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

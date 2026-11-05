@@ -279,3 +279,12 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .declaracion-vencida a { color: var(--peligro); font-weight: 600; }
 .boton-chico button { min-height: 28px; padding: 2px 10px; font-size: 0.85rem; margin-top: 4px; }
 .revision-corregir { border-color: var(--peligro); }
+
+/* Reporte mensual (bloque 4b). */
+.pasos-reporte { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 10px; padding-left: 20px; }
+.pasos-reporte li { color: var(--suave); }
+.pasos-reporte li.hecho { color: var(--titulo); font-weight: 600; }
+.pasos-reporte li.hecho::marker { content: "✓ "; }
+.reporte-mensual { display: grid; gap: 12px; }
+.reporte-mensual h2 { margin-top: 0; font-size: 1.1rem; }
+.reporte-mensual table { width: 100%; }

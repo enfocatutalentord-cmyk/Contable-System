@@ -14,7 +14,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
   const base = empresaId ? `/e/${empresaId}` : null;
-  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/alertas`, "Alertas"], [`${firma}/tareas`, "Tareas del mes"], [`${firma}/impuestos`, "Impuestos del mes"], [`${firma}/mensajes`, "Mensajes de WhatsApp"], [`${firma}/bitacora`, "Bitácora de la firma"], [`${firma}/actividad`, "Actividad"]];
+  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/alertas`, "Alertas"], [`${firma}/tareas`, "Tareas del mes"], [`${firma}/impuestos`, "Impuestos del mes"], [`${firma}/reportes`, "Reportes del mes"], [`${firma}/mensajes`, "Mensajes de WhatsApp"], [`${firma}/bitacora`, "Bitácora de la firma"], [`${firma}/actividad`, "Actividad"]];
   const administracion: [string, string][] = admin
     ? [[`${firma}/clientes`, "Clientes de la firma"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]]
     : [];

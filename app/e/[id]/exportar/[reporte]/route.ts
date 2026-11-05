@@ -1,5 +1,6 @@
 import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
 import { tablaFactura, tablaPropuesta } from "@/lib/pdf-documentos";
+import { armarReporte, tablaReporte, type DatosReporte } from "@/lib/reporte-mensual";
 import { FORMAS_ANTICIPO } from "@/lib/anticipos";
 import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, nombreMes, TIPOS_GESTION } from "@/lib/bitacora";
 import { equipoDe } from "@/lib/firma";
@@ -34,7 +35,7 @@ import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -429,6 +430,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (reporte === "propuesta" && esUuid(sp.id ?? "")) {
       // Propuesta de servicios (bloque 2c): precio de lista, descuento y precio final a la vista, con requisitos y anticipo.
       return conEmpresa(id, (tx) => tablaPropuesta(tx, sp.id, base));
+    }
+    if (reporte === "reporte-mensual" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes ?? "")) {
+      // Reporte mensual al cliente (bloque 4b): lo aprobado tal cual; si no está aprobado, lo de hoy.
+      const periodo = sp.mes.replace("-", "");
+      return conEmpresa(id, async (tx) => {
+        const [r] = await tx<{ estado: string; datos: DatosReporte | null; notas: string | null }[]>`SELECT estado, datos, notas FROM reportes_mensuales WHERE periodo = ${periodo}`;
+        const d = r?.datos && (r.estado === "aprobado" || r.estado === "enviado") ? r.datos : await armarReporte(tx, id, periodo, hoyISO());
+        return [`reporte-mensual-${empresa.rnc ?? "cliente"}-${sp.mes}`, tablaReporte(d, r?.notas ?? null, base)] as [string, Tabla];
+      });
     }
     if (reporte === "factura" && esUuid(sp.id ?? "")) {
       return conEmpresa(id, (tx) => tablaFactura(tx, sp.id, base));

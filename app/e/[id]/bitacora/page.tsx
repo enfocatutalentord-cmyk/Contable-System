@@ -40,7 +40,10 @@ export default async function Bitacora({ params, searchParams }: {
             declaraciones presentadas, documentos procesados, notificaciones y mensajes de WhatsApp enviados). Sale en el reporte mensual del cliente.
           </p>
         </div>
-        {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/bitacora?mes=${f.mes}`} />}
+        <div className="fila">
+          <Link className="boton primario" href={`/e/${id}/bitacora/reporte?mes=${f.mes}`}>Reporte mensual</Link>
+          {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/bitacora?mes=${f.mes}`} />}
+        </div>
       </div>
 
       {mensajes.length > 0 && (

@@ -11,7 +11,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -45,7 +45,7 @@ async function deCliente(tx: Tx, clienteId: string): Promise<Destinatario> {
   return { nombre: null, empresa: c?.nombre ?? "", telefono: telefonoWa(c?.telefono), grupo: null };
 }
 
-export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento"; refId: string; titulo: string } | null };
+export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte"; refId: string; titulo: string } | null };
 
 // Datos del documento para llenar el mensaje y, si lleva PDF, qué se comparte por el enlace seguro. Corre en conEmpresa.
 export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promise<Preparado> {
@@ -87,6 +87,13 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
       enlace: { tipo: "propuesta", refId: ref.id, titulo: `Propuesta n.º ${p.numero}` },
     };
   }
+  if (ref.tipo === "reporte") {
+    // Reporte mensual (bloque 4b): solo aprobado; el enlace entrega el PDF de lo aprobado.
+    const [r] = await tx<{ estado: string; periodo: string }[]>`SELECT estado, periodo FROM reportes_mensuales WHERE id = ${ref.id}`;
+    if (!r || (r.estado !== "aprobado" && r.estado !== "enviado")) throw new ErrorMensaje("El reporte se envía cuando está aprobado.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    return { destinatario, datos: { mes: nombrePeriodo(r.periodo) }, enlace: { tipo: "reporte", refId: ref.id, titulo: `Reporte de ${nombrePeriodo(r.periodo)}` } };
+  }
   const [n] = await tx<{ tipo: string; periodo: string; concepto: string | null; monto: string; fecha_limite: string; documento_id: string | null }[]>`
     SELECT n.tipo, n.periodo, n.concepto, n.monto::text, to_char(n.fecha_limite, 'YYYY-MM-DD') AS fecha_limite,
            (SELECT d.id FROM documentos d WHERE d.entidad = 'notificacion' AND d.entidad_id = n.id AND NOT d.eliminado ORDER BY d.subido_en DESC LIMIT 1) AS documento_id
@@ -126,6 +133,7 @@ export async function registrarEnvio(tx: Tx, d: {
     INSERT INTO mensajes_enviados (empresa_id, clave, nombre, texto, destino, telefono, ref_tipo, ref_id, enlace_id, enviado_por)
     VALUES (${d.empresaId}, ${d.clave}, ${d.nombre}, ${texto}, ${d.destino}, ${d.destino === "contacto" ? d.telefono : null},
             ${d.ref?.tipo ?? null}, ${d.ref?.id ?? null}, ${enlaceId}, ${d.usuarioId}) RETURNING id`;
+  if (d.ref?.tipo === "reporte") await tx`UPDATE reportes_mensuales SET estado = 'enviado', enviado_en = now() WHERE id = ${d.ref.id} AND estado = 'aprobado'`;
   if (d.ref?.tipo === "notificacion") {
     const [n] = await tx<{ estado: string }[]>`SELECT estado FROM notificaciones_pago WHERE id = ${d.ref.id}`;
     if (n?.estado === "pendiente") await cambiarNotificacion(tx, d.ref.id, "enviada", d.usuarioId);
@@ -144,6 +152,10 @@ export async function deshacerEnvio(tx: Tx, d: { mensajeId: string; usuarioId: s
   if (m.viejo) throw new ErrorMensaje(`Solo se deshace dentro de las ${HORAS_DESHACER} horas del envío.`);
   await tx`DELETE FROM mensajes_enviados WHERE id = ${d.mensajeId}`;
   if (m.enlace_id) await tx`UPDATE enlaces_documento SET revocado_en = now(), revocado_por = ${d.usuarioId} WHERE id = ${m.enlace_id} AND revocado_en IS NULL`;
+  if (m.ref_tipo === "reporte" && m.ref_id) {
+    const [otro] = await tx`SELECT 1 FROM mensajes_enviados WHERE ref_tipo = 'reporte' AND ref_id = ${m.ref_id}`;
+    if (!otro) await tx`UPDATE reportes_mensuales SET estado = 'aprobado', enviado_en = NULL WHERE id = ${m.ref_id} AND estado = 'enviado'`;
+  }
   if (m.ref_tipo === "notificacion" && m.ref_id) {
     const [otro] = await tx`SELECT 1 FROM mensajes_enviados WHERE ref_tipo = 'notificacion' AND ref_id = ${m.ref_id}`;
     const [n] = await tx<{ estado: string }[]>`SELECT estado FROM notificaciones_pago WHERE id = ${m.ref_id}`;
@@ -159,7 +171,7 @@ export async function quitarEnlace(tx: Tx, enlaceId: string, usuarioId: string) 
 // Para la descarga sin sesión: el enlace vigente que corresponde al token (se busca por su hash) y cuenta la descarga.
 export async function enlaceVigente(token: string) {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
-  const [e] = await db()<{ id: string; empresa_id: string; tipo: "factura" | "propuesta" | "documento"; ref_id: string; titulo: string }[]>`
+  const [e] = await db()<{ id: string; empresa_id: string; tipo: "factura" | "propuesta" | "documento" | "reporte"; ref_id: string; titulo: string }[]>`
     UPDATE enlaces_documento SET descargas = descargas + 1, ultima_descarga = now()
      WHERE token_hash = ${hashToken(token)} AND revocado_en IS NULL AND vence > now()
      RETURNING id, empresa_id, tipo, ref_id, titulo`;

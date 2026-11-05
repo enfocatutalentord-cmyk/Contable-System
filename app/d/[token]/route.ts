@@ -2,6 +2,7 @@ import { conEmpresa } from "@/lib/db";
 import { aPdf } from "@/lib/exportar";
 import { enlaceVigente } from "@/lib/mensajes-db";
 import { tablaFactura, tablaPropuesta } from "@/lib/pdf-documentos";
+import { tablaReporte, type DatosReporte } from "@/lib/reporte-mensual";
 
 // Descarga sin sesión desde el enlace seguro de WhatsApp (bloque 3c). El enlace vale 30 días y se puede retirar antes; solo se
 // guarda su hash. Entrega un único documento: la factura, la propuesta o el PDF subido (como la notificación de pago).
@@ -31,6 +32,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
     const [{ nombre, rnc }] = await tx<{ nombre: string; rnc: string | null }[]>`SELECT nombre, rnc FROM empresas WHERE id = ${e.empresa_id}`;
     const ahora = new Date().toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
     const base = { empresa: nombre + (rnc ? ` · RNC ${rnc}` : ""), generado: `Descargado el ${ahora}` };
+    if (e.tipo === "reporte") {
+      const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string }[]>`
+        SELECT datos, notas, periodo FROM reportes_mensuales WHERE id = ${e.ref_id} AND estado IN ('aprobado', 'enviado')`;
+      return r?.datos ? { nombre: `reporte-${r.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaReporte(r.datos, r.notas, base))) } : null;
+    }
     const armado = e.tipo === "factura" ? await tablaFactura(tx, e.ref_id, base) : await tablaPropuesta(tx, e.ref_id, base);
     return armado ? { nombre: `${armado[0]}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(armado[1])) } : null;
   });
