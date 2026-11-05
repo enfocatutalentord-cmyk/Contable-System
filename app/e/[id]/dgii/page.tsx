@@ -29,8 +29,11 @@ export default async function ReportesDgii({ params, searchParams }: {
   const { permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const p = periodoDe((mes ?? "").replace("-", "")) ?? periodoDe(periodoAnterior(hoy))!;
-  const { armados, envios } = await conEmpresa(id, async (tx) => ({
+  const { armados, envios, sinRevisar } = await conEmpresa(id, async (tx) => ({
     armados: [await armarFormato(tx, "606", p), await armarFormato(tx, "607", p), await armarFormato(tx, "608", p)],
+    sinRevisar: (await tx<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM compras c LEFT JOIN revisiones_compra r ON r.compra_id = c.id
+       WHERE c.estado = 'registrada' AND NOT c.anulada AND c.fecha BETWEEN ${p.inicio} AND ${p.fin} AND r.estado IS DISTINCT FROM 'revisada'`)[0].n,
     envios: await tx<Envio[]>`
       SELECT e.formato, e.en_cero, e.referencia, e.huella, e.registros, e.enviado_en, u.nombre AS quien
         FROM envios_dgii e LEFT JOIN usuarios u ON u.id = e.enviado_por WHERE e.periodo = ${p.periodo}`,
@@ -57,6 +60,12 @@ export default async function ReportesDgii({ params, searchParams }: {
           {mesTexto} · período {p.periodo} · vence el {verFecha(p.vence)}
         </p>
       </form>
+      {sinRevisar > 0 && (
+        <p className="aviso">
+          {sinRevisar === 1 ? "Hay 1 compra del mes sin revisar" : `Hay ${sinRevisar} compras del mes sin revisar`} (tipo de gasto, bien o servicio, ITBIS y retenciones).{" "}
+          <Link href={`/e/${id}/compras?mes=${p.periodo.slice(0, 4)}-${p.periodo.slice(4)}`}>Ver las compras</Link>
+        </p>
+      )}
 
       {armados.map((a) => (
         <Seccion key={a.formato} id={id} a={a} periodo={p.periodo} envio={envios.find((e) => e.formato === a.formato)} puedeMarcar={puedeMarcar} />
@@ -143,6 +152,7 @@ function Seccion({ id, a, periodo, envio, puedeMarcar }: { id: string; a: Armado
       ) : puedeMarcar && errores.length === 0 && (
         <Formulario accion={marcarEnviado.bind(null, id, a.formato, periodo)} boton={sinDatos ? "Marcar enviado en cero" : "Marcar como enviado"} className="fila">
           <label style={{ flex: "1 1 260px" }}>Referencia de la Oficina Virtual (opcional)<input name="referencia" maxLength={60} /></label>
+          <label style={{ flex: "1 1 240px" }}>Acuse de recibo (opcional)<input type="file" name="constancia" accept="application/pdf,image/jpeg,image/png" /></label>
         </Formulario>
       )}
       {a.detalle.length > 0 && (

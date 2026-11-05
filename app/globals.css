@@ -272,3 +272,10 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .franja-supervision { position: sticky; top: 0; z-index: 20; display: flex; gap: 12px; align-items: center; justify-content: space-between;
   flex-wrap: wrap; background: var(--aviso-fondo); color: var(--aviso-texto); border-bottom: 2px solid #B88A40; padding: 8px 16px; }
 .franja-supervision button { padding: 4px 10px; }
+
+/* Impuestos del mes (bloque 4a): estado de cada declaración por cliente. */
+.tabla-impuestos td { vertical-align: top; }
+.declaracion-presentada a, .declaracion-en_cero a { color: var(--titulo); font-weight: 600; }
+.declaracion-vencida a { color: var(--peligro); font-weight: 600; }
+.boton-chico button { min-height: 28px; padding: 2px 10px; font-size: 0.85rem; margin-top: 4px; }
+.revision-corregir { border-color: var(--peligro); }

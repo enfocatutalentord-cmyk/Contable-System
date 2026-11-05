@@ -44,7 +44,7 @@ export default async function Compras({ params, searchParams }: {
       </form>
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>NCF</th><th>Fecha</th><th>Proveedor</th><th>Vence</th><th className="num">Total</th><th className="num">Saldo</th><th>Estado</th></tr></thead>
+          <thead><tr><th>NCF</th><th>Fecha</th><th>Proveedor</th><th>Vence</th><th className="num">Total</th><th className="num">Saldo</th><th>Estado</th><th>Revisión</th></tr></thead>
           <tbody>
             {filas.map((f) => {
               const esNota = f.origen !== null;
@@ -59,10 +59,13 @@ export default async function Compras({ params, searchParams }: {
                   <td className="num">{f.moneda === "USD" && "US$ "}{verMonto(esNota ? -Number(f.total) : f.total)}</td>
                   <td className="num">{esNota || f.anulada || borrador ? "" : verMonto(f.saldo)}</td>
                   <td className={texto === "Vencida" ? "error" : undefined}>{texto}</td>
+                  <td className={f.revision === "corregir" ? "error" : undefined}>
+                    {borrador || f.anulada ? "" : f.revision === "revisada" ? "✓ Revisada" : f.revision === "corregir" ? "Por corregir" : "Sin revisar"}
+                  </td>
                 </tr>
               );
             })}
-            {filas.length === 0 && <tr><td colSpan={7}>No hay compras con esos filtros.</td></tr>}
+            {filas.length === 0 && <tr><td colSpan={8}>No hay compras con esos filtros.</td></tr>}
           </tbody>
           {vigentes.length > 0 && (
             <tfoot>
@@ -70,7 +73,7 @@ export default async function Compras({ params, searchParams }: {
                 <td colSpan={4}>Compras registradas en pesos ({vigentes.length})</td>
                 <td className="num">{verMonto(vigentes.reduce((s, f) => s + Number(f.total), 0))}</td>
                 <td className="num">{verMonto(vigentes.reduce((s, f) => s + Number(f.saldo ?? 0), 0))}</td>
-                <td />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           )}

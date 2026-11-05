@@ -9,9 +9,11 @@ import { esRelleno, type Columna, type Resultado } from "@/lib/it1";
 import type { FilaIr6 } from "@/lib/ir17";
 import { deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { montoSugerido } from "@/lib/impuestos-mes";
 import { guardarDeclaracion, presentarDeclaracion, quitarDeclaracion } from "../dgii-acciones";
 
-type Envio = { referencia: string | null; huella: string; enviado_en: Date; quien: string | null };
+type Envio = { referencia: string | null; huella: string; enviado_en: Date; quien: string | null; monto_pagar: string | null;
+  fecha_limite: string | null; constancia_id: string | null; notificacion_id: string | null; en_cero: boolean };
 
 // Cómo se ve y cómo se escribe cada valor: montos con dos decimales, cantidades enteras, porcentajes con dos decimales.
 const texto = (col: Columna, v: bigint) => (col.tipo === "cantidad" ? String(v / 100n) : deCentavos(v));
@@ -34,7 +36,9 @@ export async function Declaracion({ id, formulario, mes, incrustada }: { id: str
       SELECT d.actualizado_en, u.nombre AS quien FROM declaraciones d LEFT JOIN usuarios u ON u.id = d.actualizado_por
        WHERE d.formulario = ${formulario} AND d.periodo = ${p.periodo}`;
     const [e] = await tx<Envio[]>`
-      SELECT e.referencia, e.huella, e.enviado_en, u.nombre AS quien FROM envios_dgii e LEFT JOIN usuarios u ON u.id = e.enviado_por
+      SELECT e.referencia, e.huella, e.enviado_en, u.nombre AS quien, e.monto_pagar::text, to_char(e.fecha_limite, 'YYYY-MM-DD') AS fecha_limite,
+             e.constancia_id, e.notificacion_id, e.en_cero
+        FROM envios_dgii e LEFT JOIN usuarios u ON u.id = e.enviado_por
        WHERE e.formato = ${formulario} AND e.periodo = ${p.periodo}`;
     return { r: await def.calcular(tx, p, manuales), manuales, envio: e, guardado: d };
   });
@@ -104,7 +108,9 @@ export async function Declaracion({ id, formulario, mes, incrustada }: { id: str
       {envio && (
         <div className="tarjeta" style={{ margin: "12px 0" }}>
           <p className="sub" style={{ margin: 0 }}>
-            Marcado como presentado el {fechaHora(envio.enviado_en)} por {envio.quien ?? "—"}{envio.referencia && <> · referencia {envio.referencia}</>}.
+            Marcado como presentado{envio.en_cero && " en cero"} el {fechaHora(envio.enviado_en)} por {envio.quien ?? "—"}{envio.referencia && <> · referencia {envio.referencia}</>}.
+            {envio.monto_pagar && <> A pagar: <strong>RD${verMonto(envio.monto_pagar)}</strong> antes del {verFecha(envio.fecha_limite)}{envio.notificacion_id && <> (<Link href={`/e/${id}/notificaciones`}>notificación de pago</Link>)</>}.</>}
+            {envio.constancia_id && <> <a href={`/e/${id}/documentos/${envio.constancia_id}`} target="_blank" rel="noreferrer">Ver la constancia</a>.</>}
             Su nuevo saldo a favor pasa como saldo a favor anterior al {def.anual ? "ejercicio" : "mes"} siguiente.
           </p>
           {cambio && <p className="error">Después de presentarlo cambió algo de este {def.anual ? "ejercicio" : "mes"}. Si corresponde, presenta una rectificativa y vuelve a marcarlo.</p>}
@@ -137,7 +143,11 @@ export async function Declaracion({ id, formulario, mes, incrustada }: { id: str
 
       {editar && errores.length === 0 && (
         <Formulario accion={presentarDeclaracion.bind(null, id, formulario, p.periodo)} boton="Marcar como presentado" className="fila">
-          <label style={{ flex: "1 1 260px" }}>Referencia de la Oficina Virtual (opcional)<input name="referencia" maxLength={60} /></label>
+          <label style={{ flex: "1 1 220px" }}>Referencia de la Oficina Virtual (opcional)<input name="referencia" maxLength={60} /></label>
+          <label style={{ width: 170 }}>Monto a pagar (RD$)<input name="monto_pagar" inputMode="decimal" defaultValue={montoSugerido(formulario, r.valores)} /></label>
+          <label style={{ width: 170 }}>Fecha límite de pago<input type="date" name="fecha_limite" defaultValue={vence} /></label>
+          <label style={{ flex: "1 1 240px" }}>Constancia (PDF, JPG o PNG; opcional)<input type="file" name="constancia" accept="application/pdf,image/jpeg,image/png" /></label>
+          <p className="sub" style={{ flexBasis: "100%", margin: 0 }}>Si hay monto a pagar, se crea la notificación de pago de la DGII con esta constancia, para enviarla al cliente por WhatsApp.</p>
         </Formulario>
       )}
       {"ir6" in r && <AnexoIr6 filas={(r as Resultado & { ir6: FilaIr6[] }).ir6} descarga={`/e/${id}/exportar/ir6?periodo=${p.periodo}`} />}

@@ -10,7 +10,7 @@ const mesValido = (mes: string | undefined, porDefecto: string, vacioEsTodos: bo
 export const ESTADOS_FACTURA: Record<string, string> = { todas: "Todas", borradores: "Borradores", pendientes: "Pendientes", vencidas: "Vencidas", pagadas: "Pagadas", anuladas: "Anuladas", notas: "Notas de crédito" };
 export const ESTADOS_COMPRA: Record<string, string> = {
   todas: "Todas", borradores: "Borradores", pendientes: "Por pagar", vencidas: "Vencidas", pagadas: "Pagadas", anuladas: "Anuladas",
-  notas: "Notas de crédito",
+  notas: "Notas de crédito", sin_revisar: "Sin revisar",
 };
 
 export type FiltrosDocumentos = { mes: string; estado: string; q: string; hoy: string };
@@ -65,6 +65,7 @@ export function listarFacturas(tx: Tx, { mes, estado, q, hoy }: FiltrosDocumento
 export type FilaCompra = {
   id: string; estado: string; ncf: string | null; tipo_comprobante: string; fecha: string; vence: string; proveedor: string; rnc: string | null;
   moneda: string; subtotal: string; itbis: string; otros: string; total: string; saldo: string | null; anulada: boolean; origen: string | null;
+  revision: string | null; // bloque 4a: «revisada», «corregir» o sin revisar
 };
 
 export function estadoCompra(f: FilaCompra, hoy: string) {
@@ -78,9 +79,10 @@ export function listarCompras(tx: Tx, { mes, estado, q, hoy }: FiltrosDocumentos
   return tx<FilaCompra[]>`
     SELECT c.id, c.estado, c.ncf, c.tipo_comprobante, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, to_char(c.vence, 'YYYY-MM-DD') AS vence,
            p.nombre AS proveedor, p.rnc, c.moneda, c.subtotal::text, c.itbis::text, c.otros_impuestos::text AS otros, c.total::text,
-           s.saldo::text, c.anulada, o.ncf AS origen
+           s.saldo::text, c.anulada, o.ncf AS origen, rv.estado AS revision
       FROM compras c JOIN proveedores p ON p.id = c.proveedor_id
       LEFT JOIN saldos_compra s ON s.compra_id = c.id
+      LEFT JOIN revisiones_compra rv ON rv.compra_id = c.id
       LEFT JOIN compras o ON o.id = c.compra_origen_id
      WHERE (${mes} = '' OR to_char(c.fecha, 'YYYY-MM') = ${mes})
        AND (${q} = '' OR c.ncf ILIKE ${"%" + q + "%"} OR p.nombre ILIKE ${"%" + q + "%"} OR p.rnc = ${q.replace(/-/g, "")})
@@ -91,6 +93,7 @@ export function listarCompras(tx: Tx, { mes, estado, q, hoy }: FiltrosDocumentos
              WHEN 'pagadas' THEN NOT c.anulada AND s.saldo <= 0
              WHEN 'anuladas' THEN c.anulada
              WHEN 'notas' THEN c.tipo_comprobante IN ('B04', 'E34')
+             WHEN 'sin_revisar' THEN c.estado = 'registrada' AND NOT c.anulada AND rv.estado IS DISTINCT FROM 'revisada'
              ELSE true END
      ORDER BY c.estado = 'borrador' DESC, c.fecha DESC, c.ncf DESC NULLS FIRST`;
 }

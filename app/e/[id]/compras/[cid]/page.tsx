@@ -10,6 +10,7 @@ import { puede } from "@/lib/permisos";
 import { anularLaCompra, descartarCompra, registrarBorradorCompra } from "../../compras-acciones";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
+import { revisarCompraAccion } from "../../impuestos-acciones";
 
 type Compra = {
   id: string; estado: "borrador" | "registrada"; tipo_comprobante: string; ncf: string | null; fecha: string; vence: string; moneda: string;
@@ -57,10 +58,14 @@ export default async function VerCompra({ params, searchParams }: {
       SELECT 'Nota de crédito', n.ncf, '/compras/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text
         FROM compras n WHERE n.compra_origen_id = ${cid} AND n.estado = 'registrada' AND NOT n.anulada
       ORDER BY 4`;
-    return { c, lineas, movimientos };
+    // Revisión de la compra (bloque 4a): quién la revisó o qué hay que corregir.
+    const [revision] = await tx<{ estado: string; nota: string | null; quien: string | null; en: Date }[]>`
+      SELECT r.estado, r.nota, u.nombre AS quien, r.revisada_en AS en FROM revisiones_compra r LEFT JOIN usuarios u ON u.id = r.revisada_por
+       WHERE r.compra_id = ${cid}`;
+    return { c, lineas, movimientos, revision };
   });
   if (!datos) notFound();
-  const { c, lineas, movimientos } = datos;
+  const { c, lineas, movimientos, revision } = datos;
   const borrador = c.estado === "borrador";
   const esNota = esNotaProveedor(c.tipo_comprobante);
   const simbolo = c.moneda === "USD" ? "US$" : "RD$";
@@ -84,6 +89,25 @@ export default async function VerCompra({ params, searchParams }: {
           {borrador ? "Borrador" : c.anulada ? "Anulada" : "Registrada"}
         </span>
       </div>
+      {!borrador && !c.anulada && (
+        <div className={`tarjeta${revision?.estado === "corregir" ? " revision-corregir" : ""}`} style={{ marginBottom: 16 }}>
+          <p style={{ margin: 0 }}>
+            {revision
+              ? revision.estado === "revisada"
+                ? <>✓ Revisada por {revision.quien ?? "—"} el {revision.en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</>
+                : <><strong>Por corregir:</strong> {revision.nota} <span className="sub">({revision.quien ?? "—"}, {revision.en.toLocaleDateString("es-DO", { timeZone: "America/Santo_Domingo" })})</span></>
+              : <>Sin revisar: confirma el tipo de gasto del 606, si cada línea es bien o servicio, el ITBIS con o sin crédito y las retenciones.</>}
+          </p>
+          {puede(permisos, "contabilizar") && (
+            <div className="fila" style={{ marginTop: 8, alignItems: "flex-start" }}>
+              {revision?.estado !== "revisada" && <Formulario accion={revisarCompraAccion.bind(null, id, cid, "revisada")} boton="Marcar como revisada" className="fila"><span /></Formulario>}
+              <Formulario accion={revisarCompraAccion.bind(null, id, cid, "corregir")} boton="Pedir corrección" className="fila">
+                <input name="nota" placeholder="Qué hay que corregir" maxLength={500} aria-label="Qué hay que corregir" style={{ minWidth: 240 }} />
+              </Formulario>
+            </div>
+          )}
+        </div>
+      )}
       <div className="fila" style={{ marginBottom: 16 }}>
         {!esNota && !borrador && !c.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
           <Link className="boton primario" href={`/e/${id}/pagos/nuevo?compra=${c.id}`}>Registrar pago</Link>

@@ -528,7 +528,25 @@ No se pasa a la siguiente sin su autorización expresa.
   subido de la notificación. Pide el permiso «exportar»; no lo usan los usuarios de clientes ni la supervisión. Pruebas
   `pruebas/mensajes.test.mjs` (186 en total). En `main` el 5-nov-2026 («sí» de Patricia). **Bloque 3 completo.** Pendiente:
   probarlo en un celular real con WhatsApp; Patricia revisa «Envío de factura» y escribe los datos de «Cuenta bancaria». Sigue el bloque 4
-  (reporte mensual e impuestos de clientes): presentar la propuesta antes.
+  (reporte mensual e impuestos de clientes).
+- **Bloque 4 · Reporte mensual e impuestos de clientes** (propuesta en https://claude.ai/artifact/FnsiPjFNvHwFvvJVtiZwnP, «sí» de
+  Patricia del 5-nov-2026 a empezar por la 4a; 3 entregas: 4a impuestos del mes, 4b reporte mensual, 4c proyección IR-2/IR-1).
+  Preguntas abiertas: Excel «Reporte de Cliente Mensual - IR2»; quién aprueba el reporte; escala del IR-1; cierre con botón o solo;
+  constancia con monto → notificación. Para la 4a se usaron las recomendadas (cierre con botón; la notificación nace sola).
+  **Entrega 4a · Impuestos del mes** (migración 037, `lib/impuestos-mes.ts`, `app/e/[id]/impuestos-acciones.ts`, pantalla
+  `/firma/[fid]/impuestos?mes=AAAA-MM` con descarga `/firma/[fid]/impuestos/exportar`). Tablero de la firma (como el «Tax manager»
+  de Xero): por cliente activo el 606, 607, 608, IT-1 e IR-17 que le tocan (obligaciones confirmadas; si no confirmó ninguna, las
+  sugeridas por su perfil fiscal con aviso «confírmalas»), estado presentada / en cero / pendiente / vencida (día 15, 20 y 10 del
+  mes siguiente, `venceMensual`), monto a pagar, compras revisadas, documentos sin procesar; filtros (con pendientes, listos,
+  cerrados, mis clientes) y cifras arriba. Mes por defecto: el anterior. «En cero» para 606/607/608 desde el tablero (`marcarEnviado`
+  con `en_cero=1`; si tiene registros, error). Al presentar IT-1, IR-17 o IR-2: monto a pagar (sugerido de I68, R37 o I31+X45,
+  `montoSugerido`), fecha límite (sugerida) y constancia PDF/JPG/PNG (`guardarPresentacion`): con monto nace la notificación de pago
+  DGII con la constancia como su PDF (WhatsApp y alertas del bloque 3); `envios_dgii.constancia_id/monto_pagar/fecha_limite/
+  notificacion_id`; con monto nunca queda «en cero». Los 606/607/608 aceptan un acuse. Quitar la marca (`quitarPresentacion`) borra
+  la notificación si sigue pendiente. `revisiones_compra` (revisada o «corregir» con nota; quién y cuándo; permiso «contabilizar»):
+  tarjeta en el detalle de la compra, columna «Revisión» y filtro «Sin revisar» en Compras, aviso en Reportes DGII. «Cerrar el mes»
+  (permiso «cerrar», solo con todo presentado o en cero) pone `fecha_bloqueo` = fin de mes y anota la gestión en la bitácora.
+  Pruebas `pruebas/impuestos-mes.test.mjs` (188 en total). Pendiente: el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

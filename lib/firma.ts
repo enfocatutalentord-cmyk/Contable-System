@@ -1,4 +1,5 @@
 import { alertasDeEmpresa, type Alerta } from "./alertas";
+import { estadoDelMes } from "./impuestos-mes";
 import { antiguedad } from "./cxc";
 import { antiguedadCxp } from "./cxp";
 import { conEmpresa, db } from "./db";
@@ -40,6 +41,12 @@ export async function alertasDeFirma(clientes: ClienteFirma[], hoy: string): Pro
   const listas = await Promise.all(clientes.map((c) => conEmpresa(c.id, (tx) => alertasDeEmpresa(tx, { empresaId: c.id, hoy, propia: c.propia }))));
   return clientes.flatMap((c, i) => listas[i].map((a) => ({ ...a, cliente: c })))
     .sort((x, y) => (x.nivel === y.nivel ? x.orden.localeCompare(y.orden) : x.nivel === "urgente" ? -1 : 1));
+}
+
+// Impuestos del mes de cada cliente (bloque 4a): qué declara, qué ya presentó, cuánto paga y si su mes se puede cerrar.
+export async function impuestosDeFirma(clientes: ClienteFirma[], periodo: string, hoy: string) {
+  const estados = await Promise.all(clientes.map((c) => conEmpresa(c.id, (tx) => estadoDelMes(tx, periodo, hoy))));
+  return clientes.map((c, i) => ({ cliente: c, ...estados[i] }));
 }
 
 export type Resumen = {

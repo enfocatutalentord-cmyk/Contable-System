@@ -7,7 +7,9 @@ import { ErrorContable } from "@/lib/asientos";
 import { armarFormato, esFormato, FORMATOS, periodoDe } from "@/lib/formatos-dgii";
 import { calcularDeclaracion, esFormulario, FORMULARIOS, leerManuales } from "@/lib/declaraciones";
 import { leerSociedad } from "@/lib/ir2-sociedad";
-import { deCentavos } from "@/lib/montos";
+import { deCentavos, leerMonto } from "@/lib/montos";
+import { fechaValida } from "@/lib/reportes";
+import { ErrorImpuestos, guardarPresentacion, leerConstancia, quitarPresentacion } from "@/lib/impuestos-mes";
 import type { Estado } from "../../acciones-cuenta";
 
 // Deja constancia de que el formato se envió por la Oficina Virtual (o en cero), con la referencia que da la DGII.
@@ -18,18 +20,19 @@ export async function marcarEnviado(empresaId: string, formato: string, periodo:
   if (!esFormato(formato) || !p) return { error: "Formato o período no válido." };
   const referencia = String(fd.get("referencia") ?? "").trim().slice(0, 60) || null;
   try {
+    const constancia = await leerConstancia(fd.get("constancia"));
     await conEmpresa(empresaId, async (tx) => {
       const a = await armarFormato(tx, formato, p);
       if (a.avisos.some((x) => x.nivel === "error")) throw new ErrorContable("Corrige primero los errores del formato");
       const enCero = a.filas.length === 0 && !(a.consumo && a.consumo.cantidad > 0);
-      const r = await tx`
-        INSERT INTO envios_dgii (empresa_id, formato, periodo, en_cero, referencia, huella, registros, enviado_por)
-        VALUES (${empresaId}, ${formato}, ${periodo}, ${enCero}, ${referencia}, ${a.huella}, ${a.filas.length}, ${usuario.id})
-        ON CONFLICT (empresa_id, formato, periodo) DO NOTHING`;
-      if (r.count === 0) throw new ErrorContable("Ese formato ya está marcado como enviado");
+      if (fd.get("en_cero") === "1" && !enCero) throw new ErrorContable(`El ${formato} tiene registros este mes: no va en cero`);
+      await guardarPresentacion(tx, {
+        empresaId, usuarioId: usuario.id, formato, periodo, nombre: `${formato} · ${FORMATOS[formato]}`, enCero, referencia, huella: a.huella,
+        registros: a.filas.length, casillas: null, monto: null, fechaLimite: null, constancia,
+      });
     });
   } catch (e) {
-    return { error: mensajeError(e) };
+    return { error: e instanceof ErrorImpuestos ? e.message : mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}/dgii`);
   return { ok: `${formato} · ${FORMATOS[formato]} marcado como enviado.` };
@@ -40,7 +43,7 @@ export async function quitarEnvio(empresaId: string, formato: string, periodo: s
   await exigirPermiso(empresaId, "impuestos", "/dgii");
   if (!esFormato(formato) || !periodoDe(periodo)) return { error: "Formato o período no válido." };
   try {
-    await conEmpresa(empresaId, (tx) => tx`DELETE FROM envios_dgii WHERE formato = ${formato} AND periodo = ${periodo}`);
+    await conEmpresa(empresaId, (tx) => quitarPresentacion(tx, formato, periodo));
   } catch (e) {
     return { error: mensajeError(e) };
   }
@@ -76,19 +79,26 @@ export async function presentarDeclaracion(empresaId: string, formulario: string
   const p = periodoDe(periodo);
   if (!esFormulario(formulario) || !p) return { error: "Formulario o período no válido." };
   const referencia = String(fd.get("referencia") ?? "").trim().slice(0, 60) || null;
+  // Constancia, monto a pagar y fecha límite (bloque 4a). Con monto, nace la notificación de pago de la DGII.
+  const montoTexto = String(fd.get("monto_pagar") ?? "").trim();
+  const monto = montoTexto ? leerMonto(montoTexto) : null;
+  const fechaLimite = String(fd.get("fecha_limite") ?? "").trim() || null;
+  if (montoTexto && monto === null) return { error: "El monto a pagar no es válido." };
+  if (fechaLimite && !fechaValida(fechaLimite)) return { error: "La fecha límite no es válida." };
   try {
+    const constancia = await leerConstancia(fd.get("constancia"));
     await conEmpresa(empresaId, async (tx) => {
       const r = await calcularDeclaracion(tx, formulario, p);
       if (r.avisos.some((x) => x.nivel === "error")) throw new ErrorContable(`Corrige primero los errores del ${formulario}`);
       const casillas = Object.fromEntries(Object.entries(r.valores).map(([k, v]) => [k, deCentavos(v)]));
-      const x = await tx`
-        INSERT INTO envios_dgii (empresa_id, formato, periodo, referencia, huella, registros, enviado_por, casillas)
-        VALUES (${empresaId}, ${formulario}, ${periodo}, ${referencia}, ${r.huella}, 0, ${usuario.id}, ${tx.json(casillas)})
-        ON CONFLICT (empresa_id, formato, periodo) DO NOTHING`;
-      if (x.count === 0) throw new ErrorContable(`El ${formulario} de ese período ya está marcado como presentado`);
+      const enCero = Object.values(r.valores).every((v) => v === 0n);
+      await guardarPresentacion(tx, {
+        empresaId, usuarioId: usuario.id, formato: formulario, periodo, nombre: FORMULARIOS[formulario].nombre.split(" · ")[0], enCero, referencia,
+        huella: r.huella, registros: 0, casillas, monto, fechaLimite, constancia,
+      });
     });
   } catch (e) {
-    return { error: mensajeError(e) };
+    return { error: e instanceof ErrorImpuestos ? e.message : mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}/dgii`, "layout");
   return { ok: `${formulario} marcado como presentado.` };
@@ -98,7 +108,7 @@ export async function quitarDeclaracion(empresaId: string, formulario: string, p
   await exigirPermiso(empresaId, "impuestos", "/dgii");
   if (!esFormulario(formulario) || !periodoDe(periodo)) return { error: "Formulario o período no válido." };
   try {
-    await conEmpresa(empresaId, (tx) => tx`DELETE FROM envios_dgii WHERE formato = ${formulario} AND periodo = ${periodo}`);
+    await conEmpresa(empresaId, (tx) => quitarPresentacion(tx, formulario, periodo));
   } catch (e) {
     return { error: mensajeError(e) };
   }
