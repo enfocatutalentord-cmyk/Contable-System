@@ -14,6 +14,10 @@ export type ClienteFirma = {
   fecha_inicio_contrato: string | null; formalizado: boolean; creada: string;
 };
 
+// El equipo de la firma (para elegir responsables).
+export const equipoDe = (firmaId: string) => db()<{ id: string; nombre: string }[]>`
+  SELECT u.id, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id WHERE mf.firma_id = ${firmaId} ORDER BY u.nombre`;
+
 // El administrador de la firma ve todos los clientes; el resto, los que tiene asignados.
 export async function clientesDeFirma(firmaId: string, usuarioId: string, administrador: boolean, conInactivos = false): Promise<ClienteFirma[]> {
   return db()<ClienteFirma[]>`
@@ -33,23 +37,29 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
 export type Resumen = {
   borradores: number; facturasBorrador: number; comprasBorrador: number; documentosPorProcesar: number; movimientosBanco: number;
   porCobrar: bigint; vencido: bigint; porPagar: bigint; ultimo: string | null;
+  notificaciones: number; notificacionesPorVencer: number; gestionesVencidas: number; // bloque 3a
 };
 
 export async function resumenCliente(empresaId: string): Promise<Resumen> {
   const hoy = hoyISO();
   return conEmpresa(empresaId, async (tx) => {
-    const [r] = await tx<{ borradores: number; facturas: number; compras: number; documentos: number; banco: number; ultimo: string | null }[]>`
+    const [r] = await tx<{ borradores: number; facturas: number; compras: number; documentos: number; banco: number; ultimo: string | null;
+      notificaciones: number; por_vencer: number; gestiones_vencidas: number }[]>`
       SELECT (SELECT count(*)::int FROM asientos WHERE estado = 'borrador') AS borradores,
              (SELECT count(*)::int FROM facturas WHERE estado = 'borrador') AS facturas,
              (SELECT count(*)::int FROM compras WHERE estado = 'borrador') AS compras,
              (SELECT count(*)::int FROM recepciones WHERE estado IN ('nuevo', 'en_proceso')) AS documentos,
              (SELECT count(*)::int FROM movimientos_banco WHERE estado = 'pendiente') AS banco,
-             (SELECT to_char(max(fecha), 'YYYY-MM-DD') FROM asientos WHERE estado = 'contabilizado') AS ultimo`;
+             (SELECT to_char(max(fecha), 'YYYY-MM-DD') FROM asientos WHERE estado = 'contabilizado') AS ultimo,
+             (SELECT count(*)::int FROM notificaciones_pago WHERE estado = 'pendiente') AS notificaciones,
+             (SELECT count(*)::int FROM notificaciones_pago WHERE estado <> 'pagada' AND fecha_limite <= ${hoy}::date + 3) AS por_vencer,
+             (SELECT count(*)::int FROM gestiones WHERE estado <> 'hecha' AND entrega < ${hoy}::date) AS gestiones_vencidas`;
     const cxc = await antiguedad(tx, hoy);
     const cxp = await antiguedadCxp(tx, hoy);
     return {
       borradores: r.borradores, facturasBorrador: r.facturas, comprasBorrador: r.compras, documentosPorProcesar: r.documentos, movimientosBanco: r.banco,
       porCobrar: cxc.total, vencido: cxc.totales.slice(1).reduce((s, t) => s + t, 0n), porPagar: cxp.total, ultimo: r.ultimo,
+      notificaciones: r.notificaciones, notificacionesPorVencer: r.por_vencer, gestionesVencidas: r.gestiones_vencidas,
     };
   });
 }

@@ -1,6 +1,8 @@
 import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
 import { aLinea, lineasDe, montoAnticipo, totalesPropuesta } from "@/lib/propuestas";
 import { FORMAS_ANTICIPO } from "@/lib/anticipos";
+import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, nombreMes, TIPOS_GESTION } from "@/lib/bitacora";
+import { equipoDe } from "@/lib/firma";
 import { listarImpuestos } from "@/lib/fiscal";
 import { accesoEmpresa } from "@/lib/acceso";
 import { bitacora } from "@/lib/asientos";
@@ -33,7 +35,7 @@ import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|lista-precios|propuesta|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -412,6 +414,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         ...base, titulo: "Catálogo de cuentas", detalle: `${cuentas.length} cuentas`,
         columnas: [col("Código", false, 12), col("Cuenta", false, 46), col("Tipo", false, 12), col("Nivel", false, 7), col("Uso", false, 10), col("Estado", false, 10)],
         filas: cuentas.map((c) => [c.codigo, `${"  ".repeat(c.nivel - 1)}${c.nombre}`, tipos[c.tipo] ?? c.tipo, c.nivel, c.de_detalle ? "Detalle" : "Grupo", c.activa ? "Activa" : "Inactiva"]),
+      }];
+    }
+    if (reporte === "bitacora") {
+      // Bitácora del mes (bloque 3a): lo anotado y lo que registró el sistema, con responsable y estado.
+      const f = leerFiltrosBitacora(sp, hoyISO());
+      const nombres = new Map((await equipoDe(empresa.firma_id)).map((p) => [p.id, p.nombre]));
+      const gestiones = await conEmpresa(id, (tx) => listarGestiones(tx, f, nombres));
+      return [`bitacora-${f.mes}`, {
+        ...base, titulo: "Bitácora de gestiones", detalle: `${nombreMes(f.mes)} · ${gestiones.length} gestiones`, horizontal: true,
+        columnas: [col("Fecha", false, 12), col("Tipo", false, 22), col("Qué se hizo", false, 60), col("Responsable", false, 20), col("Entrega", false, 12), col("Estado", false, 12)],
+        filas: gestiones.map((g) => [verFecha(g.fecha), TIPOS_GESTION[g.tipo], g.descripcion, g.responsable ?? "", g.entrega ? verFecha(g.entrega) : "", ESTADOS_GESTION[g.estado]]),
       }];
     }
     if (reporte === "propuesta" && esUuid(sp.id ?? "")) {

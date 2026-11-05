@@ -24,6 +24,9 @@ export default async function InicioFirma({ params, searchParams }: {
     r.comprasBorrador && `${r.comprasBorrador} compra${r.comprasBorrador > 1 ? "s" : ""} sin registrar`,
     r.documentosPorProcesar && `${r.documentosPorProcesar} documento${r.documentosPorProcesar > 1 ? "s" : ""} por procesar`,
     r.movimientosBanco && `${r.movimientosBanco} movimiento${r.movimientosBanco > 1 ? "s" : ""} del banco por conciliar`,
+    r.notificaciones && `${r.notificaciones} notificaci${r.notificaciones > 1 ? "ones" : "ón"} de pago por enviar`,
+    r.notificacionesPorVencer && `${r.notificacionesPorVencer} notificaci${r.notificacionesPorVencer > 1 ? "ones" : "ón"} sin pagar por vencer`,
+    r.gestionesVencidas && `${r.gestionesVencidas} gesti${r.gestionesVencidas > 1 ? "ones" : "ón"} de la bitácora atrasada${r.gestionesVencidas > 1 ? "s" : ""}`,
   ].filter(Boolean) as string[];
 
   return (

@@ -481,9 +481,19 @@ No se pasa a la siguiente sin su autorización expresa.
   a empezar por la 3a; 3 entregas: 3a bitácora y notificaciones de pago, 3b cronograma y alertas, 3c WhatsApp). Respuestas del
   4-nov: **crear el rol Coordinadora** (bitácora, grupos, igualas, cobros, notificaciones, digita compras y ventas; sin presupuesto
   personal, cuenta corriente de Patricia, precios ni declaraciones); los enlaces de descarga duran **30 días**; agregar a la ficha
-  las fechas de vencimiento del **registro mercantil y del nombre comercial (ONAPI)** (alerta 60 días antes). **3a sin empezar**
-  (solo se revisaron tablas: `envios_dgii`, `recepciones`, `documentos_entidad_check`; las vistas de la firma recorren los clientes
-  con `conEmpresa`, como `/firma/[fid]/documentos`). Faltan los ejemplos de notificaciones TSS y DGII para leerlas solas.
+  las fechas de vencimiento del **registro mercantil y del nombre comercial (ONAPI)** (alerta 60 días antes). Faltan los ejemplos
+  de notificaciones TSS y DGII para leerlas solas. **Entrega 3a · Bitácora y notificaciones de pago** (migración 034,
+  `lib/bitacora.ts`, `app/e/[id]/bitacora-acciones.ts`, pestañas `/bitacora` y `/notificaciones` en «Cliente elegido», pantalla
+  `/firma/[fid]/bitacora`, descarga `/exportar/bitacora?mes=AAAA-MM`). `gestiones` (fecha, tipo de la sección 8, descripción,
+  responsable, entrega, estado pendiente/en proceso/hecha, soporte en `documentos` entidad 'gestion'; RLS e historial); se anota sola
+  por triggers con `anotar_gestion` (origen + id único, sin repetir): factura o nota emitida, `envios_dgii` (declaración marcada
+  presentada), recepción procesada y notificación enviada; responsable = `app.usuario_id`. Las del sistema no se borran.
+  `notificaciones_pago` (TSS/DGII, mes, concepto, monto, fecha límite, PDF en `documentos` entidad 'notificacion'; pendiente →
+  enviada → pagada, «No se envió» vuelve a pendiente); aviso `porVencer` con 3 días o menos sin pago. Inicio de la firma: por
+  cliente, notificaciones por enviar, sin pagar por vencer y gestiones atrasadas (`resumenCliente`). Rol base **Coordinadora**
+  (ver, registrar, contabilizar, adjuntar, exportar; sin Productos y servicios, impuestos, catálogo ni ficha editable) creado en
+  todas las firmas; `/bitacora` y `/notificaciones` sumadas a Contador, Auxiliar y Facturación. Pruebas `pruebas/bitacora.test.mjs`
+  (178 en total). Esperando el «sí» de Patricia para `main`.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
