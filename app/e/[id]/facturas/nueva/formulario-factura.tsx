@@ -7,8 +7,14 @@ import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { verMonto } from "@/lib/montos";
 import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
-export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string };
-export type ServicioFactura = { id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null };
+export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string; categoria: string | null };
+export type ServicioFactura = {
+  id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null;
+  unidad_id: string | null; precios: Record<string, string>; // precio por categoría de cliente (lista de precios)
+};
+const NOMBRE_CATEGORIA: Record<string, string> = { pequena: "Pequeña", mediana: "Mediana", grande: "Grande", emprendedor: "Emprendedor" };
+// El precio de la categoría del cliente o, si no hay, el general.
+const precioDe = (s: ServicioFactura, categoria: string | null | undefined) => (categoria && s.precios[categoria]) || s.precio;
 export type ImpuestoFactura = { id: string; nombre: string; tipo: string; tasa: string; vigente_desde: string; vigente_hasta: string | null };
 export type Linea = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string; unidad?: string };
 export type InicialFactura = {
@@ -65,6 +71,11 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
     setClienteId(id);
     const c = clientes.find((x) => x.id === id);
     if (c) {
+      // Las líneas con producto toman el precio de la categoría del nuevo cliente.
+      setLineas((ls) => ls.map((l) => {
+        const s = servicios.find((x) => x.id === l.servicioId);
+        return s ? { ...l, precio: precioDe(s, c.categoria) } : l;
+      }));
       setVence(sumarDias(fecha, c.dias_credito));
       setTipo(c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02"));
       setTipoIngreso(c.tipo_ingreso);
@@ -75,7 +86,8 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
   const elegirServicio = (i: number, id: string) => {
     const s = servicios.find((x) => x.id === id);
     setLineas((ls) => ls.map((l, j) => j !== i ? l : s
-      ? { ...l, servicioId: id, descripcion: s.nombre, precio: s.precio, impuesto: s.impuesto_id ?? impuestoPorDefecto, adicional: s.impuesto_adicional_id ?? "" }
+      ? { ...l, servicioId: id, descripcion: s.nombre, precio: precioDe(s, cliente?.categoria), impuesto: s.impuesto_id ?? impuestoPorDefecto,
+          adicional: s.impuesto_adicional_id ?? "", unidad: s.unidad_id ?? l.unidad ?? "" }
       : { ...l, servicioId: "" }));
   };
 
@@ -122,6 +134,13 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
         {moneda === "USD" && <label style={{ width: 120 }}>Tasa<input name="tasa" inputMode="decimal" placeholder="60.50" defaultValue={inicial?.tasa} required /></label>}
       </div>
       {(disponibles[tipo] ?? 0) === 0 && <p className="aviso">No tienes comprobantes {tipo} disponibles. Puedes guardar el borrador; para emitir, agrega el rango en Comprobantes fiscales.</p>}
+      {cliente && servicios.some((s) => Object.keys(s.precios).length) && (
+        <p className="sub">
+          {cliente.categoria
+            ? <>Precios de la lista para la categoría <strong>{NOMBRE_CATEGORIA[cliente.categoria]}</strong>; puedes cambiarlos en cada línea.</>
+            : <>Este cliente no tiene categoría: se usa el precio general. La categoría se pone en Clientes (o en la ficha de su empresa).</>}
+        </p>
+      )}
       {sinRnc && <p className="aviso">Este cliente no tiene RNC ni cédula. Para {tipo} hace falta: usa B02 (consumo) o agrega su identificación.</p>}
       <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
       <div className="tabla-envoltura">

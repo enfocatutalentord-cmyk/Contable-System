@@ -1,6 +1,7 @@
 "use server";
 
 import { leerUnidad } from "@/lib/empresa-propia";
+import { CATEGORIAS_PRECIO, ErrorPrecio, GRUPOS_SERVICIO, guardarPrecios, leerPrecios, type PreciosEntrada } from "@/lib/precios";
 import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
@@ -9,7 +10,7 @@ import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc } from "@/lib/empresas";
-import { aCentavos, leerMonto } from "@/lib/montos";
+import { aCentavos, hoyISO, leerMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import {
@@ -47,10 +48,12 @@ export async function guardarCliente(empresaId: string, _: Estado, fd: FormData)
   if (!Number.isInteger(dias) || dias < 0 || dias > 365) return { error: "Los días de crédito van de 0 a 365." };
   const tipoIngreso = texto(fd, "tipo_ingreso") || "01";
   if (!(tipoIngreso in TIPOS_INGRESO)) return { error: "Elige el tipo de ingreso." };
-  const datos = {
+  const categoria = texto(fd, "categoria") || null;
+  if (categoria && !(CATEGORIAS_PRECIO as readonly string[]).includes(categoria)) return { error: "Elige una categoría de la lista." };
+  const datos: Record<string, unknown> = {
     nombre, rnc: ident || null, tipo_identificacion: ident ? tipoId : null, email: texto(fd, "email") || null,
     telefono: texto(fd, "telefono") || null, direccion: texto(fd, "direccion") || null, dias_credito: dias,
-    ncf_predeterminado: ncf || null, tipo_ingreso: tipoIngreso, retenciones, activo: id ? fd.get("activo") === "on" : true,
+    ncf_predeterminado: ncf || null, tipo_ingreso: tipoIngreso, retenciones, activo: id ? fd.get("activo") === "on" : true, categoria,
   };
   try {
     await conEmpresa(empresaId, async (tx) => {
@@ -60,6 +63,9 @@ export async function guardarCliente(empresaId: string, _: Estado, fd: FormData)
       }
       if (id) {
         if (!esUuid(id)) throw new ErrorContable("Cliente no válido");
+        // La categoría de un cliente enlazado sale de la ficha de su empresa.
+        const [v] = await tx<{ enlazado: boolean }[]>`SELECT empresa_vinculada_id IS NOT NULL AS enlazado FROM clientes WHERE id = ${id}`;
+        if (v?.enlazado) delete datos.categoria;
         const r = await tx`UPDATE clientes SET ${tx(datos)} WHERE id = ${id}`;
         if (r.count === 0) throw new ErrorContable("El cliente no existe");
       } else {
@@ -86,7 +92,20 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
   const impuesto = texto(fd, "impuesto");
   const adicional = texto(fd, "impuesto_adicional") || null;
   const cuenta = texto(fd, "cuenta_ingreso") || null;
+  const codigo = texto(fd, "codigo") || null;
+  const grupo = texto(fd, "grupo") || null;
+  const unidad = leerUnidad(fd.get("unidad"));
+  let precios: PreciosEntrada;
+  try {
+    precios = leerPrecios(fd, hoyISO());
+  } catch (e) {
+    if (e instanceof ErrorPrecio) return { error: e.message };
+    throw e;
+  }
   if (!nombre) return { error: "Escribe el nombre." };
+  if (codigo && codigo.length > 20) return { error: "El código va hasta 20 caracteres." };
+  if (grupo && !(grupo in GRUPOS_SERVICIO)) return { error: "Elige un grupo de la lista." };
+  if (unidad === undefined) return { error: "La unidad de negocio no es válida." };
   if (precio === null) return { error: "El precio no es válido." };
   if (!esUuid(impuesto)) return { error: "Elige el ITBIS (o exento)." };
   if ((adicional && !esUuid(adicional)) || (cuenta && !esUuid(cuenta))) return { error: "Datos no válidos." };
@@ -102,17 +121,20 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
         const [c] = await tx<{ tipo: string; de_detalle: boolean }[]>`SELECT tipo, de_detalle FROM cuentas WHERE id = ${cuenta}`;
         if (!c || c.tipo !== "ingreso" || !c.de_detalle) throw new ErrorContable("La cuenta de ingreso debe ser una cuenta de detalle de ingresos");
       }
-      const datos = { nombre, precio, impuesto_id: impuesto, impuesto_adicional_id: adicional, cuenta_ingreso_id: cuenta };
+      const datos = { nombre, precio, impuesto_id: impuesto, impuesto_adicional_id: adicional, cuenta_ingreso_id: cuenta, codigo, grupo, unidad_id: unidad };
+      let servicioId = id;
       if (id) {
         if (!esUuid(id)) throw new ErrorContable("Dato no válido");
-        await tx`UPDATE servicios SET ${tx({ ...datos, activo: fd.get("activo") === "on" })} WHERE id = ${id}`;
+        const r = await tx`UPDATE servicios SET ${tx({ ...datos, activo: fd.get("activo") === "on" })} WHERE id = ${id}`;
+        if (r.count === 0) throw new ErrorContable("El servicio no existe");
       } else {
-        await tx`INSERT INTO servicios ${tx({ ...datos, empresa_id: empresaId })}`;
+        [{ id: servicioId }] = await tx<{ id: string }[]>`INSERT INTO servicios ${tx({ ...datos, empresa_id: empresaId })} RETURNING id`;
       }
+      await guardarPrecios(tx, empresaId, servicioId, precios);
       await bitacora(tx, empresaId, usuario.id, id ? "servicio_editado" : "servicio_creado", { nombre });
     });
   } catch (e) {
-    return { error: mensajeError(e) };
+    return { error: (e as { code?: string }).code === "23505" ? "Ya hay un servicio con ese código." : mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}/servicios`);
   if (id) redirect(`/e/${empresaId}/servicios`);

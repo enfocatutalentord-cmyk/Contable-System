@@ -430,6 +430,19 @@ No se pasa a la siguiente sin su autorización expresa.
   propia»), debajo «Clientes»; en el selector la propia dice «empresa propia». Pruebas `pruebas/empresa-propia.test.mjs` (154 en
   total). En `main` el 4-nov-2026 («sí» de Patricia). **Bloque 1 completo.** En producción, después de publicar: crear (o elegir) a Empire Tax’N Legal SRL
   como cliente, registrar a Patricia en Ficha › Socios y elegirla en «Empresa propia de la firma».
+- **Bloque 2 · Igualas y facturación de Empire** (propuesta en https://claude.ai/artifact/XiHuXmurtdaroriMDMjP61, «sí» de Patricia
+  del 4-nov-2026 a empezar por la 2a; en 3 entregas: 2a lista de precios, 2b igualas y recurrentes, 2c propuestas y anticipos).
+  Preguntas abiertas del documento: subir EMP-P01 (37 servicios), EMP-F02 y EMP-L01; igualas como borradores o emitidas solas;
+  cómo facturar a quien no pide comprobante fiscal; a qué cuenta va el trueque. **Entrega 2a · Lista de precios** (migración 031,
+  `lib/precios.ts`): `servicios.grupo` (6 grupos del documento), `codigo` (único por empresa) y `unidad_id`; `precios_servicio`
+  (precio por categoría Pequeña/Mediana/Grande/Emprendedor con `vigente_desde`; RLS, historial; trigger: servicio de la misma
+  empresa); `servicios.precio` queda como precio general. `clientes.categoria` (en Clientes; en los enlazados sale de la ficha:
+  `sincronizar_cliente_de_firma` la copia y el trigger mira también `categoria`). Productos y servicios: formulario con código,
+  grupo, unidad y los 4 precios con «Vigente desde» (`guardarPrecios`: si el vigente es igual no guarda; el mismo día reemplaza),
+  tabla con precio general y por categoría, filtro por grupo y descarga «Lista de precios» (`/exportar/lista-precios`, por
+  grupo, sin ITBIS). Factura: al elegir el servicio toma el precio de la categoría del cliente (`precioDe`) y su unidad; al
+  cambiar de cliente se recalculan las líneas con servicio; aviso si el cliente no tiene categoría. Pruebas
+  `pruebas/precios.test.mjs` (159 en total). Esperando el «sí» de Patricia para `main`. La lista queda vacía hasta que llegue EMP-P01.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

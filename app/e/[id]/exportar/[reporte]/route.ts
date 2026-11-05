@@ -1,3 +1,4 @@
+import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
 import { accesoEmpresa } from "@/lib/acceso";
 import { bitacora } from "@/lib/asientos";
 import { ACCIONES, describir, historial, nombresHistorial, TABLAS } from "@/lib/auditoria";
@@ -17,7 +18,7 @@ import {
   estadoCompra, estadoFactura, ESTADOS_COMPRA, ESTADOS_FACTURA, leerFiltrosDocumentos, leerFiltrosPagos,
   listarCobros, listarCompras, listarFacturas, listarPagos,
 } from "@/lib/listas";
-import { aCentavos, deCentavos, verFecha } from "@/lib/montos";
+import { aCentavos, deCentavos, hoyISO, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { reporteConciliacion } from "@/lib/reporte-conciliacion";
@@ -29,7 +30,7 @@ import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
 import { leerPeriodo } from "../../periodo";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|lista-precios|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -408,6 +409,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         ...base, titulo: "Catálogo de cuentas", detalle: `${cuentas.length} cuentas`,
         columnas: [col("Código", false, 12), col("Cuenta", false, 46), col("Tipo", false, 12), col("Nivel", false, 7), col("Uso", false, 10), col("Estado", false, 10)],
         filas: cuentas.map((c) => [c.codigo, `${"  ".repeat(c.nivel - 1)}${c.nombre}`, tipos[c.tipo] ?? c.tipo, c.nivel, c.de_detalle ? "Detalle" : "Grupo", c.activa ? "Activa" : "Inactiva"]),
+      }];
+    }
+    if (reporte === "lista-precios") {
+      // Lista de Precios (EMP-P01): por grupo, precio general y por categoría vigentes hoy, sin ITBIS.
+      const hoy = hoyISO();
+      const { servicios, precios } = await conEmpresa(id, async (tx) => ({
+        servicios: await tx<{ id: string; codigo: string | null; nombre: string; grupo: string | null; precio: string; impuesto: string | null }[]>`
+          SELECT s.id, s.codigo, s.nombre, s.grupo, s.precio::text, i.nombre AS impuesto
+            FROM servicios s LEFT JOIN impuestos i ON i.id = s.impuesto_id
+           WHERE s.activo ORDER BY s.grupo NULLS LAST, s.codigo NULLS LAST, s.nombre`,
+        precios: await preciosVigentes(tx, hoy),
+      }));
+      const filas: Celda[][] = [];
+      const negritas: number[] = [];
+      let grupoActual: string | null | undefined;
+      for (const s of servicios) {
+        if (s.grupo !== grupoActual) {
+          grupoActual = s.grupo;
+          negritas.push(filas.length);
+          filas.push(["", s.grupo ? GRUPOS_SERVICIO[s.grupo] : "Sin grupo", "", "", "", "", "", ""]);
+        }
+        const p = precios.get(s.id) ?? {};
+        filas.push([s.codigo ?? "", s.nombre, s.precio, ...CATEGORIAS_PRECIO.map((c) => p[c] ?? ""), s.impuesto ?? ""]);
+      }
+      return ["lista-de-precios", {
+        ...base, titulo: "Lista de precios", detalle: `Vigente al ${verFecha(hoy)} · precios sin ITBIS · ${servicios.length} servicios`, horizontal: true, negritas,
+        columnas: [col("Código", false, 10), col("Servicio", false, 44), col("General", true), col("Pequeña", true), col("Mediana", true),
+                   col("Grande", true), col("Emprendedor", true), col("ITBIS", false, 14)],
+        filas,
       }];
     }
     return null;

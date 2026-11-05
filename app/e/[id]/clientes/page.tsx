@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
+import { CATEGORIAS } from "@/lib/ficha";
 import { verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { listarRetenciones, TIPOS_INGRESO } from "@/lib/fiscal";
@@ -9,7 +10,7 @@ import { TIPOS_IDENTIFICACION } from "@/lib/permisos";
 import { NOMBRE_NCF, TIPOS_FACTURA } from "@/lib/ventas";
 import { guardarCliente } from "../ventas-acciones";
 
-type Cliente = { id: string; nombre: string; rnc: string | null; tipo_identificacion: string | null; ncf_predeterminado: string | null; tipo_ingreso: string; retenciones: string[]; email: string | null; telefono: string | null; direccion: string | null; dias_credito: number; activo: boolean; saldo: string };
+type Cliente = { id: string; nombre: string; rnc: string | null; tipo_identificacion: string | null; ncf_predeterminado: string | null; tipo_ingreso: string; retenciones: string[]; email: string | null; telefono: string | null; direccion: string | null; dias_credito: number; activo: boolean; saldo: string; categoria: string | null; empresa_vinculada_id: string | null };
 
 export default async function Clientes({ params, searchParams }: {
   params: Promise<{ id: string }>;
@@ -62,6 +63,13 @@ export default async function Clientes({ params, searchParams }: {
                 {Object.entries(TIPOS_INGRESO).map(([k, v]) => <option key={k} value={k}>{k} · {v}</option>)}
               </select>
             </label>
+            <label>Categoría (lista de precios)
+              <select name="categoria" defaultValue={enEdicion?.categoria ?? ""} disabled={!!enEdicion?.empresa_vinculada_id}
+                title={enEdicion?.empresa_vinculada_id ? "Sale de la ficha de la empresa del cliente" : undefined}>
+                <option value="">Sin categoría (precio general)</option>
+                {Object.entries(CATEGORIAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
             <label style={{ width: 130 }}>Días de crédito<input name="dias_credito" type="number" min={0} max={365} defaultValue={enEdicion?.dias_credito ?? 30} /></label>
             <label style={{ flex: "1 1 200px" }}>Correo<input name="email" type="email" defaultValue={enEdicion?.email ?? ""} /></label>
             <label style={{ flex: "1 1 150px" }}>Teléfono<input name="telefono" defaultValue={enEdicion?.telefono ?? ""} /></label>
@@ -93,13 +101,14 @@ export default async function Clientes({ params, searchParams }: {
       </form>
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Cliente</th><th>Identificación</th><th>Comprobante</th><th>Retiene</th><th>Crédito</th><th className="num">Saldo (DOP)</th><th /></tr></thead>
+          <thead><tr><th>Cliente</th><th>Identificación</th><th>Comprobante</th><th>Categoría</th><th>Retiene</th><th>Crédito</th><th className="num">Saldo (DOP)</th><th /></tr></thead>
           <tbody>
             {clientes.map((c) => (
               <tr key={c.id} style={c.activo ? undefined : { opacity: 0.55 }}>
                 <td>{c.nombre}{!c.activo && " (inactivo)"}{c.email && <div className="sub" style={{ margin: 0 }}>{c.email}</div>}</td>
                 <td>{c.rnc && <>{TIPOS_IDENTIFICACION[c.tipo_identificacion ?? "rnc"]} {c.rnc}</>}</td>
                 <td>{c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02")}</td>
+                <td>{c.categoria ? CATEGORIAS[c.categoria] : "—"}{c.empresa_vinculada_id && <div className="sub" style={{ margin: 0 }}>de la ficha</div>}</td>
                 <td>{c.retenciones.map((r) => nombreRetencion.get(r)).filter(Boolean).join(", ") || "—"}</td>
                 <td>{c.dias_credito ? `${c.dias_credito} días` : "Contado"}</td>
                 <td className="num">{verMonto(c.saldo)}</td>
@@ -109,7 +118,7 @@ export default async function Clientes({ params, searchParams }: {
                 </td>
               </tr>
             ))}
-            {clientes.length === 0 && <tr><td colSpan={7}>No hay clientes todavía.</td></tr>}
+            {clientes.length === 0 && <tr><td colSpan={8}>No hay clientes todavía.</td></tr>}
           </tbody>
         </table>
       </div>
