@@ -506,7 +506,7 @@ No se pasa a la siguiente sin su autorización expresa.
   `envios_dgii`; IR-2 a 30 días de los 120 del cierre; notificaciones por vencer; desde el día 10 sin documentos del cliente en el
   mes; sin formalizar; cumpleaños de contactos (hoy o mañana) y aniversario con la firma (7 días); en la empresa propia, igualas
   vencidas sin cobrar y los avisos de los acuerdos. Prospectos y agenda de citas quedan para después. Pruebas
-  `pruebas/tareas-alertas.test.mjs` (181 en total). Esperando el «sí» de Patricia para `main`.
+  `pruebas/tareas-alertas.test.mjs` (181 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 3c (WhatsApp).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
