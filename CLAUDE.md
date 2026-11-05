@@ -559,8 +559,9 @@ No se pasa a la siguiente sin su autorización expresa.
   (permiso «registrar») → revisado («cerrar») → aprobado («empresa», solo Administrador: Patricia; guarda `datos` y `huella`, avisa
   «Cambió después de aprobado») → enviado (al registrar el WhatsApp «Reporte mensual» con enlace seguro tipo 'reporte'; deshacer lo
   vuelve a aprobado). «Quitar la aprobación» retira los enlaces. PDF con `tablaReporte` (secciones en negrita) en
-  `/exportar/reporte-mensual?mes=` y en `/d/[token]`. Pruebas `pruebas/reporte-mensual.test.mjs` (189 en total). Pendiente: el «sí»
-  de Patricia; confirmar quién aprueba (se dejó Patricia, permiso «empresa») y ajustar al Excel cuando lo suba.
+  `/exportar/reporte-mensual?mes=` y en `/d/[token]`. Pruebas `pruebas/reporte-mensual.test.mjs` (189 en total). En `main` el 5-nov-2026
+  («sí» de Patricia). Pendiente: confirmar quién aprueba (se dejó Patricia, permiso «empresa») y ajustar al Excel cuando lo suba.
+  Sigue la 4c (proyección IR-2/IR-1 y alertas fiscales): para personas físicas hace falta la escala vigente del IR-1.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
