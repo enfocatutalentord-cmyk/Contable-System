@@ -428,7 +428,7 @@ No se pasa a la siguiente sin su autorización expresa.
   tipo, estado, formalizado, modalidad y responsable con filtros y buscador; arriba activos, nuevos del mes (inicio del contrato o
   alta), retirados o en cero y sin formalizar (sin contar la propia). Menú en dos módulos: arriba la empresa propia («Contabilidad
   propia»), debajo «Clientes»; en el selector la propia dice «empresa propia». Pruebas `pruebas/empresa-propia.test.mjs` (154 en
-  total). Esperando el «sí» de Patricia para `main`. En producción, después de publicar: crear (o elegir) a Empire Tax’N Legal SRL
+  total). En `main` el 4-nov-2026 («sí» de Patricia). **Bloque 1 completo.** En producción, después de publicar: crear (o elegir) a Empire Tax’N Legal SRL
   como cliente, registrar a Patricia en Ficha › Socios y elegirla en «Empresa propia de la firma».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
