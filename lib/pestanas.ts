@@ -6,7 +6,7 @@ export type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][
 // (`perfiles.pestanas`; vacío = todas).
 export const PESTANAS_CLIENTE: Seccion[] = [
   { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"], ["/recepcion", "Documentos del cliente"]] },
-  { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/cobros", "Cobros"], ["/cxc", "Cuentas por cobrar"], ["/cxc/estado", "Estado de cuenta de clientes"],
+  { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/igualas", "Igualas"], ["/recurrentes", "Facturas recurrentes"], ["/cobros", "Cobros"], ["/cxc", "Cuentas por cobrar"], ["/cxc/estado", "Estado de cuenta de clientes"],
                                ["/clientes", "Clientes y contactos"], ["/servicios", "Productos y servicios"]] },
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],
                                 ["/proveedores", "Proveedores"]] },

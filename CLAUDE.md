@@ -443,6 +443,24 @@ No se pasa a la siguiente sin su autorización expresa.
   grupo, sin ITBIS). Factura: al elegir el servicio toma el precio de la categoría del cliente (`precioDe`) y su unidad; al
   cambiar de cliente se recalculan las líneas con servicio; aviso si el cliente no tiene categoría. Pruebas
   `pruebas/precios.test.mjs` (159 en total). En `main` el 4-nov-2026 («sí» de Patricia). Sigue la 2b (igualas). La lista queda vacía hasta que llegue EMP-P01.
+  **Entrega 2b · Igualas y facturas recurrentes** (migración 032, `lib/igualas.ts` puro, `lib/igualas-db.ts`,
+  `app/e/[id]/igualas-acciones.ts`, pestañas `/igualas` y `/recurrentes` en Ventas, agregadas a Contador, Auxiliar y Facturación).
+  Respuestas de Patricia del 4-nov: las igualas se preparan **como borradores** y se emiten con un clic; el comprobante es el
+  **habitual del cliente** (B01 con RNC, B02 sin él). `acuerdos_cliente` (Hoja de Acuerdo EMP-F02: normal, Plan de Arranque, ajuste
+  gradual, acuerdo especial, declaración en cero RD$600–2,500; servicio de la lista de precios, iguala, tarifa especial con fecha
+  (0 = mes gratis), deuda/cuota/término, inicio, día de facturación, servicios incluidos; uno activo por cliente; RLS e historial).
+  `igualaDelMes`: tarifa especial hasta su fecha, cuota del acuerdo especial como segunda línea, el mes del aniversario 10 % de
+  descuento por fidelidad (en la descripción y la nota); día 30 = último día del mes. `avisosAcuerdo`: aniversario a 60 días,
+  aumento de 10 % por confirmar (desde el aniversario), fin de tarifa especial o de acuerdo a 30 días. `aumentos_iguala`: el aumento
+  solo se aplica al confirmarlo (permiso «empresa»: Patricia), uno por aniversario, y sube `acuerdos_cliente.monto`.
+  `facturas.acuerdo_id/recurrente_id/periodo` (únicos entre no anuladas). Pantalla Igualas: avisos, mes con «Le toca» (fecha,
+  monto, nota), «Preparar todas las del mes» y «Emitir los borradores» (cada uno en su transacción; los errores, como falta de NCF,
+  se listan sin parar los demás), acuerdos con formulario. Al abrir la pantalla en el mes en curso se preparan solos los borradores
+  de los clientes cuyo día de facturación ya llegó (no hay tarea programada). `facturas_recurrentes` (Anexo A): plantilla desde
+  «Repetir esta factura» en el detalle (copia cliente, líneas, impuestos y unidad; solo DOP), frecuencia mensual/quincenal/
+  trimestral/anual o a solicitud, próxima y hasta; al abrir Facturas recurrentes se preparan las que tocan (hasta 12 atrasadas) y
+  avanza la próxima; «Preparar ahora», pausa y eliminar. Pruebas `pruebas/igualas.test.mjs` (168 en total). Esperando el «sí» de
+  Patricia para `main`. Pendiente del bloque 2: carta EMP-L01 y mensajes (bloques 3 y 5), entrega 2c (propuestas y anticipos).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

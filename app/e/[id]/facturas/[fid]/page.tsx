@@ -12,6 +12,8 @@ import { MOTIVOS_608, NOMBRE_NCF, type TipoNcf } from "@/lib/ventas";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
 import { anularComprobante, crearNotaCredito, descartarFactura, emitirBorrador } from "../../ventas-acciones";
+import { crearRecurrente } from "../../igualas-acciones";
+import { FRECUENCIAS } from "@/lib/igualas";
 
 type Factura = {
   id: string; estado: "borrador" | "emitida"; tipo_ncf: TipoNcf; ncf: string | null; ncf_vence: string | null; fecha: string; vence: string;
@@ -218,6 +220,26 @@ export default async function VerFactura({ params, searchParams }: {
             </>
           ) : <p className="sub">Este comprobante está en un período cerrado y no se puede anular.</p>}
         </div>
+      )}
+
+      {!esNota && f.moneda === "DOP" && puede(permisos, "registrar") && (
+        <details className="no-imprimir tarjeta" style={{ margin: "16px 0" }}>
+          <summary><strong>Repetir esta factura</strong> · crear una plantilla recurrente</summary>
+          <p className="sub">
+            La plantilla copia el cliente, las líneas y los impuestos de esta factura y prepara un borrador cada vez que toca
+            (o cuando lo pidas, si es «a solicitud»). Se ve en <Link href={`/e/${id}/recurrentes`}>Facturas recurrentes</Link>.
+          </p>
+          <Formulario accion={crearRecurrente.bind(null, id, f.id)} boton="Crear plantilla" className="fila">
+            <label style={{ flex: "2 1 220px" }}>Nombre<input name="nombre" required maxLength={120} placeholder="Ej.: Alquiler mensual del local" /></label>
+            <label>Frecuencia
+              <select name="frecuencia" defaultValue="mensual">
+                {Object.entries(FRECUENCIAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+            <label>Próxima factura<input type="date" name="proxima" defaultValue={hoyISO()} /></label>
+            <label>Hasta (opcional)<input type="date" name="hasta" /></label>
+          </Formulario>
+        </details>
       )}
 
       <div className="no-imprimir">
