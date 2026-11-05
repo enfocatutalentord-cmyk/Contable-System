@@ -657,6 +657,17 @@ No se pasa a la siguiente sin su autorización expresa.
   o dejar el saldo como cuenta por cobrar (sin asiento). Pruebas `pruebas/salidas-socia.test.mjs` (205 en total). Probado en
   pantalla con la empresa propia local. En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 7b (presupuesto del mes): la 7b y la
   7c necesitan el Excel PRESUPUESTO 2026.
+- **Bloque 8 · Aplicación del cliente** (propuesta del 5-nov-2026 en https://claude.ai/artifact/Kh4HKXCJd4Kck2MMdopXfK, esperando el
+  «sí» de Patricia; documento Fase 2, secciones 2 a 4, modalidad 1; referentes Dext (lectura de facturas con revisión), guía e-CF de
+  la DGII (QR → consulta del timbre) y Next.js PWA (instalable sin tienda); las páginas de TaxDome rechazaron la consulta automática.
+  3 entregas: 8a cuenta propia del prospecto (lista maestra con estado prospecto, «Pasar a cliente» sin otra cuenta), formularios y
+  solicitudes dentro de su cuenta, pantalla de inicio del cliente (facturas del mes, impuestos a pagar, reporte y proyección,
+  estado de cuenta con Empire, avisos, espacio para talleres) e instalable en el celular; 8b carga de facturas de ingreso y gasto
+  (foto, PDF, QR o a mano; validaciones de RNC/NCF, repetido, a nombre de otra empresa, sin crédito fiscal; estados recibida,
+  rechazada, aprobada, desestimada; bandeja de revisión: el gasto aprobado pasa a borrador de compra y el ingreso a venta externa
+  para el 607); 8c lectura automática con IA (necesita la llave en Vercel). Preguntas: cuenta abierta o por invitación, quién pasa a
+  cliente, quién aprueba facturas, ventas externas al 607, firma sencilla de la Hoja de Acuerdo, nombre de la app. Fuera: Parte B,
+  inventario, auditoría en campo, talleres, e-CF y bóveda, envío por correo y pantalla de normas.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
