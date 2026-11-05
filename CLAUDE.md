@@ -526,7 +526,9 @@ No se pasa a la siguiente sin su autorización expresa.
   WhatsApp › Enlaces compartidos (con descargas); se crea solo al enviar (antes da 404). Sin FORCE RLS para buscarlo por hash sin
   sesión. Entrega la factura o la propuesta en PDF (`tablaFactura`/`tablaPropuesta`, también en `/exportar/factura?id=`) o el PDF
   subido de la notificación. Pide el permiso «exportar»; no lo usan los usuarios de clientes ni la supervisión. Pruebas
-  `pruebas/mensajes.test.mjs` (186 en total). Pendiente: el «sí» de Patricia y probarlo en un celular real con WhatsApp.
+  `pruebas/mensajes.test.mjs` (186 en total). En `main` el 5-nov-2026 («sí» de Patricia). **Bloque 3 completo.** Pendiente:
+  probarlo en un celular real con WhatsApp; Patricia revisa «Envío de factura» y escribe los datos de «Cuenta bancaria». Sigue el bloque 4
+  (reporte mensual e impuestos de clientes): presentar la propuesta antes.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
