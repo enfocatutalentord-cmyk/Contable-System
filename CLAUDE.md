@@ -620,7 +620,8 @@ No se pasa a la siguiente sin su autorización expresa.
   cuándo, prioridad; también se anotan las de WhatsApp, escrito o llamada; recibida → cotizada → en proceso → entregada o
   descartada; gestiones al entrar y al entregarse; alerta urgente si pasa su fecha). «Cotizar» crea el borrador de propuesta en la
   empresa propia con el precio de la categoría del cliente (sin servicio, en 0). Pruebas `pruebas/formularios.test.mjs` (198 en
-  total). Pendiente: el «sí» de Patricia; ajustar las preguntas a EMP-F01/F03/F04 cuando las suba.
+  total). En `main` el 5-nov-2026 («sí» de Patricia). Pendiente: ajustar las preguntas a EMP-F01/F03/F04 cuando las suba. Sigue la 6b
+  (levantamiento y diagnóstico): necesita el levantamiento con sus anexos 1–5 y la lista EMP-P01.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
