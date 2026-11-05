@@ -459,8 +459,8 @@ No se pasa a la siguiente sin su autorización expresa.
   de los clientes cuyo día de facturación ya llegó (no hay tarea programada). `facturas_recurrentes` (Anexo A): plantilla desde
   «Repetir esta factura» en el detalle (copia cliente, líneas, impuestos y unidad; solo DOP), frecuencia mensual/quincenal/
   trimestral/anual o a solicitud, próxima y hasta; al abrir Facturas recurrentes se preparan las que tocan (hasta 12 atrasadas) y
-  avanza la próxima; «Preparar ahora», pausa y eliminar. Pruebas `pruebas/igualas.test.mjs` (168 en total). Esperando el «sí» de
-  Patricia para `main`. Pendiente del bloque 2: carta EMP-L01 y mensajes (bloques 3 y 5), entrega 2c (propuestas y anticipos).
+  avanza la próxima; «Preparar ahora», pausa y eliminar. Pruebas `pruebas/igualas.test.mjs` (168 en total). En `main` el 4-nov-2026
+  («sí» de Patricia). Pendiente del bloque 2: carta EMP-L01 y mensajes (bloques 3 y 5), entrega 2c (propuestas y anticipos).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
