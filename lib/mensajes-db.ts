@@ -11,7 +11,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -86,6 +86,15 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
       destinatario: await deCliente(tx, p.cliente_id), datos: { servicio: p.servicio ?? "" },
       enlace: { tipo: "propuesta", refId: ref.id, titulo: `Propuesta n.º ${p.numero}` },
     };
+  }
+  if (ref.tipo === "expediente") {
+    // Un documento del expediente (bloque 5a): sale con «Documento listo» y su nombre.
+    const [d] = await tx<{ nombre: string; descripcion: string | null }[]>`
+      SELECT nombre, descripcion FROM documentos WHERE id = ${ref.id} AND entidad IN ('expediente', 'tramite') AND NOT eliminado`;
+    if (!d) throw new ErrorMensaje("Ese documento ya no está en el expediente.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    const titulo = (d.descripcion || d.nombre).slice(0, 190);
+    return { destinatario, datos: { documento: titulo } as Datos, enlace: { tipo: "documento", refId: ref.id, titulo } };
   }
   if (ref.tipo === "proyeccion") {
     // Proyección de cierre fiscal (bloque 4c): la que se preparó para el cliente.

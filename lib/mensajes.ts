@@ -4,7 +4,7 @@
 // Campos que el sistema sabe llenar; lo demás queda entre corchetes para escribirlo a mano antes de enviar.
 export const CAMPOS = [
   "nombre", "empresa", "mes", "monto", "enlace", "servicio", "número", "concepto", "declaración", "período", "fecha límite",
-  "cantidad", "tipo", "años",
+  "cantidad", "tipo", "años", "documento",
 ] as const;
 export type Datos = Partial<Record<(typeof CAMPOS)[number], string>>;
 

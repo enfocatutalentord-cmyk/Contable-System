@@ -13,6 +13,7 @@ export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
   formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
+  tramite: "Trámites",
 };
 
 // Declaraciones mensuales que el sistema puede ver presentadas («Marcar como presentado» en Reportes DGII) y su día de vencimiento.
@@ -75,6 +76,15 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
     if (!presentadas.has(`IR-2:${periodo}`) && dias(hoy, vence) <= 30) {
       poner("declaracion", dias(hoy, vence) < 0 ? "urgente" : "aviso", `IR-2 del ejercicio ${fin.slice(0, 4)} sin presentar: ${faltan(hoy, vence)}`, `${base}/dgii/ir2`, vence);
     }
+  }
+
+  // Trámites abiertos (bloque 5a): 5 días antes del plazo y cuando vence sin respuesta.
+  for (const t of await tx<{ institucion: string; tipo: string; plazo: string }[]>`
+      SELECT institucion, tipo, to_char(plazo, 'YYYY-MM-DD') AS plazo FROM tramites WHERE estado = 'abierto' AND plazo <= ${hoy}::date + 5`) {
+    const inst = ({ dgii: "DGII", tss: "TSS", camara: "Cámara de Comercio", onapi: "ONAPI" } as Record<string, string>)[t.institucion] ?? "institución";
+    poner("tramite", t.plazo < hoy ? "urgente" : "aviso",
+      `Trámite ante ${inst} (${t.tipo}) ${t.plazo < hoy ? `venció sin respuesta el ${verFecha(t.plazo)}` : faltan(hoy, t.plazo).replace("vence", "vence el plazo")}`,
+      `${base}/expediente?ver=tramites`, t.plazo);
   }
 
   // Notificaciones de pago sin pagar cerca de la fecha límite.

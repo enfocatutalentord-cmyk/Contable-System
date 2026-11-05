@@ -581,6 +581,20 @@ No se pasa a la siguiente sin su autorización expresa.
   de PDF y redacción con IA, después, con la llave de IA). Preguntas: plantillas del manual en Word, lugar de la fecha formal,
   formato de la referencia, Word además de PDF, trámites fuera de la DGII, pasar el Drive actual. Fuera: auditoría NIA, control
   interno, estados desde balanza en Excel, formularios oficiales llenados.
+  «sí» de Patricia del 5-nov a empezar por la 5a; se usaron las respuestas recomendadas: trámites también de TSS, Cámara y ONAPI;
+  el Drive se pasa subiendo por carpeta (hasta 10 archivos y 4 MB por envío). **Entrega 5a · Expediente, trámites y empresa nueva**
+  (migración 040, `lib/expediente.ts`, `lib/tramites.ts`, `app/e/[id]/expediente-acciones.ts`, pestaña `/expediente` en «Cliente
+  elegido», sumada a Contador, Auxiliar y Coordinadora; pantalla `/firma/[fid]/tramites`). Los archivos van en `documentos`
+  (entidad 'expediente', `carpeta` 01–06, `anio`; ahora también Word .docx y Excel .xlsx, por contenido ZIP + extensión,
+  `tipoDeArchivo`); subir (permiso «adjuntar»), retirar y devolver («registrar»), buscar y filtrar por año, enviar por WhatsApp
+  («Documento listo», ref 'expediente', enlace tipo 'documento'). `listarExpediente` suma lo del sistema en su carpeta: logo (01),
+  constancias de `envios_dgii` y notificaciones (04), reportes aprobados y proyecciones (05), y de la empresa propia al cliente
+  enlazado facturas, recibos y anticipos (03) y propuestas (06). Tarjeta «Documentos del cliente» lleva a la recepción. `tramites`
+  (DGII, TSS, Cámara, ONAPI u otra; tipo con sugerencias, n.º de volante, fecha, plazo = 30 días si no se pone, responsable del
+  equipo; volante y respuesta en `documentos` entidad 'tramite'; RLS e historial; trigger `gestion_tramite` anota en la bitácora al
+  registrar y al cerrar); alerta «Trámites» 5 días antes y urgente al vencer (`alertasDeEmpresa`). Empresa nueva: «Abrir la lista de
+  pasos» (`empresas.en_constitucion`, `pasos_constitucion` con los 9 pasos del manual: estado, fecha, responsable, nota y documento,
+  que va a 01). Pruebas `pruebas/expediente.test.mjs` (195 en total). Pendiente: el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

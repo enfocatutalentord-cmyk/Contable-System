@@ -288,3 +288,9 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .reporte-mensual { display: grid; gap: 12px; }
 .reporte-mensual h2 { margin-top: 0; font-size: 1.1rem; }
 .reporte-mensual table { width: 100%; }
+
+/* Expediente (bloque 5a): las carpetas como tarjetas. */
+.carpetas-expediente { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.carpetas-expediente .carpeta { display: flex; flex-direction: column; gap: 4px; padding: 12px; color: inherit; text-decoration: none; }
+.carpetas-expediente .carpeta span { color: var(--suave); font-size: 0.9rem; }
+.carpetas-expediente .carpeta.elegida { border-color: var(--dorado); box-shadow: inset 0 0 0 1px var(--dorado); }
