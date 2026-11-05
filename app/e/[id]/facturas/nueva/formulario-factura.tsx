@@ -5,11 +5,12 @@ import { useActionState, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { verMonto } from "@/lib/montos";
+import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
 export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string };
 export type ServicioFactura = { id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null };
 export type ImpuestoFactura = { id: string; nombre: string; tipo: string; tasa: string; vigente_desde: string; vigente_hasta: string | null };
-export type Linea = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string };
+export type Linea = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string; unidad?: string };
 export type InicialFactura = {
   cliente: string; tipo: string; fecha: string; vence: string; moneda: string; tasa: string; notas: string; lineas: Linea[]; tipoIngreso: string;
 };
@@ -32,7 +33,7 @@ function sumarDias(fecha: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function FormularioFactura({ accion, clientes, servicios, impuestos, impuestoPorDefecto, hoy, disponibles, puedeEmitir, inicial }: {
+export function FormularioFactura({ accion, clientes, servicios, impuestos, impuestoPorDefecto, hoy, disponibles, puedeEmitir, inicial, unidades = [] }: {
   accion: (estado: Estado, fd: FormData) => Promise<Estado>;
   clientes: ClienteFactura[];
   servicios: ServicioFactura[];
@@ -42,6 +43,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
   disponibles: Record<string, number>;
   puedeEmitir: boolean;
   inicial?: InicialFactura;
+  unidades?: UnidadOpcion[];
 }) {
   const vacia = (): Linea => ({ servicioId: "", descripcion: "", cantidad: "1", precio: "", impuesto: impuestoPorDefecto, adicional: "" });
   const [estado, enviar, enviando] = useActionState(accion, {});
@@ -127,7 +129,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
           <thead>
             <tr>
               <th style={{ minWidth: 170 }}>Producto o servicio</th><th style={{ minWidth: 200 }}>Descripción</th><th className="num">Cantidad</th>
-              <th className="num">Precio</th><th>ITBIS</th>{adicionales.length > 0 && <th>Otro cargo</th>}<th className="num">Importe</th><th />
+              <th className="num">Precio</th><th>ITBIS</th>{adicionales.length > 0 && <th>Otro cargo</th>}{unidades.length > 0 && <th>Unidad</th>}<th className="num">Importe</th><th />
             </tr>
           </thead>
           <tbody>
@@ -156,21 +158,24 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
                     </select>
                   </td>
                 )}
+                {unidades.length > 0 && (
+                  <td><SelectorUnidad unidades={unidades} valor={l.unidad ?? ""} cambiar={(v) => cambiar(i, "unidad", v)} etiqueta={`Unidad de la línea ${i + 1}`} /></td>
+                )}
                 <td className="num">{verMonto(calc[i].sub)}</td>
                 <td><button type="button" title="Quitar línea" onClick={() => setLineas((ls) => ls.length > 1 ? ls.filter((_, j) => j !== i) : ls)} disabled={lineas.length <= 1}>×</button></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr><td colSpan={adicionales.length ? 6 : 5}>Subtotal</td><td className="num">{verMonto(subtotal)}</td><td /></tr>
-            <tr><td colSpan={adicionales.length ? 6 : 5}>ITBIS</td><td className="num">{verMonto(itbis)}</td><td /></tr>
-            {otros > 0 && <tr><td colSpan={adicionales.length ? 6 : 5}>Otros cargos</td><td className="num">{verMonto(otros)}</td><td /></tr>}
-            <tr><td colSpan={adicionales.length ? 6 : 5}>Total {moneda === "USD" ? "US$" : "RD$"}</td><td className="num">{verMonto(total)}</td><td /></tr>
+            <tr><td colSpan={5 + (adicionales.length ? 1 : 0) + (unidades.length ? 1 : 0)}>Subtotal</td><td className="num">{verMonto(subtotal)}</td><td /></tr>
+            <tr><td colSpan={5 + (adicionales.length ? 1 : 0) + (unidades.length ? 1 : 0)}>ITBIS</td><td className="num">{verMonto(itbis)}</td><td /></tr>
+            {otros > 0 && <tr><td colSpan={5 + (adicionales.length ? 1 : 0) + (unidades.length ? 1 : 0)}>Otros cargos</td><td className="num">{verMonto(otros)}</td><td /></tr>}
+            <tr><td colSpan={5 + (adicionales.length ? 1 : 0) + (unidades.length ? 1 : 0)}>Total {moneda === "USD" ? "US$" : "RD$"}</td><td className="num">{verMonto(total)}</td><td /></tr>
           </tfoot>
         </table>
       </div>
       <div className="fila" style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => setLineas((ls) => [...ls, vacia()])}>+ Agregar línea</button>
+        <button type="button" onClick={() => setLineas((ls) => [...ls, { ...vacia(), unidad: ls[ls.length - 1]?.unidad ?? "" }])}>+ Agregar línea</button>
       </div>
       <label style={{ marginTop: 12 }}>Notas (salen en la factura)<textarea name="notas" rows={2} defaultValue={inicial?.notas} /></label>
       <div className="fila" style={{ marginTop: 12 }}>

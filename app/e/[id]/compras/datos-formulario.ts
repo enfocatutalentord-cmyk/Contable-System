@@ -1,4 +1,5 @@
 import type { Tx } from "@/lib/db";
+import { listarUnidades } from "@/lib/empresa-propia";
 import { listarImpuestos } from "@/lib/fiscal";
 import type { CuentaCompra, ImpuestoCompra, ProveedorCompra } from "./nueva/formulario-compra";
 
@@ -11,6 +12,7 @@ export async function datosFormularioCompra(tx: Tx, hoy: string) {
     ?? impuestos.find((i) => i.tipo === "exento");
   const [gasto] = await tx<{ cuenta_id: string }[]>`SELECT cuenta_id FROM cuentas_empresa WHERE clave = 'gasto_general'`;
   return {
+    unidades: (await listarUnidades(tx)).map(({ id, nombre }) => ({ id, nombre })),
     impuestos,
     impuestoPorDefecto: porDefecto?.id ?? "",
     cuentaPorDefecto: gasto?.cuenta_id ?? "",

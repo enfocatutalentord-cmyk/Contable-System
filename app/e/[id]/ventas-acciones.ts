@@ -1,5 +1,6 @@
 "use server";
 
+import { leerUnidad } from "@/lib/empresa-propia";
 import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
@@ -120,7 +121,7 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
 
 // ───── Facturas ─────
 
-type LineaForm = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string };
+type LineaForm = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string; unidad?: string };
 
 function leerLineas(fd: FormData): LineaEntrada[] | string {
   let crudas: LineaForm[];
@@ -140,9 +141,11 @@ function leerLineas(fd: FormData): LineaEntrada[] | string {
     if (!esUuid(l.impuesto) || (l.adicional && !esUuid(l.adicional)) || (l.servicioId && !esUuid(l.servicioId))) {
       return `Línea ${i + 1}: elige el impuesto.`;
     }
+    const unidadId = leerUnidad(l.unidad);
+    if (unidadId === undefined) return `Línea ${i + 1}: la unidad de negocio no es válida.`;
     lineas.push({
       servicioId: l.servicioId || null, descripcion: l.descripcion.trim(), cantidad, precio: aCentavos(precio),
-      impuestoIds: [l.impuesto, ...(l.adicional ? [l.adicional] : [])],
+      impuestoIds: [l.impuesto, ...(l.adicional ? [l.adicional] : [])], unidadId,
     });
   }
   return lineas;

@@ -1,7 +1,7 @@
 import type { Tx } from "./db";
 import { aCentavos, deCentavos } from "./montos.ts";
 
-export type LineaAsiento = { cuentaId: string; debe: bigint; haber: bigint; descripcion?: string | null };
+export type LineaAsiento = { cuentaId: string; debe: bigint; haber: bigint; descripcion?: string | null; unidadId?: string | null };
 export type Origen = "manual" | "factura" | "nota_credito" | "cobro" | "compra" | "nota_credito_compra" | "pago" | "banco" | "cierre";
 
 export class ErrorContable extends Error {
@@ -11,7 +11,7 @@ export class ErrorContable extends Error {
 function juntarLineas(lineas: LineaAsiento[]): LineaAsiento[] {
   const porClave = new Map<string, LineaAsiento>();
   for (const l of lineas) {
-    const clave = `${l.cuentaId}:${l.debe > 0n ? "d" : "h"}:${l.descripcion ?? ""}`;
+    const clave = `${l.cuentaId}:${l.debe > 0n ? "d" : "h"}:${l.descripcion ?? ""}:${l.unidadId ?? ""}`;
     const previa = porClave.get(clave);
     if (previa) {
       previa.debe += l.debe;
@@ -24,9 +24,9 @@ function juntarLineas(lineas: LineaAsiento[]): LineaAsiento[] {
 async function escribirLineas(tx: Tx, empresaId: string, asientoId: string, lineas: LineaAsiento[], desde = 0) {
   for (const [orden, l] of lineas.entries()) {
     await tx`
-      INSERT INTO lineas_asiento (asiento_id, empresa_id, orden, cuenta_id, descripcion, debe, haber)
+      INSERT INTO lineas_asiento (asiento_id, empresa_id, orden, cuenta_id, descripcion, debe, haber, unidad_id)
       VALUES (${asientoId}, ${empresaId}, ${desde + orden + 1}, ${l.cuentaId}, ${l.descripcion ?? null},
-              ${deCentavos(l.debe)}, ${deCentavos(l.haber)})`;
+              ${deCentavos(l.debe)}, ${deCentavos(l.haber)}, ${l.unidadId ?? null})`;
   }
 }
 
@@ -84,7 +84,7 @@ export async function actualizarBorrador(
     if (existente) {
       await tx`
         UPDATE lineas_asiento SET orden = ${i + 1}, cuenta_id = ${l.cuentaId}, descripcion = ${l.descripcion ?? null},
-               debe = ${deCentavos(l.debe)}, haber = ${deCentavos(l.haber)}
+               debe = ${deCentavos(l.debe)}, haber = ${deCentavos(l.haber)}, unidad_id = ${l.unidadId ?? null}
          WHERE id = ${existente.id}`;
     } else {
       await escribirLineas(tx, d.empresaId, d.asientoId, [l], i);
@@ -108,12 +108,12 @@ export async function revertirAsiento(
   if (d.fecha < a.fecha) throw new ErrorContable("La reversión no puede tener fecha anterior al asiento original");
   const [ya] = await tx`SELECT 1 FROM asientos WHERE revierte_a = ${d.asientoId}`;
   if (ya) throw new ErrorContable("Este asiento ya fue revertido");
-  const lineas = await tx<{ cuenta_id: string; descripcion: string | null; debe: string; haber: string }[]>`
-    SELECT cuenta_id, descripcion, debe::text, haber::text FROM lineas_asiento WHERE asiento_id = ${d.asientoId} ORDER BY orden`;
+  const lineas = await tx<{ cuenta_id: string; descripcion: string | null; debe: string; haber: string; unidad_id: string | null }[]>`
+    SELECT cuenta_id, descripcion, debe::text, haber::text, unidad_id FROM lineas_asiento WHERE asiento_id = ${d.asientoId} ORDER BY orden`;
   const r = await insertarAsiento(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, fecha: d.fecha, origen: "manual", juntar: false, revierteA: d.asientoId,
     concepto: `Reversión del asiento n.º ${a.numero}: ${d.motivo}`, referencia: a.referencia,
-    lineas: lineas.map((l) => ({ cuentaId: l.cuenta_id, descripcion: l.descripcion, debe: aCentavos(l.haber), haber: aCentavos(l.debe) })),
+    lineas: lineas.map((l) => ({ cuentaId: l.cuenta_id, descripcion: l.descripcion, debe: aCentavos(l.haber), haber: aCentavos(l.debe), unidadId: l.unidad_id })),
   });
   return { id: r.id, numero: r.numero! };
 }

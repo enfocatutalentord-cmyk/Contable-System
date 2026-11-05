@@ -20,7 +20,7 @@ export default async function Estados({ params, searchParams }: {
   const sp = await searchParams;
   const { empresa, permisos } = await accesoEmpresa(id);
   const f = leerFiltrosEstados(sp);
-  const { estado, firmas } = await conEmpresa(id, (tx) => armarEstado(tx, f));
+  const { estado, firmas, unidades, unidad } = await conEmpresa(id, (tx) => armarEstado(tx, f));
   const cols = estado.columnas;
   const dos = cols.length === 2 && !estado.sinVariacion;
   const conPct = f.tipo === "resultados" && cols.length === 1;
@@ -70,10 +70,20 @@ export default async function Estados({ params, searchParams }: {
             </select>
           </label>
         )}
+        {f.tipo === "resultados" && unidades.length > 0 && (
+          <label>Unidad de negocio
+            <select name="unidad" defaultValue={f.unidad}>
+              <option value="">General (todas)</option>
+              <option value="columnas">Una columna por unidad</option>
+              {unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+              <option value="sin">Sin unidad</option>
+            </select>
+          </label>
+        )}
         <button>Ver</button>
       </form>
 
-      <h2 style={{ marginBottom: 4 }}>{TITULOS[f.tipo]}</h2>
+      <h2 style={{ marginBottom: 4 }}>{TITULOS[f.tipo]}{unidad && ` · ${unidad}`}</h2>
       <p className="sub">
         {f.tipo === "balance" ? `Al ${verFecha(cols[0].hasta)}` : `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}`}
         {f.tipo === "flujo" && " · método indirecto; la actividad de cada cuenta se cambia en el Catálogo de cuentas"}

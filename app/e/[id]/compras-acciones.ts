@@ -1,5 +1,6 @@
 "use server";
 
+import { leerUnidad } from "@/lib/empresa-propia";
 import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -72,7 +73,7 @@ export async function guardarProveedor(empresaId: string, _: Estado, fd: FormDat
 
 // ───── Compras ─────
 
-type LineaForm = { descripcion: string; clase: string; cantidad: string; precio: string; cuenta: string; impuesto: string; adicional: string };
+type LineaForm = { descripcion: string; clase: string; cantidad: string; precio: string; cuenta: string; impuesto: string; adicional: string; unidad?: string };
 
 function leerLineas(fd: FormData): LineaCompraEntrada[] | string {
   let crudas: LineaForm[];
@@ -90,9 +91,11 @@ function leerLineas(fd: FormData): LineaCompraEntrada[] | string {
     if (cantidad === null) return `Línea ${i + 1}: la cantidad no es válida.`;
     if (precio === null) return `Línea ${i + 1}: el precio no es válido.`;
     if (!esUuid(l.impuesto) || (l.adicional && !esUuid(l.adicional)) || (l.cuenta && !esUuid(l.cuenta))) return `Línea ${i + 1}: revisa la cuenta y el impuesto.`;
+    const unidadId = leerUnidad(l.unidad);
+    if (unidadId === undefined) return `Línea ${i + 1}: la unidad de negocio no es válida.`;
     lineas.push({
       descripcion: l.descripcion.trim(), clase: l.clase === "bien" ? "bien" : "servicio", cantidad, precio: aCentavos(precio),
-      cuentaId: l.cuenta || null, impuestoIds: [l.impuesto, ...(l.adicional ? [l.adicional] : [])],
+      cuentaId: l.cuenta || null, impuestoIds: [l.impuesto, ...(l.adicional ? [l.adicional] : [])], unidadId,
     });
   }
   return lineas;

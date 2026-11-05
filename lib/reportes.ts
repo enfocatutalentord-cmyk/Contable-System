@@ -17,8 +17,10 @@ export type CuentaSaldo = {
 
 // Saldos de todas las cuentas en un rango, con las cuentas de grupo sumando a sus hijas por código.
 // Con `sinCierre`, no cuenta los asientos de cierre del ejercicio (el estado de resultados de un año cerrado sigue mostrando su
-// utilidad).
-export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string, sinCierre = false): Promise<CuentaSaldo[]> {
+// utilidad). Con `unidad` (id o «sin»), solo las líneas de esa unidad de negocio (o las que no tienen unidad).
+export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string, sinCierre = false, unidad: string | null = null): Promise<CuentaSaldo[]> {
+  const sinUnidad = unidad === "sin";
+  const unidadId = unidad && !sinUnidad ? unidad : null;
   const filas = await tx<
     { id: string; codigo: string; nombre: string; tipo: TipoCuenta; nivel: number; de_detalle: boolean; inicial: string; debe: string; haber: string }[]
   >`
@@ -28,6 +30,7 @@ export async function saldosPorCuenta(tx: Tx, desde: string, hasta: string, sinC
            COALESCE(sum(l.haber) FILTER (WHERE a.fecha BETWEEN ${desde} AND ${hasta}), 0)::text AS haber
       FROM cuentas c
       LEFT JOIN lineas_asiento l ON l.cuenta_id = c.id
+                                AND (${unidad}::text IS NULL OR (${sinUnidad} AND l.unidad_id IS NULL) OR l.unidad_id = ${unidadId}::uuid)
       LEFT JOIN asientos a ON a.id = l.asiento_id AND a.estado = 'contabilizado' AND a.fecha <= ${hasta}
                            AND (NOT ${sinCierre} OR a.origen <> 'cierre')
      GROUP BY c.id

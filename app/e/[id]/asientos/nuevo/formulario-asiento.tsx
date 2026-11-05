@@ -5,9 +5,10 @@ import { alEnviar } from "@/app/enviar";
 import type { EstadoAsiento } from "../../acciones";
 import type { Cuenta } from "@/lib/cuentas";
 import { aCentavos, deCentavos, leerMonto, verMonto } from "@/lib/montos";
+import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
-export type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string };
-const vacia = (): Linea => ({ cuentaId: "", descripcion: "", debe: "", haber: "" });
+export type Linea = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string };
+const vacia = (): Linea => ({ cuentaId: "", descripcion: "", debe: "", haber: "", unidad: "" });
 
 export function FormularioAsiento({
   accion,
@@ -16,6 +17,7 @@ export function FormularioAsiento({
   bloqueo,
   puedeContabilizar,
   inicial,
+  unidades = [],
 }: {
   accion: (estado: EstadoAsiento, fd: FormData) => Promise<EstadoAsiento>;
   cuentas: Cuenta[];
@@ -23,6 +25,7 @@ export function FormularioAsiento({
   bloqueo: string | null;
   puedeContabilizar: boolean;
   inicial?: { fecha: string; concepto: string; referencia: string; lineas: Linea[] };
+  unidades?: UnidadOpcion[];
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [lineas, setLineas] = useState<Linea[]>(inicial?.lineas.length ? [...inicial.lineas, ...(inicial.lineas.length < 2 ? [vacia()] : [])] : [vacia(), vacia()]);
@@ -65,7 +68,7 @@ export function FormularioAsiento({
       <div className="tabla-envoltura">
         <table>
           <thead>
-            <tr><th style={{ minWidth: 260 }}>Cuenta</th><th>Descripción</th><th className="num">Debe</th><th className="num">Haber</th><th /></tr>
+            <tr><th style={{ minWidth: 260 }}>Cuenta</th><th>Descripción</th>{unidades.length > 0 && <th>Unidad</th>}<th className="num">Debe</th><th className="num">Haber</th><th /></tr>
           </thead>
           <tbody>
             {lineas.map((l, i) => (
@@ -79,6 +82,9 @@ export function FormularioAsiento({
                   </select>
                 </td>
                 <td><input aria-label={`Descripción de la línea ${i + 1}`} value={l.descripcion} onChange={(e) => cambiar(i, "descripcion", e.target.value)} style={{ width: "100%" }} /></td>
+                {unidades.length > 0 && (
+                  <td><SelectorUnidad unidades={unidades} valor={l.unidad ?? ""} cambiar={(v) => cambiar(i, "unidad", v)} etiqueta={`Unidad de la línea ${i + 1}`} /></td>
+                )}
                 <td className="num"><input aria-label={`Debe de la línea ${i + 1}`} inputMode="decimal" value={l.debe} onChange={(e) => cambiar(i, "debe", e.target.value)} style={{ width: 130, textAlign: "right" }} /></td>
                 <td className="num"><input aria-label={`Haber de la línea ${i + 1}`} inputMode="decimal" value={l.haber} onChange={(e) => cambiar(i, "haber", e.target.value)} style={{ width: 130, textAlign: "right" }} /></td>
                 <td className="num" style={{ whiteSpace: "nowrap" }}>
@@ -90,7 +96,7 @@ export function FormularioAsiento({
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>
+              <td colSpan={unidades.length > 0 ? 3 : 2}>
                 Totales
                 {diferencia !== 0n && <span className="error" style={{ marginLeft: 12 }}>Diferencia: {verMonto(diferencia < 0n ? -diferencia : diferencia)}</span>}
               </td>
@@ -102,7 +108,7 @@ export function FormularioAsiento({
         </table>
       </div>
       <div className="fila" style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => setLineas((ls) => [...ls, vacia()])}>+ Agregar línea</button>
+        <button type="button" onClick={() => setLineas((ls) => [...ls, { ...vacia(), unidad: ls[ls.length - 1]?.unidad ?? "" }])}>+ Agregar línea</button>
         <button name="accion" value="borrador" disabled={enviando}>{enviando ? "Guardando…" : "Guardar borrador"}</button>
         {puedeContabilizar && (
           <button className="primario" name="accion" value="contabilizar" disabled={enviando || diferencia !== 0n || totalDebe === 0n}>

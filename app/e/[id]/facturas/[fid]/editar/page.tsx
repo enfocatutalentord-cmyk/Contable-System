@@ -18,8 +18,8 @@ export default async function EditarFactura({ params }: { params: Promise<{ id: 
       SELECT estado, tipo_ncf, cliente_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, to_char(vence, 'YYYY-MM-DD') AS vence, moneda,
              tasa::text, notas, creado_por, tipo_ingreso FROM facturas WHERE id = ${fid}`;
     if (!f || f.estado !== "borrador" || f.tipo_ncf === "B04") return null;
-    const lineas = await tx<{ servicio_id: string | null; descripcion: string; cantidad: string; precio: string; principal: string | null; adicional: string | null }[]>`
-      SELECT l.servicio_id, l.descripcion, l.cantidad::text, l.precio::text,
+    const lineas = await tx<{ servicio_id: string | null; descripcion: string; cantidad: string; precio: string; principal: string | null; adicional: string | null; unidad_id: string | null }[]>`
+      SELECT l.servicio_id, l.descripcion, l.cantidad::text, l.precio::text, l.unidad_id,
              (SELECT il.impuesto_id FROM impuestos_linea_factura il WHERE il.linea_id = l.id AND il.tipo IN ('itbis', 'exento') LIMIT 1) AS principal,
              (SELECT il.impuesto_id FROM impuestos_linea_factura il WHERE il.linea_id = l.id AND il.tipo NOT IN ('itbis', 'exento') LIMIT 1) AS adicional
         FROM lineas_factura l WHERE l.factura_id = ${fid} ORDER BY l.orden`;
@@ -31,7 +31,7 @@ export default async function EditarFactura({ params }: { params: Promise<{ id: 
     cliente: f.cliente_id, tipo: f.tipo_ncf, fecha: f.fecha, vence: f.vence, moneda: f.moneda, tasa: String(Number(f.tasa)), notas: f.notas ?? "", tipoIngreso: f.tipo_ingreso,
     lineas: lineas.map((l) => ({
       servicioId: l.servicio_id ?? "", descripcion: l.descripcion, cantidad: String(Number(l.cantidad)), precio: l.precio,
-      impuesto: l.principal ?? "", adicional: l.adicional ?? "",
+      impuesto: l.principal ?? "", adicional: l.adicional ?? "", unidad: l.unidad_id ?? "",
     })),
   };
   const propio = empresa.requiere_aprobacion && f.creado_por === usuario.id;

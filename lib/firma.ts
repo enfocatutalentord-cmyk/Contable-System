@@ -8,17 +8,26 @@ import { hoyISO, verFecha, verMonto } from "./montos";
 export type ClienteFirma = {
   id: string; nombre: string; rnc: string | null; activa: boolean; fecha_bloqueo: string | null;
   responsable_id: string | null; responsable: string | null;
+  propia: boolean; // la empresa propia de la firma (bloque 1b)
+  // Lista maestra (ficha del cliente, bloque 1a).
+  categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null;
+  fecha_inicio_contrato: string | null; formalizado: boolean; creada: string;
 };
 
 // El administrador de la firma ve todos los clientes; el resto, los que tiene asignados.
 export async function clientesDeFirma(firmaId: string, usuarioId: string, administrador: boolean, conInactivos = false): Promise<ClienteFirma[]> {
   return db()<ClienteFirma[]>`
-    SELECT e.id, e.nombre, e.rnc, e.activa, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.responsable_id, r.nombre AS responsable
+    SELECT e.id, e.nombre, e.rnc, e.activa, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.responsable_id, r.nombre AS responsable,
+           e.id = f.empresa_propia_id AS propia, e.categoria, e.tipo_cliente, e.estado_cliente, e.modalidad,
+           to_char(e.fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato,
+           (e.ficha_firmada IS NOT NULL AND e.hoja_firmada IS NOT NULL AND e.contrato_firmado IS NOT NULL) AS formalizado,
+           to_char(e.creada AT TIME ZONE 'America/Santo_Domingo', 'YYYY-MM-DD') AS creada
       FROM empresas e
+      JOIN firmas f ON f.id = e.firma_id
       LEFT JOIN usuarios r ON r.id = e.responsable_id
      WHERE e.firma_id = ${firmaId} AND (${conInactivos} OR e.activa)
        AND (${administrador} OR EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = e.id AND m.usuario_id = ${usuarioId}))
-     ORDER BY e.activa DESC, e.nombre`;
+     ORDER BY e.id = f.empresa_propia_id DESC, e.activa DESC, e.nombre`;
 }
 
 export type Resumen = {

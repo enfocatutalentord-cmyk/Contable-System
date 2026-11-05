@@ -409,6 +409,27 @@ No se pasa a la siguiente sin su autorización expresa.
   (entidad 'empresa', descripción 'logo'). Las tres tablas con RLS e historial. El anexo H-1 del IR-2, sin nada guardado, toma
   los accionistas de los socios y el municipio y la provincia de la ficha. Pruebas `pruebas/ficha.test.mjs` (148 en total).
   En `main` el 4-nov-2026 («sí» de Patricia). Sigue la entrega 1b (Empire como cliente propio, unidades de negocio, lista maestra).
+  **Entrega 1b · Empire y los módulos** (migración 030, `lib/empresa-propia.ts`, `lib/lista-maestra.ts`, `app/unidad.tsx`,
+  `app/e/[id]/unidades-acciones.ts`). Respuestas de Patricia del 4-nov: la cuenta corriente de la socia es **activo** (cuenta por
+  cobrar); no hay otra socia; las unidades son para Empire **y** para los clientes que quieran; los empleados los ven solo quienes
+  editan la ficha. `firmas.empresa_propia_id` (Clientes de la firma › «Empresa propia de la firma», acción `marcarEmpresaPropia`;
+  trigger: debe ser de la misma firma). `clientes.empresa_vinculada_id`: la base (`sincronizar_cliente_de_firma`, SECURITY DEFINER,
+  fija por un momento la empresa propia) crea o pone al día en la facturación de la propia el cliente de cada empresa de la firma
+  (nombre, RNC, correo, teléfono, dirección) al marcarla, al crear una empresa y cuando su ficha cambia; si ya existía con el mismo
+  RNC se enlaza ese. `prepararEmpresaPropia` (al marcarla; repetirlo solo completa): unidades Firma contable, Laboratorio de Imperios
+  y Sistema, «Ingresos – <unidad>» bajo 4101 (cuenta de la unidad), bancos Popular/Banreservas/BHD bajo 1101 y «Cuenta corriente –
+  <socia>» bajo 1102 por cada socio de la ficha (caja chica, ahorros y gastos de oficina ya estaban en el catálogo). `unidades_negocio`
+  por empresa (RLS, historial; se crean, renombran y desactivan en Configuración de cuentas › Unidades de negocio, permiso
+  «catálogo») y `unidad_id` en `lineas_asiento`, `lineas_factura` y `lineas_compra` (trigger: misma empresa y activa). Con unidades,
+  los formularios de asiento, factura y compra muestran la columna «Unidad»; la factura usa la cuenta de la unidad si el producto no
+  tiene una, y el asiento de factura y compra lleva la unidad en su línea de ingreso o gasto; la nota de crédito toma la unidad si la
+  factura tiene una sola. Estado de resultados: «Unidad de negocio» general, una columna por unidad (+ sin unidad + total), una
+  unidad o sin unidad (`saldosPorCuenta(..., unidad)`; también en Excel/PDF). Lista maestra en Clientes de la firma: categoría,
+  tipo, estado, formalizado, modalidad y responsable con filtros y buscador; arriba activos, nuevos del mes (inicio del contrato o
+  alta), retirados o en cero y sin formalizar (sin contar la propia). Menú en dos módulos: arriba la empresa propia («Contabilidad
+  propia»), debajo «Clientes»; en el selector la propia dice «empresa propia». Pruebas `pruebas/empresa-propia.test.mjs` (154 en
+  total). Esperando el «sí» de Patricia para `main`. En producción, después de publicar: crear (o elegir) a Empire Tax’N Legal SRL
+  como cliente, registrar a Patricia en Ficha › Socios y elegirla en «Empresa propia de la firma».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

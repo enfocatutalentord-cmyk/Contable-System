@@ -66,6 +66,7 @@ export async function cuentasCompras(tx: Tx): Promise<CuentasCompras> {
 
 export type LineaCompraEntrada = {
   descripcion: string; clase: "servicio" | "bien"; cantidad: bigint; precio: bigint; cuentaId: string | null; impuestoIds: string[];
+  unidadId?: string | null; // unidad de negocio (bloque 1b)
 };
 export type LineaCompraCalculada = LineaCompraEntrada & {
   cuentaId: string; subtotal: bigint; itbis: bigint; otros: bigint;
@@ -159,9 +160,9 @@ export async function guardarBorradorCompra(tx: Tx, d: DatosCompra & { compraId?
   }
   for (const [i, l] of lineas.entries()) {
     const [{ id: lineaId }] = await tx<{ id: string }[]>`
-      INSERT INTO lineas_compra (compra_id, empresa_id, orden, descripcion, clase, cantidad, precio, cuenta_id, subtotal, itbis, otros)
+      INSERT INTO lineas_compra (compra_id, empresa_id, orden, descripcion, clase, cantidad, precio, cuenta_id, subtotal, itbis, otros, unidad_id)
       VALUES (${id}, ${d.empresaId}, ${i + 1}, ${l.descripcion.trim()}, ${l.clase}, ${cantidadTexto(l.cantidad)}, ${deCentavos(l.precio)},
-              ${l.cuentaId}, ${deCentavos(l.subtotal)}, ${deCentavos(l.itbis)}, ${deCentavos(l.otros)})
+              ${l.cuentaId}, ${deCentavos(l.subtotal)}, ${deCentavos(l.itbis)}, ${deCentavos(l.otros)}, ${l.unidadId ?? null})
       RETURNING id`;
     for (const imp of l.impuestos) {
       await tx`
@@ -229,8 +230,8 @@ export async function registrarCompra(
   const cuentas = await cuentasCompras(tx);
   const tasa = tasaDeTexto(c.tasa);
   const alCosto = c.itbis_al_costo || !empresa.contribuye_itbis;
-  const lineas = await tx<{ id: string; cuenta_id: string; subtotal: string }[]>`
-    SELECT id, cuenta_id, subtotal::text FROM lineas_compra WHERE compra_id = ${d.compraId} ORDER BY orden`;
+  const lineas = await tx<{ id: string; cuenta_id: string; subtotal: string; unidad_id: string | null }[]>`
+    SELECT id, cuenta_id, subtotal::text, unidad_id FROM lineas_compra WHERE compra_id = ${d.compraId} ORDER BY orden`;
   const impuestos = await tx<{ linea_id: string; tipo: string; monto: string; cuenta_id: string | null; nombre: string }[]>`
     SELECT il.linea_id, il.tipo, il.monto::text, i.cuenta_compras_id AS cuenta_id, i.nombre
       FROM impuestos_linea_compra il JOIN impuestos i ON i.id = il.impuesto_id WHERE il.compra_id = ${d.compraId}`;
@@ -251,7 +252,7 @@ export async function registrarCompra(
         alGasto += monto;
       }
     }
-    lineasAsiento.push({ cuentaId: l.cuenta_id, ...lado(aPesos(alGasto, tasa)) });
+    lineasAsiento.push({ cuentaId: l.cuenta_id, unidadId: l.unidad_id, ...lado(aPesos(alGasto, tasa)) });
   }
   const totalPesos = lineasAsiento.reduce((s, l) => s + l.debe + l.haber, 0n);
   const cxp = c.del_exterior ? cuentas.cxp_exterior : cuentas.cxp;

@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 // «Viendo: Todos los clientes / un cliente». Al cambiar de cliente se queda en la misma pestaña.
-export function SelectorCliente({ firmaId, clientes, actual, todos }: { firmaId: string; clientes: { id: string; nombre: string }[]; actual: string | null; todos: boolean }) {
+export function SelectorCliente({ firmaId, clientes, actual, todos }: { firmaId: string; clientes: { id: string; nombre: string; propia?: boolean }[]; actual: string | null; todos: boolean }) {
   const router = useRouter();
   const ruta = usePathname();
   const busqueda = useSearchParams();
@@ -20,7 +20,7 @@ export function SelectorCliente({ firmaId, clientes, actual, todos }: { firmaId:
       <span>Viendo</span>
       <select value={actual ?? ""} onChange={(e) => ir(e.target.value)} aria-label="Cliente">
         {todos && <option value="">Todos los clientes</option>}
-        {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.propia ? " · empresa propia" : ""}</option>)}
       </select>
     </label>
   );

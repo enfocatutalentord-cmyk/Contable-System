@@ -4,6 +4,7 @@ import { alEnviar } from "@/app/enviar";
 import { useActionState, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { verMonto } from "@/lib/montos";
+import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
 export type ProveedorCompra = {
   id: string; nombre: string; rnc: string | null; tipo_identificacion: string | null; dias_credito: number;
@@ -11,7 +12,7 @@ export type ProveedorCompra = {
 };
 export type CuentaCompra = { id: string; codigo: string; nombre: string };
 export type ImpuestoCompra = { id: string; nombre: string; tipo: string; tasa: string; vigente_desde: string; vigente_hasta: string | null };
-export type LineaCompra = { descripcion: string; clase: string; cuenta: string; cantidad: string; precio: string; impuesto: string; adicional: string };
+export type LineaCompra = { descripcion: string; clase: string; cuenta: string; cantidad: string; precio: string; impuesto: string; adicional: string; unidad?: string };
 export type InicialCompra = {
   proveedor: string; tipo: string; ncf: string; fecha: string; vence: string; moneda: string; tasa: string; tipoGasto: string;
   itbisAlCosto: boolean; notas: string; lineas: LineaCompra[];
@@ -38,7 +39,7 @@ function sumarDias(fecha: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impuestoPorDefecto, cuentaPorDefecto, tiposGasto, hoy, puedeRegistrar, inicial, origen }: {
+export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impuestoPorDefecto, cuentaPorDefecto, tiposGasto, hoy, puedeRegistrar, inicial, origen, unidades = [] }: {
   accion: (estado: Estado, fd: FormData) => Promise<Estado>;
   proveedores: ProveedorCompra[];
   cuentas: CuentaCompra[];
@@ -50,6 +51,7 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
   puedeRegistrar: boolean;
   inicial?: InicialCompra;
   origen?: OrigenNota;
+  unidades?: UnidadOpcion[];
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [proveedorId, setProveedorId] = useState(inicial?.proveedor ?? origen?.proveedor ?? "");
@@ -92,7 +94,7 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
   const otros = calc.reduce((s, c) => s + c.otros, 0);
   const total = subtotal + itbis + otros;
   const lineaInvalida = lineas.some((l) => (l.descripcion || l.precio) && (!principales.some((p) => p.id === l.impuesto) || !l.cuenta));
-  const columnas = adicionales.length ? 7 : 6;
+  const columnas = 6 + (adicionales.length ? 1 : 0) + (unidades.length ? 1 : 0);
 
   return (
     <form onSubmit={alEnviar(enviar)}>
@@ -150,7 +152,7 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
           <thead>
             <tr>
               <th style={{ minWidth: 200 }}>Descripción</th><th>Tipo</th><th style={{ minWidth: 200 }}>Cuenta</th><th className="num">Cantidad</th>
-              <th className="num">Precio</th><th>ITBIS</th>{adicionales.length > 0 && <th>Otro cargo</th>}<th className="num">Importe</th><th />
+              <th className="num">Precio</th><th>ITBIS</th>{adicionales.length > 0 && <th>Otro cargo</th>}{unidades.length > 0 && <th>Unidad</th>}<th className="num">Importe</th><th />
             </tr>
           </thead>
           <tbody>
@@ -183,6 +185,9 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
                     </select>
                   </td>
                 )}
+                {unidades.length > 0 && (
+                  <td><SelectorUnidad unidades={unidades} valor={l.unidad ?? ""} cambiar={(v) => cambiar(i, "unidad", v)} etiqueta={`Unidad de la línea ${i + 1}`} /></td>
+                )}
                 <td className="num">{verMonto(calc[i].sub)}</td>
                 <td><button type="button" title="Quitar línea" onClick={() => setLineas((ls) => ls.length > 1 ? ls.filter((_, j) => j !== i) : ls)} disabled={lineas.length <= 1}>×</button></td>
               </tr>
@@ -197,7 +202,7 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
         </table>
       </div>
       <div className="fila" style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => setLineas((ls) => [...ls, vacia()])}>+ Agregar línea</button>
+        <button type="button" onClick={() => setLineas((ls) => [...ls, { ...vacia(), unidad: ls[ls.length - 1]?.unidad ?? "" }])}>+ Agregar línea</button>
       </div>
       <label style={{ marginTop: 12 }}>Notas<textarea name="notas" rows={2} defaultValue={inicial?.notas} /></label>
       <div className="fila" style={{ marginTop: 12 }}>

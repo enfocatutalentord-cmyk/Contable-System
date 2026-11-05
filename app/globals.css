@@ -138,6 +138,9 @@ h3 { color: var(--titulo); }
 .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .cifra .etiqueta { color: var(--suave); font-size: 0.85rem; }
 .cifra .valor { font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+a.cifra { color: inherit; text-decoration: none; }
+a.cifra:hover { border-color: var(--acento); }
+.etiqueta-propia { color: var(--acento); font-weight: 600; font-size: 0.85rem; }
 .fila { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
 .entre { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
 

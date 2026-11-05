@@ -95,11 +95,11 @@ export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana
   return acceso;
 }
 
-export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean; suspendida: boolean };
+export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean; suspendida: boolean; empresa_propia_id: string | null };
 
 export const misFirmas = cache(async (usuarioId: string): Promise<Firma[]> => {
   return db()<Firma[]>`
-    SELECT f.id, f.nombre, f.rnc, mf.administrador, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
+    SELECT f.id, f.nombre, f.rnc, mf.administrador, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, f.empresa_propia_id FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
      WHERE mf.usuario_id = ${usuarioId} ORDER BY f.nombre`;
 });
 

@@ -10,6 +10,7 @@ import {
 import { nivelDeCodigo } from "@/lib/catalogo-rd";
 import { conEmpresa, conUsuario, mensajeError, type Tx } from "@/lib/db";
 import { huella, nombreSeguro, TAMANO_MAXIMO, tipoPorContenido } from "@/lib/documentos";
+import { leerUnidad } from "@/lib/empresa-propia";
 import { leerFicha } from "@/lib/empresas";
 import { crearEnlace, enviarEnlace } from "@/lib/enlaces";
 import { asegurarUsuario, avisoEnlace } from "@/lib/equipo";
@@ -23,7 +24,7 @@ function texto(fd: FormData, campo: string): string {
 }
 
 export type EstadoAsiento = Estado & { duplicado?: string };
-type LineaForm = { cuentaId: string; descripcion: string; debe: string; haber: string };
+type LineaForm = { cuentaId: string; descripcion: string; debe: string; haber: string; unidad?: string };
 
 function leerLineas(fd: FormData): LineaAsiento[] | string {
   let crudas: LineaForm[];
@@ -40,7 +41,9 @@ function leerLineas(fd: FormData): LineaAsiento[] | string {
     if (debe === null || haber === null) return `Línea ${i + 1}: el monto no es válido.`;
     if (!l.cuentaId) return `Línea ${i + 1}: elige la cuenta.`;
     if ((aCentavos(debe) > 0n) && (aCentavos(haber) > 0n)) return `Línea ${i + 1}: pon el monto en el debe o en el haber, no en ambos.`;
-    lineas.push({ cuentaId: l.cuentaId, descripcion: l.descripcion?.trim() || null, debe: aCentavos(debe), haber: aCentavos(haber) });
+    const unidadId = leerUnidad(l.unidad);
+    if (unidadId === undefined) return `Línea ${i + 1}: la unidad de negocio no es válida.`;
+    lineas.push({ cuentaId: l.cuentaId, descripcion: l.descripcion?.trim() || null, debe: aCentavos(debe), haber: aCentavos(haber), unidadId });
   }
   return lineas;
 }

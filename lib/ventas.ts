@@ -67,6 +67,7 @@ export type LineaEntrada = {
   precio: bigint; // centavos
   impuestoIds: string[]; // el principal (ITBIS o exento) y, si aplica, otro cargo (propina, selectivo…)
   cuentaIngresoId?: string;
+  unidadId?: string | null; // unidad de negocio (bloque 1b)
 };
 
 export type ImpuestoCalculado = { impuestoId: string; tipo: string; tasa: string; monto: bigint; cuentaId: string | null };
@@ -96,7 +97,14 @@ export async function calcularLineas(tx: Tx, fecha: string, entradas: LineaEntra
     if (!empresa.contribuye_itbis && imps.some((i) => i.tipo === "itbis" && leerPorcentaje(i.tasa)! > 0n)) {
       throw new ErrorContable(`${donde}: la empresa no está registrada como contribuyente de ITBIS; usa Exento`);
     }
+    // Cuenta de ingreso: la del producto; si no tiene, la de la unidad de negocio; si no, la de la configuración.
     let cuentaIngresoId = cuentas.ingreso_servicios;
+    if (l.unidadId) {
+      const [u] = await tx<{ cuenta_ingreso_id: string | null; activa: boolean }[]>`
+        SELECT cuenta_ingreso_id, activa FROM unidades_negocio WHERE id = ${l.unidadId}`;
+      if (!u?.activa) throw new ErrorContable(`${donde}: la unidad de negocio no existe o está inactiva`);
+      cuentaIngresoId = u.cuenta_ingreso_id ?? cuentaIngresoId;
+    }
     if (l.servicioId) {
       const [s] = await tx<{ cuenta_ingreso_id: string | null }[]>`SELECT cuenta_ingreso_id FROM servicios WHERE id = ${l.servicioId}`;
       if (!s) throw new ErrorContable(`${donde}: el producto o servicio no existe`);
@@ -109,6 +117,7 @@ export async function calcularLineas(tx: Tx, fecha: string, entradas: LineaEntra
     }));
     resultado.push({
       servicioId: l.servicioId, descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, cuentaIngresoId, subtotal, impuestos,
+      unidadId: l.unidadId ?? null,
       itbis: impuestos.filter((i) => i.tipo === "itbis").reduce((s, i) => s + i.monto, 0n),
       otros: impuestos.filter((i) => i.tipo !== "itbis").reduce((s, i) => s + i.monto, 0n),
     });
@@ -127,9 +136,10 @@ async function escribirLineas(tx: Tx, empresaId: string, facturaId: string, line
   for (const [i, l] of lineas.entries()) {
     const [{ id }] = await tx<{ id: string }[]>`
       INSERT INTO lineas_factura (factura_id, empresa_id, orden, servicio_id, descripcion, cantidad, precio, cuenta_ingreso_id,
-                                  subtotal, itbis, otros)
+                                  subtotal, itbis, otros, unidad_id)
       VALUES (${facturaId}, ${empresaId}, ${i + 1}, ${l.servicioId}, ${l.descripcion}, ${cantidadTexto(l.cantidad)},
-              ${deCentavos(l.precio)}, ${l.cuentaIngresoId}, ${deCentavos(l.subtotal)}, ${deCentavos(l.itbis)}, ${deCentavos(l.otros)})
+              ${deCentavos(l.precio)}, ${l.cuentaIngresoId}, ${deCentavos(l.subtotal)}, ${deCentavos(l.itbis)}, ${deCentavos(l.otros)},
+              ${l.unidadId ?? null})
       RETURNING id`;
     for (const imp of l.impuestos) {
       await tx`
@@ -224,8 +234,8 @@ export async function emitir(
 
   const cuentas = await cuentasVentas(tx);
   const tasa = tasaDeTexto(f.tasa);
-  const lineas = await tx<{ cuenta_ingreso_id: string; subtotal: string }[]>`
-    SELECT cuenta_ingreso_id, subtotal::text FROM lineas_factura WHERE factura_id = ${d.facturaId} ORDER BY orden`;
+  const lineas = await tx<{ cuenta_ingreso_id: string; subtotal: string; unidad_id: string | null }[]>`
+    SELECT cuenta_ingreso_id, subtotal::text, unidad_id FROM lineas_factura WHERE factura_id = ${d.facturaId} ORDER BY orden`;
   const impuestos = await tx<{ monto: string; cuenta_id: string | null; nombre: string }[]>`
     SELECT il.monto::text, i.cuenta_ventas_id AS cuenta_id, i.nombre
       FROM impuestos_linea_factura il JOIN impuestos i ON i.id = il.impuesto_id WHERE il.factura_id = ${d.facturaId}`;
@@ -235,7 +245,9 @@ export async function emitir(
   // Asiento en pesos. Factura: CxC contra ingresos e impuestos por pagar. Nota de crédito: al revés, contra devoluciones.
   const lado = (pesos: bigint): Pick<LineaAsiento, "debe" | "haber"> => (esNota ? { debe: pesos, haber: 0n } : { debe: 0n, haber: pesos });
   const lineasAsiento: LineaAsiento[] = [
-    ...lineas.map((l) => ({ cuentaId: esNota ? cuentas.devoluciones_ventas : l.cuenta_ingreso_id, ...lado(aPesos(aCentavos(l.subtotal), tasa)) })),
+    ...lineas.map((l) => ({
+      cuentaId: esNota ? cuentas.devoluciones_ventas : l.cuenta_ingreso_id, unidadId: l.unidad_id, ...lado(aPesos(aCentavos(l.subtotal), tasa)),
+    })),
     ...impuestos.filter((i) => i.cuenta_id).map((i) => ({ cuentaId: i.cuenta_id!, ...lado(aPesos(aCentavos(i.monto), tasa)) })),
   ];
   const totalPesos = lineasAsiento.reduce((s, l) => s + l.debe + l.haber, 0n);
@@ -275,6 +287,9 @@ export async function emitirNotaCredito(
   const itbis = imp.tipo === "itbis" ? monto : 0n;
   const otros = imp.tipo === "itbis" ? 0n : monto;
   const cuentas = await cuentasVentas(tx);
+  // La nota toma la unidad de negocio de la factura cuando todas sus líneas son de la misma.
+  const unidades = await tx<{ unidad_id: string | null }[]>`SELECT DISTINCT unidad_id FROM lineas_factura WHERE factura_id = ${d.facturaId}`;
+  const unidadNota = unidades.length === 1 ? unidades[0].unidad_id : null;
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO facturas (empresa_id, estado, tipo_ncf, cliente_id, factura_origen_id, fecha, vence, moneda, tasa,
                           subtotal, itbis, otros_impuestos, total, notas, creado_por, tipo_ingreso)
@@ -283,9 +298,9 @@ export async function emitirNotaCredito(
             ${f.tipo_ingreso})
     RETURNING id`;
   const [{ id: lineaId }] = await tx<{ id: string }[]>`
-    INSERT INTO lineas_factura (factura_id, empresa_id, orden, descripcion, cantidad, precio, cuenta_ingreso_id, subtotal, itbis, otros)
+    INSERT INTO lineas_factura (factura_id, empresa_id, orden, descripcion, cantidad, precio, cuenta_ingreso_id, subtotal, itbis, otros, unidad_id)
     VALUES (${id}, ${d.empresaId}, 1, ${d.motivo}, 1, ${deCentavos(d.subtotal)}, ${cuentas.devoluciones_ventas},
-            ${deCentavos(d.subtotal)}, ${deCentavos(itbis)}, ${deCentavos(otros)})
+            ${deCentavos(d.subtotal)}, ${deCentavos(itbis)}, ${deCentavos(otros)}, ${unidadNota})
     RETURNING id`;
   await tx`
     INSERT INTO impuestos_linea_factura (linea_id, factura_id, empresa_id, impuesto_id, tipo, tasa, monto)

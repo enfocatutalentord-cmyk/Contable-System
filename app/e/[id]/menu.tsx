@@ -6,8 +6,10 @@ import { FUERA_DEL_MENU, PESTANAS_CLIENTE, puedeVer } from "@/lib/pestanas";
 
 // pestanas: las que ve el rol de la persona en el cliente elegido (null = todas). soloCliente: usuario de una empresa cliente,
 // que no ve las pantallas de la firma.
-export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente }: {
+// propia: la empresa propia de la firma (su contabilidad), que va arriba como módulo aparte.
+export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente, propia = null }: {
   firmaId: string; empresaId: string | null; admin: boolean; auditoria: boolean; pestanas: string[] | null; soloCliente: boolean;
+  propia?: { id: string; nombre: string } | null;
 }) {
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
@@ -32,11 +34,19 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   };
   return (
     <>
-      {!soloCliente && <div className="grupo">Firma</div>}
+      {propia && <div className="grupo">{propia.nombre}</div>}
+      {propia && (
+        <Link href={`/e/${propia.id}`} aria-current={ruta === `/e/${propia.id}` ? "page" : undefined}>Contabilidad propia</Link>
+      )}
+      {!soloCliente && <div className={`grupo${propia ? " separada" : ""}`}>{propia ? "Clientes" : "Firma"}</div>}
       {!soloCliente && general.map(firmaLink)}
       {cliente.filter((s) => s.enlaces.length).map((s, i) => (
         <div key={i} style={{ display: "contents" }}>
-          {s.grupo && <div className={`grupo${s.grupo === "Configuración del cliente" ? " separada" : ""}`}>{s.grupo}</div>}
+          {s.grupo && (
+            <div className={`grupo${s.grupo === "Configuración del cliente" ? " separada" : ""}`}>
+              {propia && empresaId === propia.id && s.grupo === "Cliente elegido" ? propia.nombre : s.grupo}
+            </div>
+          )}
           {s.enlaces.map(([r, nombre]) => (
             <Link key={r} href={base ? base + r : `${firma}/elegir?a=${encodeURIComponent(r || "/")}`}
               aria-current={activoCliente(r) ? "page" : undefined}>{soloCliente && r === "/recepcion" ? "Mis documentos" : nombre}</Link>

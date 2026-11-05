@@ -23,8 +23,8 @@ export default async function EditarCompra({ params }: { params: Promise<{ id: s
              c.moneda, c.tasa::text, c.tipo_gasto, c.itbis_al_costo, c.notas, c.creado_por, c.compra_origen_id, o.ncf AS origen_ncf
         FROM compras c LEFT JOIN compras o ON o.id = c.compra_origen_id WHERE c.id = ${cid}`;
     if (!c || c.estado !== "borrador") return null;
-    const lineas = await tx<{ descripcion: string; clase: string; cuenta_id: string; cantidad: string; precio: string; principal: string | null; adicional: string | null }[]>`
-      SELECT l.descripcion, l.clase, l.cuenta_id, l.cantidad::text, l.precio::text,
+    const lineas = await tx<{ descripcion: string; clase: string; cuenta_id: string; cantidad: string; precio: string; principal: string | null; adicional: string | null; unidad_id: string | null }[]>`
+      SELECT l.descripcion, l.clase, l.cuenta_id, l.cantidad::text, l.precio::text, l.unidad_id,
              (SELECT il.impuesto_id FROM impuestos_linea_compra il WHERE il.linea_id = l.id AND il.tipo IN ('itbis', 'exento') LIMIT 1) AS principal,
              (SELECT il.impuesto_id FROM impuestos_linea_compra il WHERE il.linea_id = l.id AND il.tipo NOT IN ('itbis', 'exento') LIMIT 1) AS adicional
         FROM lineas_compra l WHERE l.compra_id = ${cid} ORDER BY l.orden`;
@@ -37,7 +37,7 @@ export default async function EditarCompra({ params }: { params: Promise<{ id: s
     tasa: String(Number(c.tasa)), tipoGasto: c.tipo_gasto, itbisAlCosto: c.itbis_al_costo, notas: c.notas ?? "",
     lineas: lineas.map((l) => ({
       descripcion: l.descripcion, clase: l.clase, cuenta: l.cuenta_id, cantidad: String(Number(l.cantidad)), precio: l.precio,
-      impuesto: l.principal ?? "", adicional: l.adicional ?? "",
+      impuesto: l.principal ?? "", adicional: l.adicional ?? "", unidad: l.unidad_id ?? "",
     })),
   };
   const origen: OrigenNota | undefined = c.compra_origen_id

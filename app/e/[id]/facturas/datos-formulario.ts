@@ -1,4 +1,5 @@
 import type { Tx } from "@/lib/db";
+import { listarUnidades } from "@/lib/empresa-propia";
 import { listarImpuestos } from "@/lib/fiscal";
 import type { ClienteFactura, ImpuestoFactura, ServicioFactura } from "./nueva/formulario-factura";
 
@@ -13,6 +14,7 @@ export async function datosFormulario(tx: Tx, hoy: string) {
     ? impuestos.filter((i) => i.tipo === "itbis" && vigenteHoy(i)).sort((a, b) => Number(b.tasa) - Number(a.tasa))[0]
     : impuestos.find((i) => i.tipo === "exento" && vigenteHoy(i));
   return {
+    unidades: (await listarUnidades(tx)).map(({ id, nombre }) => ({ id, nombre })),
     impuestos,
     impuestoPorDefecto: porDefecto?.id ?? impuestos.find((i) => i.tipo === "exento")?.id ?? "",
     clientes: await tx<ClienteFactura[]>`

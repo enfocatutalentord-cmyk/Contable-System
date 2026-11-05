@@ -51,9 +51,9 @@ export default async function VerAsiento({ params, searchParams }: {
         LEFT JOIN asientos r ON r.revierte_a = a.id
        WHERE a.id = ${aid}`;
     if (!a) return null;
-    const lineas = await tx<{ codigo: string; nombre: string; descripcion: string | null; debe: string; haber: string }[]>`
-      SELECT c.codigo, c.nombre, l.descripcion, l.debe::text, l.haber::text
-        FROM lineas_asiento l JOIN cuentas c ON c.id = l.cuenta_id
+    const lineas = await tx<{ codigo: string; nombre: string; descripcion: string | null; debe: string; haber: string; unidad: string | null }[]>`
+      SELECT c.codigo, c.nombre, l.descripcion, l.debe::text, l.haber::text, u.nombre AS unidad
+        FROM lineas_asiento l JOIN cuentas c ON c.id = l.cuenta_id LEFT JOIN unidades_negocio u ON u.id = l.unidad_id
        WHERE l.asiento_id = ${aid} ORDER BY l.orden`;
     return { a, lineas };
   });
@@ -96,7 +96,7 @@ export default async function VerAsiento({ params, searchParams }: {
             {lineas.map((l, i) => (
               <tr key={i}>
                 <td>{l.codigo} · {l.nombre}</td>
-                <td>{l.descripcion}</td>
+                <td>{l.descripcion}{l.unidad && <span className="sub" style={{ margin: 0, display: "block" }}>Unidad: {l.unidad}</span>}</td>
                 <td className="num">{verMonto(l.debe, true)}</td>
                 <td className="num">{verMonto(l.haber, true)}</td>
               </tr>

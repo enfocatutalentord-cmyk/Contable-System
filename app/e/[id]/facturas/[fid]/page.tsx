@@ -46,8 +46,9 @@ export default async function VerFactura({ params, searchParams }: {
         LEFT JOIN saldos_factura s ON s.factura_id = f.id
        WHERE f.id = ${fid}`;
     if (!f) return null;
-    const lineas = await tx<{ descripcion: string; cantidad: string; precio: string; subtotal: string; impuestos: string | null }[]>`
+    const lineas = await tx<{ descripcion: string; cantidad: string; precio: string; subtotal: string; impuestos: string | null; unidad: string | null }[]>`
       SELECT l.descripcion, l.cantidad::text, l.precio::text, l.subtotal::text,
+             (SELECT u.nombre FROM unidades_negocio u WHERE u.id = l.unidad_id) AS unidad,
              (SELECT string_agg(i.nombre || CASE WHEN il.monto > 0 THEN ': ' || to_char(il.monto, 'FM999,999,999,990.00') ELSE '' END, ' · '
                                 ORDER BY il.tipo <> 'itbis', i.nombre)
                 FROM impuestos_linea_factura il JOIN impuestos i ON i.id = il.impuesto_id WHERE il.linea_id = l.id) AS impuestos
@@ -144,7 +145,7 @@ export default async function VerFactura({ params, searchParams }: {
             <tbody>
               {lineas.map((l, i) => (
                 <tr key={i}>
-                  <td>{l.descripcion}</td>
+                  <td>{l.descripcion}{l.unidad && <span className="sub no-imprimir" style={{ margin: 0, display: "block" }}>Unidad: {l.unidad}</span>}</td>
                   <td className="num">{Number(l.cantidad).toLocaleString("es-DO", { maximumFractionDigits: 4 })}</td>
                   <td className="num">{verMonto(l.precio)}</td>
                   <td>{l.impuestos}</td>

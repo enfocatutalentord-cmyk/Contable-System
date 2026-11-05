@@ -353,7 +353,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
     if (reporte === "estado-financiero") {
       const f = leerFiltrosEstados(sp);
-      const { estado, firmas } = await conEmpresa(id, (tx) => armarEstado(tx, f));
+      const { estado, firmas, unidad } = await conEmpresa(id, (tx) => armarEstado(tx, f));
       const cols = estado.columnas;
       const dos = cols.length === 2 && !estado.sinVariacion, conPct = f.tipo === "resultados" && cols.length === 1;
       const columnas = [col("", false, 46), ...cols.map((c) => col(c.titulo, true)),
@@ -368,7 +368,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const detalle = f.tipo === "balance" ? `Al ${verFecha(cols[0].hasta)}` : `Del ${verFecha(cols[0].desde)} al ${verFecha(cols[0].hasta)}`;
       const archivo = { resultados: "estado-de-resultados", balance: "estado-de-situacion", flujo: "flujo-de-efectivo", patrimonio: "cambios-en-el-patrimonio" }[f.tipo];
       return [`${archivo}-${cols[0].hasta}`, {
-        ...base, titulo: TITULOS[f.tipo], detalle: `${detalle} · valores en ${empresa.moneda}`, horizontal: cols.length > 3,
+        ...base, titulo: TITULOS[f.tipo] + (unidad ? ` · ${unidad}` : ""), detalle: `${detalle} · valores en ${empresa.moneda}`, horizontal: cols.length > 3,
         columnas, filas, negritas: estado.filas.flatMap((r, i) => (r.tipo === "cuenta" ? [] : [i])),
         firmas: [
           { rol: "Preparado por", nombre: firmas.firma_preparado ?? "", detalle: firmas.firma_icpard ? `ICPARD ${firmas.firma_icpard}` : undefined },

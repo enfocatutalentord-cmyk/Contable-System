@@ -6,7 +6,7 @@ import { saldosPorCuenta, ultimoDiaMes, type CuentaSaldo } from "./reportes.ts";
 // (Sección 3: juego completo), con los comparativos de QuickBooks Online («Comparison») y Xero (períodos anteriores y
 // meses en columnas). Todo sale de los asientos contabilizados y del catálogo: no se guarda nada aparte.
 
-export type Columna = { titulo: string; desde: string; hasta: string };
+export type Columna = { titulo: string; desde: string; hasta: string; unidad?: string | null }; // unidad: id, «sin» o todas (vacía)
 export type Fila = {
   tipo: "seccion" | "cuenta" | "subtotal" | "total";
   texto: string;
@@ -139,7 +139,7 @@ function lineasDe(sec: Seccion, porColumna: CuentaSaldo[][], valor: (c: CuentaSa
 const sumar = (a: bigint[], b: bigint[], signo = 1n) => a.map((v, i) => v + signo * b[i]);
 
 export async function estadoResultados(tx: Tx, columnas: Columna[], agrupar: Agrupar): Promise<Estado> {
-  const porColumna = await Promise.all(columnas.map((c) => saldosPorCuenta(tx, c.desde, c.hasta, true)));
+  const porColumna = await Promise.all(columnas.map((c) => saldosPorCuenta(tx, c.desde, c.hasta, true, c.unidad ?? null)));
   const nombres = new Map(porColumna[0].map((c) => [c.codigo, { id: c.id, nombre: c.nombre }]));
   const cero = columnas.map(() => 0n);
   const totales: Record<string, bigint[]> = {};

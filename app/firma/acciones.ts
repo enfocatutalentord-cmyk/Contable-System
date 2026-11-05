@@ -5,6 +5,7 @@ import { accesoFirma, esUuid } from "@/lib/acceso";
 import { ErrorContable } from "@/lib/asientos";
 import { conUsuario, db, mensajeError } from "@/lib/db";
 import { enviarCorreo } from "@/lib/correo";
+import { prepararEmpresaPropia } from "@/lib/empresa-propia";
 import { crearEnlace, enviarEnlace, urlApp } from "@/lib/enlaces";
 import { avisarCambio, quitarDosPasos } from "@/lib/cuenta-dos-pasos";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
@@ -188,6 +189,37 @@ export async function guardarFirma(firmaId: string, _: Estado, fd: FormData): Pr
   }
   revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Datos de la firma guardados." };
+}
+
+// Empresa propia de la firma (bloque 1b): su contabilidad se lleva como un cliente más. Al marcarla, cada otra empresa de la
+// firma queda como cliente en su facturación (lo hace la base) y se le crean las unidades de negocio y las cuentas propias.
+// Volver a marcarla la misma solo completa lo que falte.
+export async function marcarEmpresaPropia(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  const empresaId = texto(fd, "empresa");
+  if (empresaId && !esUuid(empresaId)) return { error: "Elige una de las empresas de la firma." };
+  let mensaje = "La firma ya no tiene empresa propia marcada.";
+  try {
+    await conUsuario(usuario.id, async (tx) => {
+      await tx`UPDATE firmas SET empresa_propia_id = ${empresaId || null} WHERE id = ${firmaId}`;
+      if (!empresaId) return;
+      await tx`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
+      await tx`SET LOCAL ROLE contable_app`;
+      const r = await prepararEmpresaPropia(tx, empresaId);
+      const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM clientes WHERE empresa_vinculada_id IS NOT NULL`;
+      mensaje = [
+        `Empresa propia guardada. ${n} ${n === 1 ? "cliente queda enlazado" : "clientes quedan enlazados"} con su facturación.`,
+        r.unidades.length ? `Unidades nuevas: ${r.unidades.join(", ")}.` : "",
+        r.cuentas.length ? `Cuentas nuevas: ${r.cuentas.join(", ")}.` : "",
+        ...r.avisos,
+      ].filter(Boolean).join(" ");
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/firma/${firmaId}`, "layout");
+  if (empresaId) revalidatePath(`/e/${empresaId}`, "layout");
+  return { ok: mensaje };
 }
 
 // Persona del equipo que se ocupa de un cliente.
