@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
-import { accesoEmpresa } from "@/lib/acceso";
+import { accesoEmpresa, soloCliente } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
+import { plantillasDe } from "@/lib/mensajes-db";
 import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, moverMes, nombreMes, ORIGENES, TIPOS_GESTION } from "@/lib/bitacora";
 import { conEmpresa } from "@/lib/db";
 import { equipoDe } from "@/lib/firma";
@@ -24,6 +26,9 @@ export default async function Bitacora({ params, searchParams }: {
   const registra = puede(permisos, "registrar");
   const consulta = (m: string) => `/e/${id}/bitacora?${new URLSearchParams({ ...f, mes: m }).toString()}`;
   const abiertas = gestiones.filter((g) => g.estado !== "hecha").length;
+  // Mensajes de WhatsApp (bloque 3c): cualquiera de los predeterminados, con los datos de la ficha.
+  const mensajes = puede(permisos, "exportar") && !(await soloCliente(empresa.firma_id, usuario.id))
+    ? (await plantillasDe(empresa.firma_id)).map((p) => ({ clave: p.clave, nombre: p.nombre })) : [];
 
   return (
     <>
@@ -32,11 +37,19 @@ export default async function Bitacora({ params, searchParams }: {
           <h1>Bitácora</h1>
           <p className="sub">
             Todo lo que se hace por {empresa.nombre}: lo que anota la coordinación y lo que el sistema registra solo (facturas emitidas,
-            declaraciones presentadas, documentos procesados y notificaciones enviadas). Sale en el reporte mensual del cliente.
+            declaraciones presentadas, documentos procesados, notificaciones y mensajes de WhatsApp enviados). Sale en el reporte mensual del cliente.
           </p>
         </div>
         {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/bitacora?mes=${f.mes}`} />}
       </div>
+
+      {mensajes.length > 0 && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Enviar un mensaje por WhatsApp</h2>
+          <p className="sub" style={{ marginTop: 0 }}>Bienvenida, saludo de los lunes, requerimientos, citas… Se llena con los datos de la ficha y queda anotado aquí al enviarlo.</p>
+          <EnviarWhatsApp empresaId={id} opciones={mensajes} etiqueta="Preparar mensaje" />
+        </div>
+      )}
 
       {registra && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>

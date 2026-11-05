@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { BotonImprimir } from "@/app/imprimir";
-import { accesoEmpresa, esUuid } from "@/lib/acceso";
+import { accesoEmpresa, esUuid, misFirmas } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
 import { conEmpresa } from "@/lib/db";
 import { verPorcentaje } from "@/lib/fiscal";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
@@ -22,7 +23,7 @@ type Factura = {
   moneda: string; tasa: string; subtotal: string; itbis: string; otros_impuestos: string; total: string; notas: string | null;
   anulada: boolean; motivo_anulacion: string | null; asiento: number | null; asiento_id: string | null; cliente: string; rnc: string | null;
   direccion: string | null; origen_id: string | null; origen_ncf: string | null; creado_por_id: string; creado_por: string | null;
-  emitida_por: string | null; emitida_en: Date | null; saldo: string | null;
+  emitida_por: string | null; emitida_en: Date | null; saldo: string | null; acuerdo_id: string | null;
 };
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" }) ?? "";
@@ -41,7 +42,7 @@ export default async function VerFactura({ params, searchParams }: {
              to_char(f.vence, 'YYYY-MM-DD') AS vence, f.moneda, f.tasa::text, f.subtotal::text, f.itbis::text, f.otros_impuestos::text,
              f.total::text, f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, c.nombre AS cliente, c.rnc,
              c.direccion, o.id AS origen_id, o.ncf AS origen_ncf, f.creado_por AS creado_por_id, u.nombre AS creado_por,
-             ue.nombre AS emitida_por, f.emitida_en, s.saldo::text
+             ue.nombre AS emitida_por, f.emitida_en, s.saldo::text, f.acuerdo_id
         FROM facturas f JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN asientos a ON a.id = f.asiento_id
         LEFT JOIN facturas o ON o.id = f.factura_origen_id
@@ -83,6 +84,9 @@ export default async function VerFactura({ params, searchParams }: {
   const fueraDeCierre = !empresa.fecha_bloqueo || f.fecha > empresa.fecha_bloqueo;
   const propioConAprobacion = empresa.requiere_aprobacion && f.creado_por_id === usuario.id;
   const titulo = esNota ? "Nota de crédito" : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
+  // WhatsApp (bloque 3c): las facturas de la empresa propia a sus clientes (igualas y demás servicios).
+  const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id);
+  const whatsapp = propia && !borrador && !esNota && !f.anulada && puede(permisos, "exportar");
 
   return (
     <>
@@ -104,6 +108,14 @@ export default async function VerFactura({ params, searchParams }: {
             {borrador ? "Borrador" : f.anulada ? "Anulada" : "Emitida"}
           </span>
         </div>
+        {whatsapp && (
+          <div className="fila" style={{ marginBottom: 12 }}>
+            <EnviarWhatsApp empresaId={id} clave={f.acuerdo_id ? "cobro_iguala" : "envio_factura"} docRef={{ tipo: "factura", id: f.id }} />
+            {saldo > 0 && f.vence < hoyISO() && (
+              <EnviarWhatsApp empresaId={id} clave="pago_atrasado" docRef={{ tipo: "factura", id: f.id }} etiqueta="Recordar el pago atrasado" />
+            )}
+          </div>
+        )}
         {borrador && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>
             <div className="fila">

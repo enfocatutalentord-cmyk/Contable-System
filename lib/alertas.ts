@@ -6,7 +6,9 @@ import { verFecha, verMonto } from "./montos.ts";
 // Bloque 3, entrega 3b: las alertas por cliente de la sección 9 del Documento maestro, calculadas con lo que ya registra el
 // sistema. No se guardan: desaparecen solas cuando se resuelve lo que avisan (se carga el rango, se marca presentada, etc.).
 
-export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; enlace: string; orden: string };
+// mensaje: el mensaje de WhatsApp que corresponde a la alerta (bloque 3c), con lo que hace falta para llenarlo.
+export type Mensaje = { clave: string; extra?: Record<string, string>; ref?: { tipo: "notificacion"; id: string } };
+export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; enlace: string; orden: string; mensaje?: Mensaje };
 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
@@ -34,13 +36,14 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
   const { empresaId: id, hoy } = d;
   const base = `/e/${id}`;
   const alertas: Alerta[] = [];
-  const poner = (tipo: string, nivel: Alerta["nivel"], texto: string, enlace: string, orden = hoy) => alertas.push({ tipo, nivel, texto, enlace, orden });
+  const poner = (tipo: string, nivel: Alerta["nivel"], texto: string, enlace: string, orden = hoy, mensaje?: Mensaje) => alertas.push({ tipo, nivel, texto, enlace, orden, mensaje });
 
   // Comprobantes: quedan 10 o menos, o el rango vence en 30 días.
   for (const s of await tx<{ tipo: string; quedan: number; vence: string }[]>`
       SELECT tipo, (hasta - siguiente + 1)::int AS quedan, to_char(vence, 'YYYY-MM-DD') AS vence FROM secuencias_ncf WHERE activa`) {
     if (s.vence < hoy) continue; // vencidos: no se usan
-    if (s.quedan <= 10) poner("comprobantes", s.quedan <= 0 ? "urgente" : "aviso", s.quedan <= 0 ? `Se agotaron los comprobantes ${s.tipo}` : `Quedan ${s.quedan} comprobantes ${s.tipo}`, `${base}/comprobantes`);
+    if (s.quedan <= 10) poner("comprobantes", s.quedan <= 0 ? "urgente" : "aviso", s.quedan <= 0 ? `Se agotaron los comprobantes ${s.tipo}` : `Quedan ${s.quedan} comprobantes ${s.tipo}`, `${base}/comprobantes`, hoy,
+      { clave: "comprobantes", extra: { cantidad: String(Math.max(0, s.quedan)), tipo: s.tipo } });
     else if (dias(hoy, s.vence) <= 30) poner("comprobantes", "aviso", `El rango de comprobantes ${s.tipo} ${faltan(hoy, s.vence)}`, `${base}/comprobantes`, s.vence);
   }
 
@@ -75,17 +78,19 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
   }
 
   // Notificaciones de pago sin pagar cerca de la fecha límite.
-  for (const n of await tx<{ tipo: string; periodo: string; monto: string; fecha_limite: string; estado: string }[]>`
-      SELECT tipo, periodo, monto::text, to_char(fecha_limite, 'YYYY-MM-DD') AS fecha_limite, estado FROM notificaciones_pago WHERE estado <> 'pagada'`) {
+  for (const n of await tx<{ id: string; tipo: string; periodo: string; monto: string; fecha_limite: string; estado: string }[]>`
+      SELECT id, tipo, periodo, monto::text, to_char(fecha_limite, 'YYYY-MM-DD') AS fecha_limite, estado FROM notificaciones_pago WHERE estado <> 'pagada'`) {
     const p = porVencer(n, hoy);
-    if (p) poner("notificacion", p === "vencida" ? "urgente" : "aviso", `Notificación ${n.tipo.toUpperCase()} de ${n.periodo.slice(4)}/${n.periodo.slice(0, 4)} por RD$${verMonto(n.monto)} sin pagar: ${faltan(hoy, n.fecha_limite)}`, `${base}/notificaciones`, n.fecha_limite);
+    if (p) poner("notificacion", p === "vencida" ? "urgente" : "aviso", `Notificación ${n.tipo.toUpperCase()} de ${n.periodo.slice(4)}/${n.periodo.slice(0, 4)} por RD$${verMonto(n.monto)} sin pagar: ${faltan(hoy, n.fecha_limite)}`, `${base}/notificaciones`, n.fecha_limite,
+      { clave: n.tipo === "tss" ? "notificacion_tss" : "constancia", ref: { tipo: "notificacion", id: n.id } });
   }
 
   if (!d.propia && e && e.estado_cliente !== "retirado") {
     // Documentos del cliente no recibidos: desde el día 10, nada subido en el mes.
     if (Number(hoy.slice(8)) >= 10) {
       const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM recepciones WHERE subido_en >= date_trunc('month', ${hoy}::date)`;
-      if (n === 0) poner("documentos", "aviso", "No ha enviado documentos este mes (facturas de compras para el 606)", `${base}/recepcion`);
+      if (n === 0) poner("documentos", "aviso", "No ha enviado documentos este mes (facturas de compras para el 606)", `${base}/recepcion`, hoy,
+        { clave: "facturas_606", extra: { mes: `${MESES[Number(anterior.slice(4)) - 1]} ${anterior.slice(0, 4)}` } });
     }
     if (!e.formalizado) poner("formalizacion", "aviso", "Sin formalizar: falta la fecha de la ficha, la hoja de acuerdo o el contrato firmados", `${base}/empresa?seccion=relacion`);
     // Registro mercantil y nombre comercial: 60 días antes. Asamblea ordinaria: 30 días antes.
@@ -96,12 +101,14 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
     for (const c of await tx<{ nombre: string; nacimiento: string }[]>`
         SELECT nombre, to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento FROM contactos_empresa WHERE nacimiento IS NOT NULL`) {
       const cumple = proximo(c.nacimiento, hoy);
-      if (dias(hoy, cumple) <= 1) poner("fidelidad", "aviso", `${dias(hoy, cumple) === 0 ? "Hoy" : "Mañana"} cumple años ${c.nombre}`, `${base}/empresa?seccion=contactos`, cumple);
+      if (dias(hoy, cumple) <= 1) poner("fidelidad", "aviso", `${dias(hoy, cumple) === 0 ? "Hoy" : "Mañana"} cumple años ${c.nombre}`, `${base}/empresa?seccion=contactos`, cumple,
+        { clave: "cumpleanos", extra: { nombre: c.nombre } });
     }
     if (e.fecha_inicio_contrato) {
       const aniv = proximo(e.fecha_inicio_contrato, hoy);
       const anios = Number(aniv.slice(0, 4)) - Number(e.fecha_inicio_contrato.slice(0, 4));
-      if (anios > 0 && dias(hoy, aniv) <= 7) poner("fidelidad", "aviso", `${dias(hoy, aniv) === 0 ? "Hoy" : `El ${verFecha(aniv)}`} cumple ${anios} año${anios > 1 ? "s" : ""} con la firma`, `${base}/empresa?seccion=relacion`, aniv);
+      if (anios > 0 && dias(hoy, aniv) <= 7) poner("fidelidad", "aviso", `${dias(hoy, aniv) === 0 ? "Hoy" : `El ${verFecha(aniv)}`} cumple ${anios} año${anios > 1 ? "s" : ""} con la firma`, `${base}/empresa?seccion=relacion`, aniv,
+        { clave: "aniversario", extra: { años: String(anios) } });
     }
   }
 

@@ -10,7 +10,7 @@ export const TIPOS_GESTION: Record<string, string> = {
 };
 export const ESTADOS_GESTION: Record<string, string> = { pendiente: "Pendiente", en_proceso: "En proceso", hecha: "Hecha" };
 export const ORIGENES: Record<string, string> = {
-  manual: "Anotada", factura: "Del sistema", declaracion: "Del sistema", recepcion: "Del sistema", notificacion: "Del sistema",
+  manual: "Anotada", factura: "Del sistema", declaracion: "Del sistema", recepcion: "Del sistema", notificacion: "Del sistema", mensaje: "WhatsApp",
 };
 
 export class ErrorBitacora extends Error {}

@@ -506,7 +506,27 @@ No se pasa a la siguiente sin su autorización expresa.
   `envios_dgii`; IR-2 a 30 días de los 120 del cierre; notificaciones por vencer; desde el día 10 sin documentos del cliente en el
   mes; sin formalizar; cumpleaños de contactos (hoy o mañana) y aniversario con la firma (7 días); en la empresa propia, igualas
   vencidas sin cobrar y los avisos de los acuerdos. Prospectos y agenda de citas quedan para después. Pruebas
-  `pruebas/tareas-alertas.test.mjs` (181 en total). En `main` el 5-nov-2026 («sí» de Patricia). Sigue la 3c (WhatsApp).
+  `pruebas/tareas-alertas.test.mjs` (181 en total). En `main` el 5-nov-2026 («sí» de Patricia).
+  **Entrega 3c · WhatsApp y mensajes predeterminados** (migración 036, `lib/mensajes.ts` puro, `lib/mensajes-db.ts`,
+  `lib/pdf-documentos.ts`, `app/whatsapp.tsx`, `app/e/[id]/mensajes-acciones.ts`, `app/firma/mensajes-acciones.ts`, pantalla
+  `/firma/[fid]/mensajes`, descarga pública `/d/[token]`). Envío con clic (wa.me, sin costo; la API de WhatsApp Business no llega a
+  grupos y cobra por mensaje). `plantillas_mensaje` por firma con los 23 textos de la sección 10 + «Envío de factura» (no tenía
+  texto en el documento: escrito en el mismo tono, para que Patricia lo revise); `crear_plantillas_mensaje` también al crear una
+  firma; los edita un administrador. Campos que se llenan solos: [nombre] (contacto principal de la ficha), [empresa], [mes],
+  [monto], [enlace], [servicio], [número], [concepto], [declaración], [período], [fecha límite], [cantidad], [tipo], [años]; lo
+  demás queda entre corchetes con aviso. «Cuenta bancaria»: el sistema solo guarda los últimos 4 dígitos, así que Patricia escribe
+  los datos en el texto. Botón «Enviar por WhatsApp» (ventana encima de la pantalla, sirve en el celular): factura emitida de la
+  empresa propia (iguala → «Cobro de iguala», otra → «Envío de factura»; vencida con saldo → «Pago atrasado»), cobro («Pago
+  recibido»), propuesta, notificaciones de pago (TSS → «Notificación TSS», DGII → «Constancia»; al enviarla queda «enviada»),
+  alertas de la firma (comprobantes, notificación, documentos para el 606, cumpleaños, aniversario) y un selector con todos en la
+  Bitácora. Muestra el contacto, su teléfono (los de RD con 1 delante) y el grupo de WhatsApp de la ficha; «Abrir el chat de…» o
+  «Elegir el grupo u otro chat»; se puede editar. Al tocarlo se guarda `mensajes_enviados` y, por trigger, la gestión «WhatsApp: …»
+  (origen `mensaje`) en la bitácora; «Deshacer el envío» (24 h, quien lo envió o un administrador) la quita, retira el enlace y
+  devuelve la notificación a pendiente. `enlaces_documento`: solo el hash del token, vence a los 30 días, se retira en Mensajes de
+  WhatsApp › Enlaces compartidos (con descargas); se crea solo al enviar (antes da 404). Sin FORCE RLS para buscarlo por hash sin
+  sesión. Entrega la factura o la propuesta en PDF (`tablaFactura`/`tablaPropuesta`, también en `/exportar/factura?id=`) o el PDF
+  subido de la notificación. Pide el permiso «exportar»; no lo usan los usuarios de clientes ni la supervisión. Pruebas
+  `pruebas/mensajes.test.mjs` (186 en total). Pendiente: el «sí» de Patricia y probarlo en un celular real con WhatsApp.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

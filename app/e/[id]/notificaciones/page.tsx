@@ -1,5 +1,6 @@
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
 import { ESTADOS_NOTIFICACION, listarNotificaciones, porVencer, TIPOS_NOTIFICACION } from "@/lib/bitacora";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
@@ -72,6 +73,9 @@ export default async function Notificaciones({ params }: { params: Promise<{ id:
                   </td>
                   {registra && (
                     <td className="num" style={{ whiteSpace: "nowrap" }}>
+                      {n.estado !== "pagada" && puede(permisos, "exportar") && (
+                        <EnviarWhatsApp empresaId={id} clave={n.tipo === "tss" ? "notificacion_tss" : "constancia"} docRef={{ tipo: "notificacion", id: n.id }} etiqueta="WhatsApp" />
+                      )}
                       {n.estado === "pendiente" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "enviada")} boton="Marcar enviada" className="fila"><span /></Formulario>}
                       {n.estado !== "pagada" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "pagada")} boton="Pagada" className="fila"><span /></Formulario>}
                       {n.estado === "enviada" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "pendiente")} boton="No se envió" className="fila"><span /></Formulario>}

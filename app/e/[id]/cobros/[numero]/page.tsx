@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { BotonImprimir } from "@/app/imprimir";
-import { accesoEmpresa } from "@/lib/acceso";
+import { accesoEmpresa, misFirmas } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
 import { conEmpresa } from "@/lib/db";
 import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
@@ -24,7 +25,8 @@ export default async function VerCobro({ params, searchParams }: {
   const sp = await searchParams;
   const numero = Number(n);
   if (!Number.isInteger(numero) || numero < 1) notFound();
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario } = await accesoEmpresa(id);
+  const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id); // WhatsApp (bloque 3c)
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Cobro[]>`
       SELECT c.id, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, c.moneda, c.tasa::text, c.forma_pago, c.referencia, c.notas,
@@ -59,6 +61,9 @@ export default async function VerCobro({ params, searchParams }: {
           <BotonImprimir />
           {c.asiento && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
         </div>
+        {propia && !c.anulado && puede(permisos, "exportar") && (
+          <div style={{ marginBottom: 16 }}><EnviarWhatsApp empresaId={id} clave="pago_recibido" docRef={{ tipo: "cobro", id: c.id }} etiqueta="Confirmar el pago por WhatsApp" /></div>
+        )}
       </div>
       <div className="documento">
         <div className="cabecera">

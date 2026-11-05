@@ -230,6 +230,12 @@ tr.borrador td { background: var(--aviso-fondo); }
 .qr-autenticador svg { width: 180px; height: 180px; background: #fff; padding: 6px; border-radius: 8px; }
 .clave-manual { font-family: ui-monospace, monospace; word-break: break-all; font-size: 14px; }
 button.enlace { background: none; border: 0; padding: 0; min-height: 0; color: var(--acento); text-decoration: underline; cursor: pointer; font: inherit; }
+/* «Enviar por WhatsApp» (bloque 3c): el verde de WhatsApp para que se reconozca de un vistazo. */
+.boton-whatsapp, button.boton-whatsapp { background: #128C7E; border-color: #128C7E; color: #fff; }
+.boton-whatsapp:hover { color: #fff; }
+.velo-whatsapp { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; padding: 16px; white-space: normal; text-align: left; }
+.velo-whatsapp > .tarjeta { width: 100%; max-width: 640px; max-height: calc(100vh - 32px); overflow: auto; margin: 0; }
+.velo-whatsapp textarea { width: 100%; }
 ol.pasos { padding-left: 22px; margin: 8px 0; }
 ol.pasos li { margin-bottom: 4px; }
 .configurando:has(.codigos-recuperacion) :is(.pasos, .qr-autenticador, input[name=codigo], label:has(input[name=codigo]), button.enlace) { display: none; }

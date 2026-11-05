@@ -3,6 +3,7 @@ import { accesoFirma } from "@/lib/acceso";
 import { TIPOS_ALERTA } from "@/lib/alertas";
 import { alertasDeFirma, clientesDeFirma } from "@/lib/firma";
 import { hoyISO } from "@/lib/montos";
+import { EnviarWhatsApp } from "@/app/whatsapp";
 
 export const metadata = { title: "Alertas · Empire Tax’N Legal" };
 
@@ -37,16 +38,17 @@ export default async function Alertas({ params, searchParams }: {
       </nav>
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Cliente</th><th>Qué</th><th>Alerta</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Qué</th><th>Alerta</th><th>Mensaje</th></tr></thead>
           <tbody>
             {visibles.map((a, i) => (
               <tr key={i}>
                 <td><strong>{a.cliente.nombre}</strong></td>
                 <td>{TIPOS_ALERTA[a.tipo]}</td>
                 <td style={a.nivel === "urgente" ? { color: "var(--peligro)", fontWeight: 600 } : undefined}><Link href={a.enlace}>{a.texto}</Link></td>
+                <td>{a.mensaje && <EnviarWhatsApp empresaId={a.cliente.id} clave={a.mensaje.clave} docRef={a.mensaje.ref ?? null} extra={a.mensaje.extra} etiqueta="WhatsApp" />}</td>
               </tr>
             ))}
-            {visibles.length === 0 && <tr><td colSpan={3}>No hay alertas{filtro ? " de este tipo" : ""}.</td></tr>}
+            {visibles.length === 0 && <tr><td colSpan={4}>No hay alertas{filtro ? " de este tipo" : ""}.</td></tr>}
           </tbody>
         </table>
       </div>

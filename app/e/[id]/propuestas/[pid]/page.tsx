@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
-import { accesoEmpresa, esUuid } from "@/lib/acceso";
+import { accesoEmpresa, esUuid, misFirmas } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
 import { listarAnticipos } from "@/lib/anticipos";
 import { cantidadTexto } from "@/lib/calculos";
 import { conEmpresa } from "@/lib/db";
@@ -20,7 +21,8 @@ export default async function Propuesta({ params, searchParams }: {
   const { id, pid } = await params;
   const { editar } = await searchParams;
   if (!esUuid(pid)) notFound();
-  const { permisos } = await accesoEmpresa(id);
+  const { permisos, usuario } = await accesoEmpresa(id);
+  const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id); // WhatsApp (bloque 3c)
   const hoy = hoyISO();
   const r = await conEmpresa(id, async (tx) => {
     const [p] = await tx<{
@@ -80,6 +82,9 @@ export default async function Propuesta({ params, searchParams }: {
           {abierta && registra && <Link className="boton" href={`/e/${id}/propuestas/${pid}?editar=1`}>Editar</Link>}
         </div>
       </div>
+      {propia && p.estado !== "rechazada" && puede(permisos, "exportar") && (
+        <div style={{ marginBottom: 12 }}><EnviarWhatsApp empresaId={id} clave="propuesta" docRef={{ tipo: "propuesta", id: pid }} /></div>
+      )}
       <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
         <table>
           <thead><tr><th>Servicio</th><th className="num">Cantidad</th><th className="num">Precio de lista</th><th className="num">Descuento</th><th className="num">Precio final</th></tr></thead>
