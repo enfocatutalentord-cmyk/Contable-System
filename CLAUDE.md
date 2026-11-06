@@ -713,7 +713,8 @@ No se pasa a la siguiente sin su autorización expresa.
   mano. Inicio del cliente: tarjeta «Facturas subidas en el mes» (gastos, ventas y en revisión), botón «Subir una factura» y avisos de las
   rechazadas o desestimadas; alerta del equipo «Facturas subidas» por revisar. Pruebas `pruebas/facturas-subidas.test.mjs` (215 en
   total). Probado en pantalla: QR leído de una imagen de prueba, foto sola, lista de la firma, aprobar a compra, rechazar con motivo, venta
-  aprobada y emitida con su NCF (B0200000077), aviso al cliente. Pendiente: el «sí» de Patricia; la 8c (lectura con IA, necesita la llave).
+  aprobada y emitida con su NCF (B0200000077), aviso al cliente. En `main` el 6-nov-2026 («sí» de Patricia). Pendiente: probar el QR
+  de una factura electrónica real; la 8c (lectura con IA, necesita la llave en Vercel).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
