@@ -1,6 +1,7 @@
 import type { Tx } from "./db";
 import { porVencer } from "./bitacora.ts";
 import { cuentaConFirma, type DatosReporte } from "./reporte-mensual.ts";
+import { contadorMes } from "./facturas-subidas.ts";
 
 // Pantalla de inicio del cliente en la aplicación (bloque 8a; documento «Sistema Empire · Fase 2», sección 2): lo suyo del mes,
 // sin las cifras contables internas. Solo lee; lo que se descarga sale por /e/[id]/mis-documentos.
@@ -9,6 +10,7 @@ export type InicioCliente = {
   estado: string;
   documentosMes: number;
   porProcesar: number;
+  facturas: { gastos: number; ingresos: number; gastos_ok: number; ingresos_ok: number; revision: number }; // bloque 8b
   impuestos: { id: string; tipo: string; concepto: string | null; periodo: string; monto: string; fecha_limite: string; estado: string; doc: string | null; alerta: "vencida" | "por_vencer" | null }[];
   reporte: { id: string; periodo: string } | null;
   proyeccion: { id: string; periodo: string } | null;
@@ -33,7 +35,13 @@ export async function inicioCliente(tx: Tx, empresaId: string, hoy: string, base
     SELECT id, periodo FROM reportes_mensuales WHERE estado IN ('aprobado', 'enviado') ORDER BY periodo DESC LIMIT 1`;
   const [proyeccion] = await tx<{ id: string; periodo: string }[]>`SELECT id, periodo FROM proyecciones_fiscales ORDER BY periodo DESC LIMIT 1`;
 
+  const facturas = await contadorMes(tx, hoy.slice(0, 7));
   const avisos: InicioCliente["avisos"] = [];
+  for (const f of await tx<{ numero: number; estado: string; motivo: string | null; ncf: string | null }[]>`
+      SELECT numero, estado, motivo, ncf FROM facturas_subidas WHERE estado IN ('rechazada', 'desestimada') AND revisado_en > now() - interval '30 days'
+       ORDER BY revisado_en DESC LIMIT 5`) {
+    avisos.push({ texto: `La factura n.º ${f.numero}${f.ncf ? ` (${f.ncf})` : ""} fue ${f.estado}${f.motivo ? `: ${f.motivo}` : ""}.${f.estado === "rechazada" ? " Súbela de nuevo." : ""}`, enlace: `${base}/facturas-subidas` });
+  }
   for (const n of impuestos) {
     if (n.alerta) avisos.push({ texto: `${n.tipo.toUpperCase()} de ${n.periodo.slice(4)}/${n.periodo.slice(0, 4)}: ${n.alerta === "vencida" ? "venció" : "vence"} el ${n.fecha_limite.split("-").reverse().join("/")} y no consta el pago`, enlace: null });
   }
@@ -50,5 +58,5 @@ export async function inicioCliente(tx: Tx, empresaId: string, hoy: string, base
   if (formularios) avisos.push({ texto: `Tienes ${formularios === 1 ? "un formulario" : `${formularios} formularios`} por llenar.`, enlace: `${base}/solicitudes` });
 
   const cuenta = await cuentaConFirma(empresaId, periodoDe(hoy), hoy);
-  return { estado: estado_cliente, documentosMes: docs.mes, porProcesar: docs.nuevos, impuestos, reporte: reporte ?? null, proyeccion: proyeccion ?? null, cuenta, avisos };
+  return { estado: estado_cliente, documentosMes: docs.mes, porProcesar: docs.nuevos, facturas, impuestos, reporte: reporte ?? null, proyeccion: proyeccion ?? null, cuenta, avisos };
 }

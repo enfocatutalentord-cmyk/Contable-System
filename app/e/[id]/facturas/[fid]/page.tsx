@@ -19,7 +19,7 @@ import { listarAnticipos } from "@/lib/anticipos";
 import { FRECUENCIAS } from "@/lib/igualas";
 
 type Factura = {
-  id: string; estado: "borrador" | "emitida"; tipo_ncf: TipoNcf; ncf: string | null; ncf_vence: string | null; fecha: string; vence: string;
+  id: string; estado: "borrador" | "emitida"; tipo_ncf: TipoNcf; ncf: string | null; ncf_vence: string | null; ncf_externo: string | null; fecha: string; vence: string;
   moneda: string; tasa: string; subtotal: string; itbis: string; otros_impuestos: string; total: string; notas: string | null;
   anulada: boolean; motivo_anulacion: string | null; asiento: number | null; asiento_id: string | null; cliente: string; rnc: string | null;
   direccion: string | null; origen_id: string | null; origen_ncf: string | null; creado_por_id: string; creado_por: string | null;
@@ -38,7 +38,7 @@ export default async function VerFactura({ params, searchParams }: {
   const { empresa, permisos, usuario, pestanas } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [f] = await tx<Factura[]>`
-      SELECT f.id, f.estado, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
+      SELECT f.id, f.estado, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, f.ncf_externo, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
              to_char(f.vence, 'YYYY-MM-DD') AS vence, f.moneda, f.tasa::text, f.subtotal::text, f.itbis::text, f.otros_impuestos::text,
              f.total::text, f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, c.nombre AS cliente, c.rnc,
              c.direccion, o.id AS origen_id, o.ncf AS origen_ncf, f.creado_por AS creado_por_id, u.nombre AS creado_por,
@@ -141,7 +141,8 @@ export default async function VerFactura({ params, searchParams }: {
           </div>
           <div style={{ textAlign: "right" }}>
             <h2>{borrador ? `Borrador · ${titulo.toLowerCase()}` : titulo}{f.anulada && " (ANULADA)"}</h2>
-            {f.ncf ? <><div>NCF <strong>{f.ncf}</strong></div><div>Válido hasta {verFecha(f.ncf_vence)}</div></>
+            {f.ncf ? <><div>NCF <strong>{f.ncf}</strong></div>{f.ncf_vence ? <div>Válido hasta {verFecha(f.ncf_vence)}</div> : <div className="sub" style={{ margin: 0 }}>NCF del talonario del cliente</div>}</>
+              : f.ncf_externo ? <div className="sub" style={{ margin: 0 }}>Hecha fuera del sistema: al emitirla conserva el NCF {f.ncf_externo}</div>
               : <div className="sub" style={{ margin: 0 }}>Sin NCF: se asigna al emitir ({f.tipo_ncf})</div>}
           </div>
         </div>

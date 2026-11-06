@@ -5,7 +5,7 @@ export type Seccion = { grupo?: string; enlaces: [ruta: string, nombre: string][
 // abajo, como recomienda Material Design). La ruta es también la clave con la que cada rol guarda qué pestañas ve
 // (`perfiles.pestanas`; vacío = todas).
 export const PESTANAS_CLIENTE: Seccion[] = [
-  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"], ["/recepcion", "Documentos del cliente"], ["/expediente", "Expediente"], ["/solicitudes", "Solicitudes y formularios"], ["/bitacora", "Bitácora"], ["/notificaciones", "Notificaciones de pago"]] },
+  { grupo: "Cliente elegido", enlaces: [["", "Resumen del cliente"], ["/recepcion", "Documentos del cliente"], ["/facturas-subidas", "Facturas subidas"], ["/expediente", "Expediente"], ["/solicitudes", "Solicitudes y formularios"], ["/bitacora", "Bitácora"], ["/notificaciones", "Notificaciones de pago"]] },
   { grupo: "Ventas", enlaces: [["/facturas", "Facturas"], ["/igualas", "Igualas"], ["/recurrentes", "Facturas recurrentes"], ["/propuestas", "Propuestas"], ["/cobros", "Cobros"], ["/anticipos", "Anticipos de clientes"], ["/cxc", "Cuentas por cobrar"], ["/cxc/estado", "Estado de cuenta de clientes"],
                                ["/clientes", "Clientes y contactos"], ["/servicios", "Productos y servicios"]] },
   { grupo: "Compras", enlaces: [["/compras", "Compras y gastos"], ["/pagos", "Pagos"], ["/cxp", "Cuentas por pagar"], ["/cxp/estado", "Estado de cuenta de proveedores"],

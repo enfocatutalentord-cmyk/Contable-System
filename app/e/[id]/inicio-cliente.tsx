@@ -20,6 +20,7 @@ export async function InicioClienteApp({ id, nombre, usuario }: { id: string; no
       <h1>Hola, {usuario.split(" ")[0]}</h1>
       <p className="sub">{nombre} · {verFecha(hoy)}</p>
       <Instalar />
+      {!prospecto && <p><Link className="boton primario" href={`${base}/facturas-subidas`}>Subir una factura</Link></p>}
 
       {prospecto ? (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
@@ -33,6 +34,10 @@ export async function InicioClienteApp({ id, nombre, usuario }: { id: string; no
         </div>
       ) : (
         <div className="cifras">
+          <Link href={`${base}/facturas-subidas`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
+            <div className="etiqueta">Facturas subidas en {nombreMes(hoy.slice(0, 7))}</div><div className="valor">{d.facturas.gastos + d.facturas.ingresos}</div>
+            <div className="sub">{d.facturas.gastos} de gastos · {d.facturas.ingresos} de ventas{d.facturas.revision > 0 ? ` · ${d.facturas.revision} en revisión` : ""}</div>
+          </Link>
           <Link href={`${base}/recepcion`} className="tarjeta cifra" style={{ color: "inherit", textDecoration: "none" }}>
             <div className="etiqueta">Documentos subidos en {nombreMes(hoy.slice(0, 7))}</div><div className="valor">{d.documentosMes}</div>
             {d.porProcesar > 0 && <div className="sub">{d.porProcesar} en revisión</div>}

@@ -203,10 +203,10 @@ export async function emitir(
 ): Promise<{ ncf: string; asiento: number }> {
   const [f] = await tx<{
     estado: string; tipo_ncf: TipoNcf; fecha: string; moneda: string; tasa: string; total: string; creado_por: string;
-    cliente: string; rnc: string | null; cliente_activo: boolean; origen_id: string | null;
+    cliente: string; rnc: string | null; cliente_activo: boolean; origen_id: string | null; ncf_externo: string | null;
   }[]>`
     SELECT f.estado, f.tipo_ncf, to_char(f.fecha, 'YYYY-MM-DD') AS fecha, f.moneda, f.tasa::text, f.total::text, f.creado_por,
-           c.nombre AS cliente, c.rnc, c.activo AS cliente_activo, f.factura_origen_id AS origen_id
+           c.nombre AS cliente, c.rnc, c.activo AS cliente_activo, f.factura_origen_id AS origen_id, f.ncf_externo
       FROM facturas f JOIN clientes c ON c.id = f.cliente_id WHERE f.id = ${d.facturaId} FOR UPDATE OF f`;
   if (!f) throw new ErrorContable("El comprobante no existe");
   if (f.estado !== "borrador") throw new ErrorContable("El comprobante ya fue emitido");
@@ -253,7 +253,9 @@ export async function emitir(
   const totalPesos = lineasAsiento.reduce((s, l) => s + l.debe + l.haber, 0n);
   lineasAsiento.unshift({ cuentaId: cuentas.cxc, debe: esNota ? 0n : totalPesos, haber: esNota ? totalPesos : 0n, descripcion: f.cliente });
 
-  const { ncf, vence } = await tomarNcf(tx, f.tipo_ncf, f.fecha);
+  // Venta que el cliente hizo fuera del sistema (bloque 8b): conserva su NCF y no toma número del rango.
+  if (f.ncf_externo && !f.ncf_externo.startsWith(f.tipo_ncf)) throw new ErrorContable(`El NCF ${f.ncf_externo} no es un ${f.tipo_ncf}`);
+  const { ncf, vence } = f.ncf_externo ? { ncf: f.ncf_externo, vence: null } : await tomarNcf(tx, f.tipo_ncf, f.fecha);
   const asiento = await insertarAsiento(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, fecha: f.fecha, origen: esNota ? "nota_credito" : "factura",
     concepto: esNota ? `Nota de crédito ${ncf} a ${f.cliente} (modifica ${modifica})` : `Factura ${ncf} a ${f.cliente}`,

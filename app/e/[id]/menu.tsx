@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { FUERA_DEL_MENU, GRUPO_PRIVADO, PESTANAS_CLIENTE, puedeVer } from "@/lib/pestanas";
 
 // Cómo se llaman las pestañas para el cliente en su aplicación (bloque 8a).
-const NOMBRES_CLIENTE: Record<string, string> = { "": "Inicio", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes" };
+const NOMBRES_CLIENTE: Record<string, string> = { "": "Inicio", "/facturas-subidas": "Mis facturas", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes" };
 
 // pestanas: las que ve el rol de la persona en el cliente elegido (null = todas). soloCliente: usuario de una empresa cliente,
 // que no ve las pantallas de la firma.
@@ -17,7 +17,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
   const base = empresaId ? `/e/${empresaId}` : null;
-  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/alertas`, "Alertas"], [`${firma}/tareas`, "Tareas del mes"], [`${firma}/impuestos`, "Impuestos del mes"], [`${firma}/reportes`, "Reportes del mes"], [`${firma}/tramites`, "Trámites abiertos"], [`${firma}/solicitudes`, "Solicitudes"], [`${firma}/mensajes`, "Mensajes de WhatsApp"], [`${firma}/bitacora`, "Bitácora de la firma"], [`${firma}/actividad`, "Actividad"]];
+  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/facturas-subidas`, "Facturas por revisar"], [`${firma}/alertas`, "Alertas"], [`${firma}/tareas`, "Tareas del mes"], [`${firma}/impuestos`, "Impuestos del mes"], [`${firma}/reportes`, "Reportes del mes"], [`${firma}/tramites`, "Trámites abiertos"], [`${firma}/solicitudes`, "Solicitudes"], [`${firma}/mensajes`, "Mensajes de WhatsApp"], [`${firma}/bitacora`, "Bitácora de la firma"], [`${firma}/actividad`, "Actividad"]];
   const administracion: [string, string][] = admin
     ? [[`${firma}/clientes`, "Clientes de la firma"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]]
     : [];

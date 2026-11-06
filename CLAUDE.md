@@ -693,6 +693,27 @@ No se pasa a la siguiente sin su autorización expresa.
   pestañas bloqueadas, Pasar a cliente e inicio con una notificación de prueba. En `main` el 5-nov-2026 («sí» de Patricia); en
   producción responden `/manifest.webmanifest` y los iconos. Para usarla en producción: marcar «Abrir la página Crear mi cuenta» en Datos
   de la firma y compartir `/unirse/<firma>`. Sigue la 8b (carga de facturas); falta probar el correo real y la instalación en un celular.
+  «sí» de Patricia del 5-nov a empezar por la 8b (recomendadas: la coordinadora aprueba; las ventas hechas fuera del sistema van al
+  607 con su NCF). **Entrega 8b · Carga de facturas y su revisión** (migración 044, `lib/validar-fiscal.ts` puro, `lib/facturas-subidas.ts`,
+  `app/e/[id]/facturas-subidas-acciones.ts`, pestaña `/facturas-subidas` «Facturas subidas» en «Cliente elegido» («Mis facturas» para el
+  cliente), sumada a Contador, Auxiliar, Coordinadora y Cliente · Con aplicación (el prospecto no); pantalla `/firma/[fid]/facturas-subidas`
+  «Facturas por revisar»; paquete `jsqr` 1.4.0). `facturas_subidas` (número por empresa; gasto o ingreso; forma foto/pdf/qr/manual;
+  contraparte, NCF, fecha, subtotal, ITBIS, total, `qr_url`, `marcas` y `sin_credito`; recibida → aprobada, rechazada o desestimada con
+  motivo que ve el cliente; RLS e historial); el archivo va en `documentos` (entidad `factura_subida`; el mismo archivo no se sube dos
+  veces). Con la foto basta (Empire completa los datos); el QR se lee en el celular de la foto del código (jsQR) y `leerQr` toma de la
+  dirección de consulta del timbre de la DGII el RNC del emisor y del comprador, el e-NCF, la fecha y el total (los nombres de los
+  parámetros salen de los resultados de búsqueda de la guía de la DGII, que no se pudo abrir: confirmarlos con un QR real). Revisión al
+  subir (`revisarFactura`): dígito verificador del RNC (pesos 7 9 8 6 5 4 3 2; probado con los RNC de Empire y Goemhy) y de la cédula,
+  NCF B + 10 o E + 12 con tipo conocido, repetida (entre las subidas, las compras del proveedor o las facturas), a nombre de otra empresa
+  (por el QR), ITBIS que no es el 18 %, sin crédito (B02, E32, B13, E43, B11, E41). El NCF vencido o fuera de rango no se revisa (lo da la
+  DGII). Aprobar (permiso «registrar», no el cliente; `aprobarSubida`): el gasto busca o crea el proveedor por RNC y deja el borrador de
+  la compra (tipo de gasto del 606, bien o servicio, ITBIS 18 % o exento) con el archivo copiado; el ingreso busca o crea el cliente
+  (sin RNC: «Consumidor final», solo B02) y deja el borrador de la venta con `facturas.ncf_externo`: al emitirla conserva ese NCF y no toma
+  del rango (`emitir`; el vencimiento del NCF puede quedar vacío; `facturas_emision_check` cambiado). Las e-CF de ventas se registran a
+  mano. Inicio del cliente: tarjeta «Facturas subidas en el mes» (gastos, ventas y en revisión), botón «Subir una factura» y avisos de las
+  rechazadas o desestimadas; alerta del equipo «Facturas subidas» por revisar. Pruebas `pruebas/facturas-subidas.test.mjs` (215 en
+  total). Probado en pantalla: QR leído de una imagen de prueba, foto sola, lista de la firma, aprobar a compra, rechazar con motivo, venta
+  aprobada y emitida con su NCF (B0200000077), aviso al cliente. Pendiente: el «sí» de Patricia; la 8c (lectura con IA, necesita la llave).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

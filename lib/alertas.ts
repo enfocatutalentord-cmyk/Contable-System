@@ -12,7 +12,7 @@ export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; 
 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
-  prospecto: "Prospecto", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
+  prospecto: "Prospecto", facturas_subidas: "Facturas subidas", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
   tramite: "Trámites", solicitud: "Solicitudes y formularios",
 };
 
@@ -104,6 +104,9 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
       { clave: n.tipo === "tss" ? "notificacion_tss" : "constancia", ref: { tipo: "notificacion", id: n.id } });
   }
 
+  // Facturas que subió el cliente por la aplicación y esperan revisión (bloque 8b).
+  const [{ subidas }] = await tx<{ subidas: number }[]>`SELECT count(*)::int AS subidas FROM facturas_subidas WHERE estado = 'recibida'`;
+  if (subidas) poner("facturas_subidas", "aviso", `${subidas} ${subidas === 1 ? "factura subida" : "facturas subidas"} por el cliente esperando revisión`, `${base}/facturas-subidas`);
   // Prospecto que se registró por la aplicación (bloque 8a): solo el seguimiento; lo demás empieza cuando pase a cliente.
   if (!d.propia && e?.estado_cliente === "prospecto") {
     poner("prospecto", "aviso", "Prospecto: dar seguimiento y, cuando firme el contrato, pasarlo a cliente", `${base}/solicitudes`);

@@ -61,7 +61,8 @@ test("los roles nuevos existen: el prospecto y el cliente con aplicación ven su
   assert.equal(roles.length, 2);
   for (const r of roles) {
     assert.equal(r.para_clientes, true);
-    assert.deepEqual(r.pestanas, ["", "/solicitudes", "/recepcion"]);
+    // El cliente con aplicación además sube sus facturas (bloque 8b); el prospecto todavía no.
+    assert.deepEqual(r.pestanas, r.nombre === ROL_PROSPECTO ? ["", "/solicitudes", "/recepcion"] : ["", "/facturas-subidas", "/solicitudes", "/recepcion"]);
     assert.ok(!r.permisos.includes("registrar"), "no registran nada contable");
   }
 });
