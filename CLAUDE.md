@@ -715,6 +715,15 @@ No se pasa a la siguiente sin su autorización expresa.
   total). Probado en pantalla: QR leído de una imagen de prueba, foto sola, lista de la firma, aprobar a compra, rechazar con motivo, venta
   aprobada y emitida con su NCF (B0200000077), aviso al cliente. En `main` el 6-nov-2026 («sí» de Patricia). Pendiente: probar el QR
   de una factura electrónica real; la 8c (lectura con IA, necesita la llave en Vercel).
+- **Facturas por correo y normas y tasas** (documento Fase 2, sección 7; propuesta del 6-nov-2026 en
+  https://claude.ai/artifact/WYEPeEVe9FffdXZtpUNZbC, esperando el «sí» de Patricia; referentes: «responder a» de la configuración de
+  correo de Xero y el límite de Gmail de 500 correos al día). 2 entregas: A «Enviar por correo» en facturas y notas emitidas (correo de la
+  ficha, texto predeterminado editable, PDF adjunto; las de Empire con su marca y las de un cliente con su nombre y «responder a» al correo
+  de su ficha, desde la misma cuenta de Gmail; bitácora; aviso y marca «no salió» si Gmail lo frena; envío de las igualas emitidas);
+  B «Normas y tasas» en la administración de la firma (tasas y retenciones aplicadas a todos los clientes con su vigencia, calendario
+  fiscal editable que usan alertas, tablero y reporte, tipos de comprobante; responsable de las normas con registro de revisiones y
+  adjunto; aviso de cambios en 30 días y recordatorio si pasan 30 días sin revisión). Preguntas: enviar también las de los clientes,
+  responsable, frecuencia, aplicar a todos o elegir, texto propio del correo.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
