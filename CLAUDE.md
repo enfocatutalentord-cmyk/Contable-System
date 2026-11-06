@@ -690,7 +690,9 @@ No se pasa a la siguiente sin su autorización expresa.
   (descargas `/e/[id]/mis-documentos/<tipo>/<id>`), avisos y espacio para los talleres; el prospecto ve la bienvenida. Instalable
   (manifiesto, iconos del símbolo inverso sobre el verde, `apple-touch-icon`, aviso «Agregar a inicio» en el iPhone). Pruebas
   `pruebas/prospectos.test.mjs` (210 en total). Probado en pantalla en tamaño de celular: registro, contraseña, pedir servicio, ficha,
-  pestañas bloqueadas, Pasar a cliente e inicio con una notificación de prueba. Pendiente: el «sí» de Patricia; la 8b (carga de facturas).
+  pestañas bloqueadas, Pasar a cliente e inicio con una notificación de prueba. En `main` el 5-nov-2026 («sí» de Patricia); en
+  producción responden `/manifest.webmanifest` y los iconos. Para usarla en producción: marcar «Abrir la página Crear mi cuenta» en Datos
+  de la firma y compartir `/unirse/<firma>`. Sigue la 8b (carga de facturas); falta probar el correo real y la instalación en un celular.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
