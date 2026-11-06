@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { verMonto } from "./montos";
+import { verMonto } from "./montos.ts";
 
 // Modelo común de los reportes descargables: un encabezado y una tabla.
 export type Columna = { titulo: string; num?: boolean; ancho?: number };
@@ -15,6 +15,7 @@ export type Tabla = {
   horizontal?: boolean;
   negritas?: number[]; // filas que van en negrita (títulos y totales de los estados financieros)
   firmas?: { rol: string; nombre: string; detalle?: string }[]; // línea de firmas al pie
+  sinMarca?: boolean; // documento de un cliente (su factura): sin los colores ni el nombre de Empire
 };
 
 // Colores de la marca Empire Tax’N Legal (manual de identidad 1.0).
@@ -88,8 +89,9 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
     alignment: t.columnas[i]?.num ? "right" : "left",
     bold: negrita,
   });
+  const principal = t.sinMarca ? "333333" : VERDE, linea = t.sinMarca ? "888888" : DORADO;
   const cuerpo = [
-    t.columnas.map((c) => ({ text: c.titulo, bold: true, color: "#ffffff", fillColor: `#${VERDE}`, alignment: c.num ? "right" : "left" })),
+    t.columnas.map((c) => ({ text: c.titulo, bold: true, color: "#ffffff", fillColor: `#${principal}`, alignment: c.num ? "right" : "left" })),
     ...t.filas.map((f, n) => f.map((v, i) => celda(v, i, t.negritas?.includes(n)))),
     ...(t.totales ? [t.totales.map((v, i) => celda(v, i, true))] : []),
   ];
@@ -98,10 +100,10 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
     pageOrientation: t.horizontal ? "landscape" : "portrait",
     pageMargins: [32, 40, 32, 40],
     defaultStyle: { font: "Helvetica", fontSize: 8 },
-    info: { title: `${t.titulo} · ${t.empresa}`, creator: PRODUCTO },
+    info: { title: `${t.titulo} · ${t.empresa}`, creator: t.sinMarca ? t.empresa : PRODUCTO },
     content: [
       { text: t.empresa, bold: true, fontSize: 12 },
-      { text: t.titulo, bold: true, fontSize: 11, color: `#${VERDE}`, margin: [0, 2, 0, 0] },
+      { text: t.titulo, bold: true, fontSize: 11, color: `#${principal}`, margin: [0, 2, 0, 0] },
       { text: t.detalle, margin: [0, 2, 0, 0] },
       { text: t.generado, italics: true, color: "#666666", margin: [0, 2, 0, 10] },
       {
@@ -110,7 +112,7 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
           widths: t.columnas.map((c) => (c.num ? "auto" : "*")),
           body: cuerpo,
         },
-        layout: { hLineWidth: (i: number) => (i === 1 ? 0.8 : 0.3), vLineWidth: () => 0, hLineColor: (i: number) => (i === 1 ? `#${DORADO}` : "#cccccc"), paddingTop: () => 3, paddingBottom: () => 3 },
+        layout: { hLineWidth: (i: number) => (i === 1 ? 0.8 : 0.3), vLineWidth: () => 0, hLineColor: (i: number) => (i === 1 ? `#${linea}` : "#cccccc"), paddingTop: () => 3, paddingBottom: () => 3 },
       },
       ...(t.firmas?.length ? [{
         columns: t.firmas.map((f) => ({
@@ -125,7 +127,7 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
       }] : []),
     ],
     footer: (actual: number, total: number) => ({
-      columns: [{ text: PRODUCTO, color: `#${VERDE}` }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }],
+      columns: [{ text: t.sinMarca ? t.empresa : PRODUCTO, color: `#${principal}` }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }],
       margin: [32, 10, 32, 0], fontSize: 7,
     }),
   };

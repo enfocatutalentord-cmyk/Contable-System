@@ -7,6 +7,8 @@ import { avisosDe, igualasDelPeriodo, listarAcuerdos, prepararIgualas } from "@/
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { confirmarAumentoIguala, emitirMes, guardarAcuerdo, prepararMes } from "../igualas-acciones";
+import { enviarIgualasPorCorreo } from "../correo-acciones";
+import { estadoCorreos } from "@/lib/correo-facturas";
 
 // Igualas (bloque 2b, Documento maestro, sección 4): el acuerdo de cada cliente y las facturas del mes. Desde el día de
 // facturación de cada cliente su iguala se prepara sola como borrador al abrir esta pantalla; se revisa y se emite con un clic.
@@ -20,7 +22,7 @@ export default async function Igualas({ params, searchParams }: {
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { permisos, usuario } = await accesoEmpresa(id);
+  const { permisos, usuario, paraClientes } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const actual = periodoDe(hoy);
   const periodo = sp.periodo && esPeriodo(sp.periodo) ? sp.periodo : actual;
@@ -35,12 +37,16 @@ export default async function Igualas({ params, searchParams }: {
       servicios: await tx<{ id: string; nombre: string; precio: string }[]>`SELECT id, nombre, precio::text FROM servicios WHERE activo ORDER BY nombre`,
     };
   });
+  // Correo de las igualas emitidas (entrega A): cuál ya salió y cuál no.
+  const correos = await conEmpresa(id, (tx) => estadoCorreos(tx, datos.mes.filter((f) => f.estado === "emitida" && f.factura_id).map((f) => f.factura_id!)));
+  const envia = puede(permisos, "exportar") && !paraClientes;
   const avisos = avisosDe(datos.acuerdos, hoy);
   const enEdicion = registra ? datos.acuerdos.find((a) => a.id === sp.editar) : undefined;
   const mostrarFormulario = registra && (enEdicion || sp.nuevo || datos.acuerdos.length === 0);
   const porAcuerdo = new Map(datos.acuerdos.map((a) => [a.id, a]));
   const borradores = datos.mes.filter((f) => f.estado === "borrador");
   const emitidas = datos.mes.filter((f) => f.estado === "emitida");
+  const porEnviar = emitidas.filter((f) => f.factura_id && correos.get(f.factura_id) !== "enviado").length;
   const suma = (fs: typeof datos.mes) => fs.reduce((s, f) => s + Number(f.total ?? 0), 0);
 
   return (
@@ -89,10 +95,14 @@ export default async function Igualas({ params, searchParams }: {
         {puede(permisos, "contabilizar") && (
           <Formulario accion={emitirMes.bind(null, id, periodo)} boton={borradores.length ? `Emitir ${borradores.length === 1 ? "el borrador" : `los ${borradores.length} borradores`}` : "Emitir los borradores del mes"} className="fila"><span /></Formulario>
         )}
+        {envia && emitidas.length > 0 && (
+          <Formulario accion={enviarIgualasPorCorreo.bind(null, id, periodo)}
+            boton={porEnviar ? `Enviar por correo ${porEnviar === 1 ? "la emitida" : `las ${porEnviar} emitidas`}` : "Enviar por correo las emitidas"} className="fila"><span /></Formulario>
+        )}
       </div>
       <div className="tabla-envoltura" style={{ marginBottom: 24 }}>
         <table>
-          <thead><tr><th>Cliente</th><th>Acuerdo</th><th>Le toca</th><th>Estado</th><th className="num">Total</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Acuerdo</th><th>Le toca</th><th>Estado</th><th>Correo</th><th className="num">Total</th></tr></thead>
           <tbody>
             {datos.mes.map((f) => {
               const a = porAcuerdo.get(f.acuerdo_id)!;
@@ -109,11 +119,14 @@ export default async function Igualas({ params, searchParams }: {
                       ? <Link href={`/e/${id}/facturas/${f.factura_id}`}>{f.estado === "emitida" ? `Emitida · ${f.ncf}` : "Borrador"}</Link>
                       : calculo && calculo.total === 0n ? "Mes gratis" : "Sin preparar"}
                   </td>
+                  <td className={f.factura_id && correos.get(f.factura_id) === "no_salio" ? "error" : undefined}>
+                    {f.estado !== "emitida" || !f.factura_id ? "—" : correos.get(f.factura_id) === "enviado" ? "Enviado" : correos.get(f.factura_id) === "no_salio" ? "No salió" : "Por enviar"}
+                  </td>
                   <td className="num">{f.total ? verMonto(f.total) : "—"}</td>
                 </tr>
               );
             })}
-            {datos.mes.length === 0 && <tr><td colSpan={5}>Todavía no hay acuerdos de iguala.</td></tr>}
+            {datos.mes.length === 0 && <tr><td colSpan={6}>Todavía no hay acuerdos de iguala.</td></tr>}
           </tbody>
         </table>
       </div>

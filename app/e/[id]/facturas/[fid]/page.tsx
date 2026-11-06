@@ -17,6 +17,8 @@ import { crearRecurrente } from "../../igualas-acciones";
 import { aplicarAnticipoAccion } from "../../propuestas-acciones";
 import { listarAnticipos } from "@/lib/anticipos";
 import { FRECUENCIAS } from "@/lib/igualas";
+import { correosDe, plantillaCorreo, prepararCorreo } from "@/lib/correo-facturas";
+import { enviarFacturaPorCorreo } from "../../correo-acciones";
 
 type Factura = {
   id: string; estado: "borrador" | "emitida"; tipo_ncf: TipoNcf; ncf: string | null; ncf_vence: string | null; ncf_externo: string | null; fecha: string; vence: string;
@@ -35,7 +37,7 @@ export default async function VerFactura({ params, searchParams }: {
   const { id, fid } = await params;
   const sp = await searchParams;
   if (!esUuid(fid)) notFound();
-  const { empresa, permisos, usuario, pestanas } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario, pestanas, paraClientes } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [f] = await tx<Factura[]>`
       SELECT f.id, f.estado, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, f.ncf_externo, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
@@ -87,6 +89,13 @@ export default async function VerFactura({ params, searchParams }: {
   // WhatsApp (bloque 3c): las facturas de la empresa propia a sus clientes (igualas y demás servicios).
   const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id);
   const whatsapp = propia && !borrador && !esNota && !f.anulada && puede(permisos, "exportar");
+  // Correo (entrega A): toda factura o nota emitida y vigente, de la empresa propia o de un cliente; el historial siempre.
+  const conCorreo = !borrador && !paraClientes && puede(permisos, "exportar");
+  const correo = conCorreo ? await conEmpresa(id, async (tx) => ({
+    preparado: f.anulada ? null : await prepararCorreo(tx, id, f.id, await plantillaCorreo(empresa.firma_id)),
+    enviados: await correosDe(tx, f.id),
+  })) : null;
+  const ultimoNoSalio = correo?.enviados[0]?.estado === "no_salio";
 
   return (
     <>
@@ -115,6 +124,49 @@ export default async function VerFactura({ params, searchParams }: {
               <EnviarWhatsApp empresaId={id} clave="pago_atrasado" docRef={{ tipo: "factura", id: f.id }} etiqueta="Recordar el pago atrasado" />
             )}
           </div>
+        )}
+        {correo && (correo.preparado || correo.enviados.length > 0) && (
+          <details className="tarjeta" style={{ marginBottom: 16 }} open={ultimoNoSalio || undefined}>
+            <summary>
+              Enviar por correo
+              {correo.enviados.length > 0 && <span className="sub"> · {correo.enviados[0].estado === "enviado" ? `enviada el ${fechaHora(correo.enviados[0].en)}` : "el último envío no salió"}</span>}
+            </summary>
+            {ultimoNoSalio && <p className="aviso" style={{ marginTop: 8 }}>No salió: {correo.enviados[0].error} Revisa y vuelve a enviarla.</p>}
+            {correo.preparado && (
+              <Formulario accion={enviarFacturaPorCorreo.bind(null, id, f.id)} boton={correo.enviados.length ? "Enviar de nuevo" : "Enviar con el PDF adjunto"}>
+                <label>Para (uno o varios, separados por coma)
+                  <input name="para" type="text" inputMode="email" defaultValue={correo.preparado.para} required maxLength={600} placeholder="correo@cliente.com" />
+                </label>
+                {!correo.preparado.para && <p className="sub" style={{ margin: 0 }}>{correo.preparado.cliente} no tiene correo en Clientes: escríbelo aquí (o guárdalo en su ficha para la próxima).</p>}
+                <label>Asunto<input name="asunto" defaultValue={correo.preparado.asunto} required maxLength={200} /></label>
+                <label>Texto<textarea name="texto" rows={5} defaultValue={correo.preparado.texto} required maxLength={4000} /></label>
+                <p className="sub" style={{ margin: 0 }}>
+                  {propia
+                    ? "Sale con la marca de Empire y el PDF de la factura adjunto."
+                    : `Sale a nombre de ${empresa.nombre}, sin la marca de Empire, con el PDF adjunto.`}
+                  {correo.preparado.emisor.correo
+                    ? ` Si el cliente responde, la respuesta llega a ${correo.preparado.emisor.correo}.`
+                    : " La ficha no tiene correo: si el cliente responde, la respuesta llega al correo del sistema. Agrégalo en Ficha de la empresa › Datos generales."}
+                  {" "}El texto predeterminado («Correo: envío de factura») se cambia en Mensajes predeterminados, en la firma.
+                </p>
+              </Formulario>
+            )}
+            {correo.enviados.length > 0 && (
+              <div className="tabla-envoltura" style={{ marginTop: 12 }}>
+                <table>
+                  <thead><tr><th>Cuándo</th><th>Para</th><th>Quién</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {correo.enviados.map((c) => (
+                      <tr key={c.id}>
+                        <td>{fechaHora(c.en)}</td><td>{c.para}</td><td>{c.por ?? ""}</td>
+                        <td className={c.estado === "no_salio" ? "error" : undefined}>{c.estado === "enviado" ? "Enviado" : `No salió${c.error ? `: ${c.error}` : ""}`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </details>
         )}
         {borrador && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>

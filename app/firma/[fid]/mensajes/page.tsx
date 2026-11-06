@@ -21,9 +21,10 @@ export default async function Mensajes({ params, searchParams }: {
 
   return (
     <>
-      <h1>Mensajes de WhatsApp</h1>
+      <h1>Mensajes predeterminados</h1>
       <p className="sub">
-        Los textos que arma el botón «Enviar por WhatsApp» en facturas, cobros, propuestas, notificaciones de pago, alertas y la bitácora.
+        Los textos que arma el botón «Enviar por WhatsApp» en facturas, cobros, propuestas, notificaciones de pago, alertas y la bitácora,
+        y el del correo de las facturas («Correo: envío de factura»).
         Los campos entre corchetes se llenan solos: {CAMPOS.map((c) => `[${c}]`).join(", ")}. Lo demás queda entre corchetes para
         escribirlo antes de enviar. {firma.administrador ? "" : "Los textos los cambia un administrador de la firma."}
       </p>

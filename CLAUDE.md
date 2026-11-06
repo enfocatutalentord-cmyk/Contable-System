@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 6-nov-2026 (entrega A, facturas por correo, en la rama esperando el «sí»); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -724,6 +724,23 @@ No se pasa a la siguiente sin su autorización expresa.
   fiscal editable que usan alertas, tablero y reporte, tipos de comprobante; responsable de las normas con registro de revisiones y
   adjunto; aviso de cambios en 30 días y recordatorio si pasan 30 días sin revisión). Preguntas: enviar también las de los clientes,
   responsable, frecuencia, aplicar a todos o elegir, texto propio del correo.
+  «sí» de Patricia del 6-nov a empezar por la A (recomendadas: también las facturas de los clientes, a su nombre). **Entrega A · Facturas
+  por correo** (migración 045, `lib/correo-facturas.ts`, `app/e/[id]/correo-acciones.ts`): `enviarConDetalle` en `lib/correo.ts` con
+  adjuntos, `replyTo`, nombre del remitente y `encabezado` (sin marca: franja gris con el nombre de la empresa); `errorDeGmail` reconoce
+  el límite del día (5.4.5 / 4.7.0). PDF con `Tabla.sinMarca` (sin verde, dorado ni «Empire Tax’N Legal · Sistema contable»).
+  Recuadro «Enviar por correo» en toda factura o nota emitida y vigente (permiso «exportar», pestaña Facturas; no los usuarios de
+  clientes): para (`clientes.email`, hasta 5 direcciones), asunto «Factura <NCF> · <empresa>» y el texto de la plantilla nueva
+  «Correo: envío de factura» (`correo_factura`, en `crear_plantillas_mensaje_extra`; escrita para que Patricia la revise; a
+  «Consumidor final» no se le nombra). Empresa propia: remitente «Empire Tax’N Legal» con su marca; un cliente: remitente con su
+  nombre, sin la marca. «Responder a» = correo de la ficha de quien factura (`empresas.correo`). Siempre desde la misma cuenta de
+  Gmail. `correos_enviados` (RLS, historial): cada intento, «enviado» o «no salió» con el motivo; el último que no salió abre el
+  recuadro con aviso y «Enviar de nuevo». Lo que salió va a la bitácora (trigger, origen `correo`, tipo mensaje). Igualas: columna
+  «Correo» (enviado / no salió / por enviar) y «Enviar por correo las emitidas» (las del mes que no han salido; sin correo se
+  listan; si Gmail llega al límite se para y avisa). «Mensajes de WhatsApp» de la firma pasa a «Mensajes predeterminados»; la
+  plantilla del correo no se ofrece como WhatsApp en la Bitácora. Solo en una computadora local sin clave de Gmail:
+  `CORREO_PRUEBA_CARPETA` guarda los correos como .eml en vez de enviarlos (así se revisó el adjunto, el remitente y «responder a»).
+  Pruebas `pruebas/correo-facturas.test.mjs` (223 en total). Pendiente: probar un envío real con Gmail en producción; Patricia revisa el
+  texto del correo. Sigue la B (normas y tasas) con su «sí».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
