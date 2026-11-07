@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 6-nov-2026 (entrega A, facturas por correo, en la rama esperando el «sí»); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 6-nov-2026 (entrega A, facturas por correo, en `main` y producción; sigue la B); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -739,8 +739,9 @@ No se pasa a la siguiente sin su autorización expresa.
   listan; si Gmail llega al límite se para y avisa). «Mensajes de WhatsApp» de la firma pasa a «Mensajes predeterminados»; la
   plantilla del correo no se ofrece como WhatsApp en la Bitácora. Solo en una computadora local sin clave de Gmail:
   `CORREO_PRUEBA_CARPETA` guarda los correos como .eml en vez de enviarlos (así se revisó el adjunto, el remitente y «responder a»).
-  Pruebas `pruebas/correo-facturas.test.mjs` (223 en total). Pendiente: probar un envío real con Gmail en producción; Patricia revisa el
-  texto del correo. Sigue la B (normas y tasas) con su «sí».
+  Pruebas `pruebas/correo-facturas.test.mjs` (223 en total). En `main` el 6-nov-2026 («sí» de Patricia; publicado en producción,
+  `ababe2a`). Pendiente: probar un envío real con Gmail en producción; Patricia revisa el texto del correo. Sigue la B (normas y
+  tasas) con su «sí».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
