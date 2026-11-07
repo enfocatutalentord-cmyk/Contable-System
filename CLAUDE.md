@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1 en producción, R2 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1 y R2 en producción, sigue la R3; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -775,7 +775,8 @@ No se pasa a la siguiente sin su autorización expresa.
   el correo de la factura); pantalla común `app/firma/[fid]/mensajes/vista.tsx` (los enlaces compartidos quedan en la Firma). La
   propia sale del selector «Viendo» (dentro de ella dice «Contabilidad Empire»), de la lista de Empresas Empire (se sigue eligiendo
   abajo) y de Inicio, Alertas, Documentos, Facturas por revisar, Impuestos del mes, Solicitudes, Trámites, Bitácora y Elegir de la
-  Firma. Pruebas `pruebas/rediseno.test.mjs` (226 en total). Probado en pantalla. En la rama, esperando el «sí» de Patricia.
+  Firma. Pruebas `pruebas/rediseno.test.mjs` (226 en total). Probado en pantalla. En `main` y producción el 7-nov-2026 («sí» de
+  Patricia, `386b0bd`, con la migración 046). Sigue la R3 (clientes sin asientos) con su «sí»; antes, activar los respaldos.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
