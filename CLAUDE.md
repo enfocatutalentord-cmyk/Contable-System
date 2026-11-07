@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1 y R2 en producción, R3 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1, R2 y R3 en producción, sigue la R4; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -791,7 +791,8 @@ No se pasa a la siguiente sin su autorización expresa.
   solo en la empresa propia (`CamposFicha conAprobacion`); Relación con Empire muestra la iguala activa del cliente (acuerdo en la
   propia: tipo, servicio, monto, día, tarifa especial, servicios incluidos) con enlace a Igualas. Roles «Cliente · Consulta» y
   «Cliente · Sube documentos» con solo Inicio, Mis facturas, Mis documentos y Mis solicitudes; todo rol de cliente ve el inicio de
-  la aplicación (`paraClientes`). 227 pruebas. Probado en pantalla. En la rama, esperando el «sí» de Patricia.
+  la aplicación (`paraClientes`). 227 pruebas. Probado en pantalla. En `main` y producción el 7-nov-2026 («sí» de Patricia,
+  `539e592`, con la migración 047). Sigue la R4 (el trabajo primero) con su «sí».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
