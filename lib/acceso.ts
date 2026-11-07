@@ -4,7 +4,7 @@ import { cache } from "react";
 import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
-import { PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
+import { PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 
 export type Empresa = {
@@ -31,10 +31,10 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean })[]>`
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean; lleva_contabilidad: boolean })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
            f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes,
-           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia
+           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia, e.lleva_contabilidad
       FROM empresas e
       JOIN firmas f ON f.id = e.firma_id
       JOIN miembros_firma mf ON mf.firma_id = e.firma_id AND mf.usuario_id = ${usuario.id}
@@ -47,11 +47,11 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     notFound();
   }
   if (!fila.administrador && !fila.permisos) notFound();
-  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, ...empresa } = fila;
+  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, lleva_contabilidad, ...empresa } = fila;
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
   exigirDosPasos(usuario, exigir_dos_pasos);
-  const visibles = pestanasEn(pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia);
+  const visibles = pestanasEn(pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia, lleva_contabilidad);
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
@@ -59,6 +59,8 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
   if (pestana !== null && !puedeVer(visibles, pestana)) {
     // Igualas, recurrentes, propuestas y lo de la socia solo existen en la empresa propia (rediseño R2).
     if (!es_propia && PESTANAS_SOLO_PROPIA.includes(pestana)) redirect(`/e/${empresaId}?solo_empire=1`);
+    // Asientos, libros, catálogo, bancos y cierre: a los clientes no se les lleva contabilidad (rediseño R3).
+    if (!es_propia && !lleva_contabilidad && PESTANAS_CONTABLES.includes(pestana)) redirect(`/e/${empresaId}?sin_contabilidad=1`);
     const primera = visibles?.[0];
     if (primera === undefined) notFound();
     redirect(`/e/${empresaId}${primera}?sin_pestana=1`);

@@ -99,7 +99,7 @@ export function leerRelacion(fd: FormData) {
     estado_cliente: opcion(txt(fd, "estado_cliente"), ESTADOS_CLIENTE, "Estado") ?? "activo",
     ficha_firmada: fecha(txt(fd, "ficha_firmada"), "Ficha de registro firmada"), hoja_firmada: fecha(txt(fd, "hoja_firmada"), "Hoja de acuerdo firmada"),
     contrato_firmado: fecha(txt(fd, "contrato_firmado"), "Contrato firmado"), modalidad: opcion(txt(fd, "modalidad"), MODALIDADES, "Modalidad"),
-    custodio_accesos: txt(fd, "custodio_accesos"),
+    custodio_accesos: txt(fd, "custodio_accesos"), lleva_contabilidad: fd.get("lleva_contabilidad") === "on",
   };
 }
 

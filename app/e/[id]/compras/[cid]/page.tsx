@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { puedeVer } from "@/lib/pestanas";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
@@ -29,7 +30,7 @@ export default async function VerCompra({ params, searchParams }: {
   const { id, cid } = await params;
   const sp = await searchParams;
   if (!esUuid(cid)) notFound();
-  const { empresa, permisos, usuario } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario, pestanas } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Compra[]>`
       SELECT c.id, c.estado, c.tipo_comprobante, c.ncf, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, to_char(c.vence, 'YYYY-MM-DD') AS vence,
@@ -112,7 +113,7 @@ export default async function VerCompra({ params, searchParams }: {
         {!esNota && !borrador && !c.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
           <Link className="boton primario" href={`/e/${id}/pagos/nuevo?compra=${c.id}`}>Registrar pago</Link>
         )}
-        {c.asiento && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
+        {c.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
         {borrador && puede(permisos, "registrar") && <Link className="boton" href={`/e/${id}/compras/${cid}/editar`}>Editar</Link>}
         {borrador && puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (
           <Formulario accion={registrarBorradorCompra.bind(null, id, cid)} boton={esNota ? "Registrar nota de crédito" : "Registrar compra"} className="fila"><span /></Formulario>

@@ -111,7 +111,7 @@ export default async function VerFactura({ params, searchParams }: {
             {!esNota && !borrador && !f.anulada && saldo > 0 && puede(permisos, "contabilizar") && puedeVer(pestanas, "/cobros") && (
               <Link className="boton primario" href={`/e/${id}/cobros/nuevo?factura=${f.id}`}>Registrar cobro</Link>
             )}
-            {f.asiento && <Link className="boton" href={`/e/${id}/asientos/${f.asiento_id}`}>Ver asiento n.º {f.asiento}</Link>}
+            {f.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${f.asiento_id}`}>Ver asiento n.º {f.asiento}</Link>}
           </div>
           <span className={`estado estado-${borrador ? "borrador" : f.anulada ? "anulado" : "contabilizado"}`}>
             {borrador ? "Borrador" : f.anulada ? "Anulada" : "Emitida"}

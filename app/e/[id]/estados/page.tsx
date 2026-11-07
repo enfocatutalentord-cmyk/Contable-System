@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { puedeVer } from "@/lib/pestanas";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -18,7 +19,7 @@ export default async function Estados({ params, searchParams }: {
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { empresa, permisos, pestanas } = await accesoEmpresa(id);
   const f = leerFiltrosEstados(sp);
   const { estado, firmas, unidades, unidad } = await conEmpresa(id, (tx) => armarEstado(tx, f));
   const cols = estado.columnas;
@@ -26,7 +27,7 @@ export default async function Estados({ params, searchParams }: {
   const conPct = f.tipo === "resultados" && cols.length === 1;
   const enlaceTipo = (t: TipoEstado) => `/e/${id}/estados?${consultaEstados({ ...f, tipo: t })}`;
   const mayor = (fila: Fila) => {
-    if (!fila.cuentaId) return null;
+    if (!fila.cuentaId || !puedeVer(pestanas, "/mayor")) return null;
     const desde = f.tipo === "balance" ? `${cols[0].hasta.slice(0, 4)}-01-01` : cols[0].desde;
     return `/e/${id}/mayor?cuenta=${fila.cuentaId}&desde=${desde}&hasta=${cols[0].hasta}`;
   };

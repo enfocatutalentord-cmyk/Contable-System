@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1 y R2 en producción, sigue la R3; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1 y R2 en producción, R3 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -777,6 +777,21 @@ No se pasa a la siguiente sin su autorización expresa.
   abajo) y de Inicio, Alertas, Documentos, Facturas por revisar, Impuestos del mes, Solicitudes, Trámites, Bitácora y Elegir de la
   Firma. Pruebas `pruebas/rediseno.test.mjs` (226 en total). Probado en pantalla. En `main` y producción el 7-nov-2026 («sí» de
   Patricia, `386b0bd`, con la migración 046). Sigue la R3 (clientes sin asientos) con su «sí»; antes, activar los respaldos.
+  «sí» de Patricia del 7-nov a empezar la R3. **R3 · Clientes sin contabilidad** (migración 047): `empresas.lleva_contabilidad`
+  (falso por defecto; casilla en Ficha › Relación con Empire, que sustituye a la pregunta 1 de la propuesta: un cliente Prime que sí la
+  lleve se marca ahí). `PESTANAS_CONTABLES` (asientos, asientos frecuentes, cierre, diario, mayor, balanza, catálogo, configuración de
+  cuentas, bancos) fuera para los clientes sin la marca (`pestanasEn(…, propia, contabilidad)`; abrirlas lleva a
+  `?sin_contabilidad=1` con aviso; lo guardado se conserva); sin cliente elegido el menú tampoco las muestra. «Ver asiento» se
+  esconde en factura, compra, cobro y pago, y el enlace al mayor en los estados. **Cobros, pagos, CxC y CxP se quedan por ahora:**
+  el 606, el IT-1 y el IR-17 toman de ahí la forma y fecha de pago y las retenciones; se quitan cuando el registro de facturas las
+  capture, junto con el n.º 9 (facturas y compras sin asiento), después de la R5 (si se dejan de hacer asientos antes, los estados
+  financieros del cliente se quedan sin datos). Resumen del cliente (`app/e/[id]/resumen-trabajo.tsx`): facturas subidas y por
+  revisar, documentos por procesar, impuestos del mes anterior (`estadoDelMes`) con su tabla, trámites abiertos, pendientes de la
+  bitácora y la iguala con Empire (`cuentaConFirma`). Ficha: logo en Datos generales; la casilla «Los asientos requieren aprobación»
+  solo en la empresa propia (`CamposFicha conAprobacion`); Relación con Empire muestra la iguala activa del cliente (acuerdo en la
+  propia: tipo, servicio, monto, día, tarifa especial, servicios incluidos) con enlace a Igualas. Roles «Cliente · Consulta» y
+  «Cliente · Sube documentos» con solo Inicio, Mis facturas, Mis documentos y Mis solicitudes; todo rol de cliente ve el inicio de
+  la aplicación (`paraClientes`). 227 pruebas. Probado en pantalla. En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

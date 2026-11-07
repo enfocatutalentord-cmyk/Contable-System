@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { CamposFicha } from "@/app/campos-ficha";
 import { Formulario } from "@/app/formulario";
-import { accesoEmpresa } from "@/lib/acceso";
+import { accesoEmpresa, misFirmas } from "@/lib/acceso";
+import { SERVICIOS_INCLUIDOS, TIPOS_ACUERDO } from "@/lib/igualas";
 import { conEmpresa, db } from "@/lib/db";
 import {
   CATEGORIAS, ESTADOS_CLIENTE, leerFicha, MAX_EMPLEADOS, MAX_SOCIOS, MODALIDADES, ROLES_CONTACTO, TIPOS_CLIENTE,
 } from "@/lib/ficha";
-import { verFecha } from "@/lib/montos";
+import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { actualizarFicha } from "../acciones";
 import {
@@ -25,22 +26,48 @@ const v = (x: unknown) => (x === null || x === undefined ? "" : String(x));
 export default async function Ficha({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ seccion?: string }> }) {
   const { id } = await params;
   const { seccion: s } = await searchParams;
-  const { permisos } = await accesoEmpresa(id);
+  const { permisos, usuario, empresa } = await accesoEmpresa(id);
+  const propiaId = (await misFirmas(usuario.id)).find((x) => x.id === empresa.firma_id)?.empresa_propia_id ?? null;
+  const esPropia = propiaId === id;
   const editable = puede(permisos, "empresa");
   const verEmpleados = editable;
   const seccion = s && s in SECCIONES && (s !== "empleados" || verEmpleados) ? s : "general";
   const [d] = await db()<{
     nombre: string; nombre_comercial: string | null; tipo_identificacion: string; rnc: string | null; actividad_economica: string | null;
     regimen: string; direccion: string | null; telefono: string | null; correo: string | null; mes_cierre: number;
-    inicio_operaciones: string | null; requiere_aprobacion: boolean; activa: boolean; creada: Date;
+    inicio_operaciones: string | null; requiere_aprobacion: boolean; activa: boolean; creada: Date; lleva_contabilidad: boolean;
   }[]>`
     SELECT nombre, nombre_comercial, tipo_identificacion, rnc, actividad_economica, regimen, direccion, telefono, correo, mes_cierre,
-           to_char(inicio_operaciones, 'YYYY-MM-DD') AS inicio_operaciones, requiere_aprobacion, activa, creada
+           to_char(inicio_operaciones, 'YYYY-MM-DD') AS inicio_operaciones, requiere_aprobacion, activa, creada, lleva_contabilidad
       FROM empresas WHERE id = ${id}`;
+  // La iguala del cliente sale de su acuerdo en Contabilidad Empire (rediseño R3, n.º 14). Se lee con la conexión de la firma
+  // fijando la empresa propia, como el resto de la cuenta con la firma.
+  const [iguala] = propiaId && !esPropia ? await db().begin(async (tx) => {
+    await tx`SELECT set_config('app.empresa_id', ${propiaId}, true)`;
+    return tx<{ tipo: string; monto: string; servicio: string; inicio: string; dia: number; incluidos: string[]; tarifa: string | null; hasta: string | null }[]>`
+      SELECT a.tipo, a.monto::text, s.nombre AS servicio, to_char(a.inicio, 'YYYY-MM-DD') AS inicio, a.dia_facturacion AS dia,
+             a.servicios_incluidos AS incluidos, a.tarifa_especial::text AS tarifa, to_char(a.tarifa_hasta, 'YYYY-MM-DD') AS hasta
+        FROM acuerdos_cliente a JOIN clientes c ON c.id = a.cliente_id JOIN servicios s ON s.id = a.servicio_id
+       WHERE c.empresa_vinculada_id = ${id} AND a.activo ORDER BY a.creado DESC LIMIT 1`;
+  }) : [];
+  const incluidos = new Map(SERVICIOS_INCLUIDOS);
   const { ficha: f, socios, contactos, empleados, sugerida, formalizado } = await conEmpresa(id, (tx) => leerFicha(tx, id, verEmpleados));
   const [logo] = await conEmpresa(id, (tx) => tx<{ id: string }[]>`
     SELECT id FROM documentos WHERE entidad = 'empresa' AND entidad_id = ${id} AND descripcion = 'logo' AND NOT eliminado ORDER BY subido_en DESC LIMIT 1`);
   const boton = (t: string) => (editable ? t : "");
+  // Logo del cliente (lo usan cartas, actas y estados financieros): arriba, en Datos generales, para que se encuentre (n.º 14).
+  const Logo = () => (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--borde)" }}>
+      <h3 style={{ marginTop: 0 }}>Logo del cliente</h3>
+      {logo ? <p><img src={`/e/${id}/documentos/${logo.id}`} alt="Logo del cliente" style={{ maxHeight: 80, maxWidth: 240 }} /></p>
+        : <p className="sub">Sin logo todavía. Lo usan las cartas, las actas y los estados financieros del cliente.</p>}
+      {editable && (
+        <Formulario accion={subirLogo.bind(null, id)} boton={logo ? "Cambiar el logo" : "Subir logo"} className="fila">
+          <label>Imagen PNG o JPG (hasta 1 MB)<input name="logo" type="file" accept="image/png,image/jpeg" required /></label>
+        </Formulario>
+      )}
+    </div>
+  );
   const campos = (hijos: React.ReactNode) => <fieldset disabled={!editable} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 14 }}>{hijos}</fieldset>;
   const seleccion = (nombre: string, valor: unknown, opciones: Record<string, string>, vacio = "—") => (
     <select name={nombre} defaultValue={v(valor)}>
@@ -69,8 +96,9 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
 
       <div className="tarjeta">
         {seccion === "general" && (editable ? (
-          <Formulario accion={actualizarFicha.bind(null, id)} boton="Guardar cambios" className=""><CamposFicha d={d} edicion /></Formulario>
-        ) : <CamposFicha d={d} edicion deshabilitado />)}
+          <Formulario accion={actualizarFicha.bind(null, id)} boton="Guardar cambios" className=""><CamposFicha d={d} edicion conAprobacion={esPropia} /></Formulario>
+        ) : <CamposFicha d={d} edicion deshabilitado conAprobacion={esPropia} />)}
+        {seccion === "general" && <Logo />}
 
         {seccion === "sociedad" && (
           <>
@@ -92,13 +120,6 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
                 </div>
               </>)}
             </Formulario>
-            <h3>Logo y membrete</h3>
-            {logo ? <p><img src={`/e/${id}/documentos/${logo.id}`} alt="Logo del cliente" style={{ maxHeight: 80, maxWidth: 240 }} /></p> : <p className="sub">Sin logo todavía.</p>}
-            {editable && (
-              <Formulario accion={subirLogo.bind(null, id)} boton="Subir logo" className="fila">
-                <label>Imagen PNG o JPG (hasta 1 MB)<input name="logo" type="file" accept="image/png,image/jpeg" required /></label>
-              </Formulario>
-            )}
           </>
         )}
 
@@ -219,10 +240,31 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
                 <label>Contrato firmado el<input name="contrato_firmado" type="date" defaultValue={v(f.contrato_firmado)} /></label>
               </div>
               <label>Quién custodia los accesos de DGII y TSS (nunca se guardan las claves)<input name="custodio_accesos" defaultValue={v(f.custodio_accesos)} /></label>
-              <p className="sub" style={{ margin: 0 }}>
-                {f.fecha_inicio_contrato ? `Contrato desde el ${verFecha(String(f.fecha_inicio_contrato))}. ` : ""}
-                La iguala, los servicios incluidos y el tipo de acuerdo llegan con la lista de precios (bloque 2).
-              </p>
+              {!esPropia && (
+                <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <input type="checkbox" name="lleva_contabilidad" defaultChecked={d.lleva_contabilidad} style={{ minHeight: 0 }} />
+                  Lleva contabilidad completa en el sistema (asientos, libros, catálogo y bancos). Sin marcar, sus facturas y compras
+                  sirven para los impuestos y los reportes.
+                </label>
+              )}
+              {!esPropia && (
+                <div>
+                  <strong>Iguala y servicios incluidos</strong>
+                  {iguala ? (
+                    <p style={{ margin: "4px 0 0" }}>
+                      {TIPOS_ACUERDO[iguala.tipo] ?? iguala.tipo} · {iguala.servicio} · RD${verMonto(iguala.monto)} al mes, día {iguala.dia}, desde el {verFecha(iguala.inicio)}
+                      {iguala.tarifa && <> · tarifa especial RD${verMonto(iguala.tarifa)}{iguala.hasta && ` hasta el ${verFecha(iguala.hasta)}`}</>}
+                      {iguala.incluidos.length > 0 && <><br />Incluye: {iguala.incluidos.map((k) => incluidos.get(k) ?? k).join(", ")}.</>}
+                      {propiaId && <> <Link href={`/e/${propiaId}/igualas`}>Ver o cambiar en Contabilidad Empire › Igualas</Link></>}
+                    </p>
+                  ) : (
+                    <p className="sub" style={{ margin: "4px 0 0" }}>
+                      Sin acuerdo de iguala.{propiaId && <> Se crea en <Link href={`/e/${propiaId}/igualas?nuevo=1`}>Contabilidad Empire › Igualas</Link>.</>}
+                    </p>
+                  )}
+                </div>
+              )}
+              {f.fecha_inicio_contrato && <p className="sub" style={{ margin: 0 }}>Contrato desde el {verFecha(String(f.fecha_inicio_contrato))}.</p>}
             </>)}
           </Formulario>
         )}

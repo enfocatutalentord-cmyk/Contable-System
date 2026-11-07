@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FUERA_DEL_MENU, PESTANAS_ADMINISTRACION, PESTANAS_CLIENTE, PESTANAS_SOLO_PROPIA, puedeVer } from "@/lib/pestanas";
+import { FUERA_DEL_MENU, PESTANAS_ADMINISTRACION, PESTANAS_CLIENTE, PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, puedeVer } from "@/lib/pestanas";
 
 // Cómo se llaman las pestañas para el cliente en su aplicación (bloque 8a).
 const NOMBRES_CLIENTE: Record<string, string> = { "": "Inicio", "/facturas-subidas": "Mis facturas", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes" };
@@ -34,7 +34,8 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   // Pestañas de un cliente, en Firma: sin lo que solo es de Empire (igualas, recurrentes, propuestas, lo de la socia). Usuarios e
   // historial de cambios van en Administración.
   const grupos = PESTANAS_CLIENTE.map((s) => ({
-    ...s, enlaces: s.enlaces.filter(([r]) => !PESTANAS_ADMINISTRACION.includes(r) && !PESTANAS_SOLO_PROPIA.includes(r) && visible(r)),
+    ...s, enlaces: s.enlaces.filter(([r]) => !PESTANAS_ADMINISTRACION.includes(r) && !PESTANAS_SOLO_PROPIA.includes(r) && visible(r)
+      && (base || !PESTANAS_CONTABLES.includes(r))), // sin cliente elegido no se sabe si lleva contabilidad: casi ninguno la lleva (R3)
   })).filter((s) => s.enlaces.length);
   // Pestañas de la empresa propia, en Contabilidad Empire (siempre, aunque se esté en un cliente).
   const basePropia = propia ? `/e/${propia.id}` : null;

@@ -54,7 +54,7 @@ export async function guardarFichaRelacion(empresaId: string, _: Estado, fd: For
     UPDATE empresas SET categoria = ${d.categoria}, tipo_cliente = ${d.tipo_cliente}, fecha_inicio_contrato = ${d.fecha_inicio_contrato},
            dia_facturacion = ${d.dia_facturacion}, estado_cliente = ${d.estado_cliente}, ficha_firmada = ${d.ficha_firmada},
            hoja_firmada = ${d.hoja_firmada}, contrato_firmado = ${d.contrato_firmado}, modalidad = ${d.modalidad},
-           custodio_accesos = ${d.custodio_accesos} WHERE id = ${empresaId}`);
+           custodio_accesos = ${d.custodio_accesos}, lleva_contabilidad = ${d.lleva_contabilidad} WHERE id = ${empresaId}`);
 }
 
 export async function guardarFichaSocios(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { puedeVer } from "@/lib/pestanas";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { BotonImprimir } from "@/app/imprimir";
@@ -25,7 +26,7 @@ export default async function VerPago({ params, searchParams }: {
   const sp = await searchParams;
   const numero = Number(n);
   if (!Number.isInteger(numero) || numero < 1) notFound();
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { empresa, permisos, pestanas } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Pago[]>`
       SELECT c.id, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, c.moneda, c.tasa::text, c.forma_pago, c.referencia, c.notas,
@@ -58,7 +59,7 @@ export default async function VerPago({ params, searchParams }: {
         {c.anulado && <p className="aviso">Pago anulado. Motivo: {c.motivo_anulacion}</p>}
         <div className="fila" style={{ marginBottom: 16 }}>
           <BotonImprimir />
-          {c.asiento && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
+          {c.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
         </div>
       </div>
       <div className="documento">

@@ -42,9 +42,13 @@ export const GRUPO_PRIVADO = "Cuenta de la socia";
 // y lo personal de la socia. En un cliente no se ven ni se abren.
 export const PESTANAS_SOLO_PROPIA = ["/igualas", "/recurrentes", "/propuestas", ...PESTANAS_PRIVADAS];
 
-// Lo que ve un rol en una empresa según sea la propia o un cliente.
-export const pestanasEn = (pestanas: string[] | null, propia: boolean): string[] | null =>
-  propia ? pestanas : (pestanas ?? TODAS_LAS_PESTANAS).filter((r) => !PESTANAS_SOLO_PROPIA.includes(r));
+// La contabilidad (rediseño R3, n.º 8): a los clientes no se les hacen asientos. Solo la ven la empresa propia y el cliente que tenga
+// marcada «lleva contabilidad» en su ficha. Lo que ya tenga guardado se conserva.
+export const PESTANAS_CONTABLES = ["/asientos", "/plantillas", "/cierres", "/diario", "/mayor", "/balanza", "/catalogo", "/configuracion", "/bancos"];
+
+// Lo que ve un rol en una empresa según sea la propia o un cliente (y si ese cliente lleva contabilidad en el sistema).
+export const pestanasEn = (pestanas: string[] | null, propia: boolean, contabilidad = false): string[] | null =>
+  propia ? pestanas : (pestanas ?? TODAS_LAS_PESTANAS).filter((r) => !PESTANAS_SOLO_PROPIA.includes(r) && (contabilidad || !PESTANAS_CONTABLES.includes(r)));
 
 // Lo que ve un rol en un cliente: null = todo (administrador). Un rol sin lista ve todo menos lo privado.
 export function pestanasDelRol(pestanas: string[] | null, administrador: boolean): string[] | null {
