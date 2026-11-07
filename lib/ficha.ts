@@ -10,6 +10,8 @@ export const ESTADOS_CLIENTE: Record<string, string> = { activo: "Activo", en_ce
 export const MODALIDADES: Record<string, string> = {
   aplicacion: "1 · Con la aplicación de Empire", sistema_propio: "2 · Con sistema propio y contabilidad de Empire", independiente: "3 · Con sistema independiente",
 };
+// Clientes Prime: modalidad 2 o 3, los que usan el sistema Empire Prime (rediseño R1, n.º 18 de la lista).
+export const esPrime = (modalidad: string | null | undefined) => modalidad === "sistema_propio" || modalidad === "independiente";
 export const ROLES_CONTACTO: [string, string][] = [
   ["principal", "Contacto principal"], ["alterno", "Contacto alterno"], ["representante", "Representante legal"], ["gerente", "Gerente"],
 ];

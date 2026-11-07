@@ -23,7 +23,7 @@ export default async function CuentaSocia({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const { empresa, permisos } = await accesoEmpresa(id);
   if (!(await esEmpresaPropia(id))) {
-    return (<><h1>Cuenta de la socia</h1><p className="aviso">La cuenta de la socia es de la empresa propia de la firma. Elígela en «Clientes de la firma › Empresa propia de la firma».</p></>);
+    return (<><h1>Cuenta de la socia</h1><p className="aviso">La cuenta de la socia es de la empresa propia de la firma. Elígela en «Empresas Empire › Empresa propia de la firma».</p></>);
   }
   const hoy = hoyISO();
   const datos = await conEmpresa(id, async (tx) => {
@@ -52,7 +52,7 @@ export default async function CuentaSocia({ params, searchParams }: { params: Pr
       <>
         <h1>Cuenta de la socia</h1>
         <p className="aviso">No hay «Cuenta corriente – socia» en el catálogo. Registra a la socia en Ficha de la empresa › Socios y vuelve a preparar la
-          empresa propia en Clientes de la firma.</p>
+          empresa propia en Empresas Empire.</p>
       </>
     );
   }

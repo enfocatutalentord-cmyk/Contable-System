@@ -33,6 +33,12 @@ export default async function InicioFirma({ params, searchParams }: {
     <>
       {sp.bienvenida && <p className="exito">Listo, tu contraseña quedó guardada. Desde ahora entras con tu correo y esa contraseña.</p>}
       {sp.sin_permiso && <p className="aviso">Esa sección es solo para administradores de la firma.</p>}
+      {firma.administrador && !firma.rnc && (
+        <p className="aviso">
+          Faltan el nombre y el RNC de la firma (salen en los correos, los reportes y las facturas de Empire).{" "}
+          <Link href={`/firma/${fid}/clientes#datos-firma`}>Completarlos en Empresas Empire › Datos de la firma</Link>.
+        </p>
+      )}
       <div className="entre">
         <div>
           <h1>Inicio de la firma</h1>

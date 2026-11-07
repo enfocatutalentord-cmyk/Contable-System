@@ -73,6 +73,24 @@ h3 { color: var(--titulo); }
 .menu a[aria-current="page"] { background: rgba(255, 255, 255, 0.12); border-left-color: var(--dorado); font-weight: 600; color: #fff; }
 .menu .grupo { color: var(--dorado); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 10px 4px; }
 .menu .grupo.separada { margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 14px; }
+.etiqueta-prime { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--dorado); color: #fff;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; vertical-align: middle; }
+/* Secciones del menú con desplegable (rediseño R1) */
+.menu .seccion { border-top: 1px solid rgba(255, 255, 255, 0.16); }
+.menu .seccion:first-of-type { border-top: 0; }
+.menu .seccion > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 11px 10px; color: #fff; font-weight: 700; font-size: 0.95rem; border-radius: 8px; }
+.menu .seccion > summary::-webkit-details-marker { display: none; }
+.menu .seccion > summary::after { content: "▸"; color: var(--dorado); font-size: 0.8rem; transition: transform 0.15s; }
+.menu .seccion[open] > summary::after { transform: rotate(90deg); }
+.menu .seccion > summary:hover { background: rgba(255, 255, 255, 0.08); }
+.menu .seccion > summary[aria-current="true"] { color: var(--dorado); }
+.menu .seccion > summary:focus-visible { outline: 2px solid var(--dorado); outline-offset: 2px; }
+.menu .seccion-cuerpo, .menu .subgrupo { display: flex; flex-direction: column; gap: 2px; }
+.menu .seccion-cuerpo { padding: 0 0 10px 6px; }
+.menu .seccion-cuerpo .grupo { padding-top: 10px; }
+.menu .nota-menu { margin: 0; padding: 4px 10px 8px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); }
+.menu .nota-menu a { padding: 0; border: 0; color: var(--dorado); }
 .menu-cabeza { display: flex; align-items: center; gap: 8px; }
 .menu-boton { display: none; align-items: center; gap: 6px; background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 8px; padding: 8px 12px; font-weight: 600; }
 .menu-cuerpo { display: flex; flex-direction: column; gap: 2px; flex: 1; }

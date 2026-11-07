@@ -115,7 +115,7 @@ export async function cotizarSolicitud(empresaId: string, solicitudId: string): 
   const { usuario, empresa } = await exigirPermiso(empresaId, "registrar", "/solicitudes");
   if (!esUuid(solicitudId)) return { error: "Esa solicitud no existe." };
   const [f] = await db()<{ propia: string | null }[]>`SELECT empresa_propia_id AS propia FROM firmas WHERE id = ${empresa.firma_id}`;
-  if (!f?.propia) return { error: "Primero marca la empresa propia de la firma (Clientes de la firma)." };
+  if (!f?.propia) return { error: "Primero marca la empresa propia de la firma (Empresas Empire)." };
   const propia = f.propia;
   await exigirPermiso(propia, "registrar", "/propuestas");
   try {

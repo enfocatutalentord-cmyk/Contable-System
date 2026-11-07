@@ -3,13 +3,13 @@ import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { urlApp } from "@/lib/enlaces";
 import { db } from "@/lib/db";
-import { CATEGORIAS, ESTADOS_CLIENTE, MODALIDADES, TIPOS_CLIENTE } from "@/lib/ficha";
+import { CATEGORIAS, ESTADOS_CLIENTE, esPrime, MODALIDADES, TIPOS_CLIENTE } from "@/lib/ficha";
 import { clientesDeFirma } from "@/lib/firma";
 import { filtrarClientes, leerFiltrosLista, resumenLista } from "@/lib/lista-maestra";
 import { hoyISO, verFecha } from "@/lib/montos";
 import { asignarResponsable, guardarFirma, marcarEmpresaPropia } from "../../acciones";
 
-export const metadata = { title: "Clientes de la firma · Empire Tax’N Legal" };
+export const metadata = { title: "Empresas Empire · Empire Tax’N Legal" };
 
 // Lista maestra de clientes (bloque 1b): lo de la ficha de cada cliente, con filtros y el resumen del Documento maestro.
 export default async function Clientes({ params, searchParams }: {
@@ -36,8 +36,11 @@ export default async function Clientes({ params, searchParams }: {
     <>
       <div className="entre">
         <div>
-          <h1>Clientes de la firma</h1>
-          <p className="sub">La lista maestra: los datos salen de la ficha de cada cliente. El responsable es la persona del equipo que se ocupa de cada uno.</p>
+          <h1>Empresas Empire</h1>
+          <p className="sub">
+            La lista maestra: los datos salen de la ficha de cada cliente. El responsable es la persona del equipo que se ocupa de cada uno.
+            «Prime» marca a los clientes con la modalidad 2 o 3 (los que usan el sistema Empire Prime).
+          </p>
         </div>
         <Link className="boton primario" href={`/firma/${fid}/clientes/nuevo`}>+ Nuevo cliente</Link>
       </div>
@@ -80,6 +83,7 @@ export default async function Clientes({ params, searchParams }: {
                 <td>
                   <Link href={`/e/${c.id}`}><strong>{c.nombre}</strong></Link>
                   {c.propia && <span className="etiqueta-propia"> · empresa propia</span>}
+                  {esPrime(c.modalidad) && <span className="etiqueta-prime" title="Modalidad 2 o 3: usa el sistema Empire Prime">Prime</span>}
                   <div className="sub" style={{ margin: 0 }}>{c.rnc ?? "Sin RNC"} · <Link href={`/e/${c.id}/empresa`}>Ficha</Link></div>
                 </td>
                 <td>{c.categoria ? CATEGORIAS[c.categoria] : "—"}</td>
@@ -103,7 +107,7 @@ export default async function Clientes({ params, searchParams }: {
         </table>
       </div>
 
-      <div className="tarjeta" style={{ maxWidth: 640, marginBottom: 16 }}>
+      <div className="tarjeta" id="empresa-propia" style={{ maxWidth: 640, marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Empresa propia de la firma</h2>
         <p className="sub">
           La contabilidad de la firma se lleva como un cliente más. Al elegirla, cada cliente de la firma queda registrado en su
@@ -119,9 +123,10 @@ export default async function Clientes({ params, searchParams }: {
         </Formulario>
       </div>
 
-      <div className="tarjeta" style={{ maxWidth: 640 }}>
+      <div className="tarjeta" id="datos-firma" style={{ maxWidth: 640 }}>
         <h2 style={{ marginTop: 0 }}>Datos de la firma</h2>
         <p className="sub">El nombre sale arriba en todas las pantallas y en los correos de acceso.</p>
+        {!firma.rnc && <p className="aviso">Falta el RNC de la firma. Para Empire: Empire Tax’N Legal SRL, RNC 133-09734-6.</p>}
         <Formulario accion={guardarFirma.bind(null, fid)} boton="Guardar datos de la firma" className="fila">
           <label style={{ flex: "2 1 260px" }}>Nombre<input name="nombre" defaultValue={firma.nombre} required /></label>
           <label style={{ flex: "1 1 160px" }}>RNC<input name="rnc" defaultValue={firma.rnc ?? ""} inputMode="numeric" /></label>

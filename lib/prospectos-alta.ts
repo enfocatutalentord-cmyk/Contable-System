@@ -65,7 +65,7 @@ export async function registrarProspecto(firmaId: string, d: DatosAlta, ip: stri
     await enviarCorreo({
       para: a, asunto: `Prospecto nuevo: ${d.negocio}`, titulo: "Se registró un prospecto en la aplicación",
       parrafos: [`${d.nombre} (${d.email}, ${d.telefono}) creó su cuenta para «${d.negocio}».`,
-        "Ya está en Clientes de la firma con el estado «Prospecto». Cuando firme el contrato, pásalo a cliente desde «Solicitudes y formularios»."],
+        "Ya está en Empresas Empire con el estado «Prospecto». Cuando firme el contrato, pásalo a cliente desde «Solicitudes y formularios»."],
       boton: { texto: "Ver sus solicitudes", url: `${app}/e/${r.empresaId}/solicitudes` },
     });
   }

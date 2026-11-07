@@ -30,7 +30,9 @@ const abrirMenu = async (p) => {
   await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
   const fid = page.url().split("/")[4];
   await ver(page, "Inicio de la firma");
-  await page.click("nav >> text=Clientes de la firma");
+  await ver(page, "Faltan el nombre y el RNC de la firma");
+  await page.click("nav summary >> text=Administración"); // el menú va en secciones con desplegable (rediseño R1)
+  await page.click("nav >> text=Empresas Empire");
   await page.waitForURL(/clientes$/);
   await page.fill("input[name=nombre] >> nth=-1", "Empire Tax’N Legal");
   await page.fill("input[name=rnc] >> nth=-1", "131-99999-1");

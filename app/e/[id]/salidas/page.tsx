@@ -20,7 +20,7 @@ export default async function Salidas({ params, searchParams }: { params: Promis
   const sp = await searchParams;
   const { empresa, permisos } = await accesoEmpresa(id);
   if (!(await esEmpresaPropia(id))) {
-    return (<><h1>Registrar salidas</h1><p className="aviso">Las salidas y la cuenta de la socia son de la empresa propia de la firma. Elígela en «Clientes de la firma › Empresa propia de la firma».</p></>);
+    return (<><h1>Registrar salidas</h1><p className="aviso">Las salidas y la cuenta de la socia son de la empresa propia de la firma. Elígela en «Empresas Empire › Empresa propia de la firma».</p></>);
   }
   const hoy = hoyISO();
   const desde = fechaValida(sp.desde) ? sp.desde : primerDiaMes(hoy);
@@ -44,7 +44,7 @@ export default async function Salidas({ params, searchParams }: { params: Promis
       </p>
       {cuentas.socias.length === 0 && (
         <p className="aviso">No hay «Cuenta corriente – socia» en el catálogo. Registra a la socia en Ficha de la empresa › Socios y vuelve a preparar
-          la empresa propia en Clientes de la firma.</p>
+          la empresa propia en Empresas Empire.</p>
       )}
       {registra && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
