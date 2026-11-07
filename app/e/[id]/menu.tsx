@@ -25,7 +25,6 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const base = empresaId ? `/e/${empresaId}` : null;
   const enPropia = !!propia && empresaId === propia.id;
 
-  const general: [string, string][] = [[firma, "Inicio de la firma"], [`${firma}/documentos`, "Documentos recibidos"], [`${firma}/facturas-subidas`, "Facturas por revisar"], [`${firma}/alertas`, "Alertas"], [`${firma}/tareas`, "Tareas del mes"], [`${firma}/impuestos`, "Impuestos del mes"], [`${firma}/reportes`, "Reportes del mes"], [`${firma}/tramites`, "Trámites abiertos"], [`${firma}/solicitudes`, "Solicitudes"], [`${firma}/mensajes`, "Mensajes predeterminados"], [`${firma}/bitacora`, "Bitácora de la firma"]];
   const deLaFirma: [string, string][] = [
     ...(admin ? [[`${firma}/clientes`, "Empresas Empire"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]] as [string, string][] : []),
     [`${firma}/actividad`, "Actividad"],
@@ -59,6 +58,48 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const enlaceFirma = ([href, nombre]: [string, string]) => (
     <Link key={href} href={href} aria-current={activoFirma(href) ? "page" : undefined}>{nombre}</Link>
   );
+  // Firma por trabajos (rediseño R4, n.º 2): se elige primero el trabajo y después el cliente. Lo de todos los clientes abre la
+  // pantalla de la firma; lo de un cliente abre el cliente elegido arriba o pide elegirlo. Ya no hay un bloque del cliente con todo.
+  const clienteElegido = base && !enPropia ? base : null;
+  // Dentro de Empire no hay cliente elegido: se ofrecen las pestañas de un cliente cualquiera (sin contabilidad).
+  const deCliente = new Set(enPropia
+    ? PESTANAS_CLIENTE.flatMap((s) => s.enlaces.map(([r]) => r)).filter((r) => !PESTANAS_ADMINISTRACION.includes(r) && !PESTANAS_SOLO_PROPIA.includes(r)
+      && !PESTANAS_CONTABLES.includes(r) && !FUERA_DEL_MENU.includes(r))
+    : grupos.flatMap((s) => s.enlaces.map(([r]) => r)));
+  const nombreDe = new Map(PESTANAS_CLIENTE.flatMap((s) => s.enlaces));
+  type Trabajo = { firma: string; nombre: string } | { cliente: string; nombre?: string };
+  const trabajos: [string, Trabajo[]][] = [
+    ["Trabajo del mes", [{ firma, nombre: "Inicio de la firma" }, { cliente: "", nombre: "Resumen del cliente" }, { firma: `${firma}/alertas`, nombre: "Alertas" },
+      { firma: `${firma}/tareas`, nombre: "Tareas del mes" }, { firma: `${firma}/impuestos`, nombre: "Impuestos del mes" },
+      { firma: `${firma}/reportes`, nombre: "Reportes del mes" }, { firma: `${firma}/bitacora`, nombre: "Bitácora de la firma" },
+      { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],
+    ["Facturas y documentos", [{ firma: `${firma}/documentos`, nombre: "Documentos recibidos" }, { firma: `${firma}/facturas-subidas`, nombre: "Facturas del cliente" },
+      { cliente: "/facturas" }, { cliente: "/compras" }, { cliente: "/clientes" }, { cliente: "/proveedores" }, { cliente: "/servicios" }]],
+    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" },
+      { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
+    ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }]],
+    ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
+      { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
+    ["Cobros y pagos", [{ cliente: "/cobros" }, { cliente: "/anticipos" }, { cliente: "/cxc" }, { cliente: "/pagos" }, { cliente: "/cxp" }]],
+    ["Contabilidad del cliente", PESTANAS_CONTABLES.map((r) => ({ cliente: r }))],
+  ];
+  // Lo de un cliente que no tenga su lugar arriba (una pestaña nueva) no se pierde: va en «Otros».
+  const ubicadas = new Set(trabajos.flatMap(([, t]) => t.map((x) => ("cliente" in x ? x.cliente : ""))));
+  const otros = [...deCliente].filter((r) => !ubicadas.has(r) && r !== "/facturas-subidas").map((r) => ({ cliente: r }));
+  if (otros.length) trabajos.push(["Otros", otros]);
+  const enlacesTrabajos = trabajos.map(([grupo, lista]) => {
+    const items = lista.filter((t) => !("cliente" in t) || deCliente.has(t.cliente));
+    if (!items.length) return null;
+    return (
+      <div key={grupo} className="subgrupo">
+        <div className="grupo">{grupo}</div>
+        {items.map((t) => "firma" in t ? enlaceFirma([t.firma, t.nombre]) : (
+          <Link key={t.cliente} href={clienteElegido ? clienteElegido + t.cliente : `${firma}/elegir?a=${encodeURIComponent(t.cliente || "/")}`}
+            aria-current={clienteElegido && activoEmpresa(t.cliente) ? "page" : undefined}>{t.nombre ?? nombreDe.get(t.cliente) ?? t.cliente}</Link>
+        ))}
+      </div>
+    );
+  });
   const enlacesEmpresa = (soloNombres = false) => grupos.map((s, i) => (
     <div key={i} className="subgrupo">
       {s.grupo && !soloNombres && <div className="grupo">{s.grupo === "Cliente elegido" && !base ? "De un cliente (se elige al abrir)" : s.grupo}</div>}
@@ -69,7 +110,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   ));
   const enlacesPropia = gruposPropia.map((s, i) => (
     <div key={i} className="subgrupo">
-      {s.grupo && s.grupo !== "Cliente elegido" && <div className="grupo">{s.grupo}</div>}
+      {s.grupo && s.grupo !== "Cliente elegido" && <div className="grupo">{s.grupo === "Configuración del cliente" ? "Configuración" : s.grupo}</div>}
       {s.enlaces.map(([r, nombre]) => (
         <Link key={r} href={basePropia + r} aria-current={activoEn(basePropia, r) ? "page" : undefined}>
           {r === "" ? "Resumen de Empire" : nombre}
@@ -98,10 +139,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
 
   return (
     <>
-      {seccion("firma", "Firma", <>
-        {general.map(enlaceFirma)}
-        {!enPropia && enlacesEmpresa()}
-      </>)}
+      {seccion("firma", "Firma", <>{enlacesTrabajos}</>)}
       {seccion("empire", "Contabilidad Empire", <>
         {enlacesPropia}
         {!enlacesPropia.length && (
@@ -121,10 +159,10 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
         {deLaFirma.map(enlaceFirma)}
         {deEmpresa.length > 0 && (
           <div className="subgrupo">
-            <div className="grupo">{enPropia ? propia!.nombre : "Cliente elegido"}</div>
+            <div className="grupo">{enPropia ? propia!.nombre : base ? "Cliente elegido" : "De un cliente"}</div>
             {deEmpresa.map((r) => (
               <Link key={r} href={hrefEmpresa(r)} aria-current={activoEmpresa(r) ? "page" : undefined}>
-                {r === "/usuarios" ? "Usuarios y permisos" : "Historial de cambios"}
+                {r === "/usuarios" ? "Usuarios y permisos" : r === "/empresa" ? (enPropia ? "Ficha de la empresa" : "Ficha del cliente") : "Historial de cambios"}
               </Link>
             ))}
           </div>

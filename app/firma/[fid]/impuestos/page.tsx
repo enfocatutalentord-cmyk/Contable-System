@@ -94,7 +94,8 @@ export default async function ImpuestosDelMes({ params, searchParams }: {
                     const listo = d.estado === "presentada" || d.estado === "en_cero";
                     return (
                       <td key={m.formato} className={`declaracion-${d.estado}`}>
-                        <Link href={`${base}${m.ruta}?mes=${mes}`}>{TEXTO[d.estado]}</Link>
+                        <Link href={`${base}${m.ruta}?mes=${mes}&desde=impuestos${m.ruta === "/dgii" ? `#f${m.formato}` : ""}`}
+                          title={`Abrir el ${m.formato} de ${c.nombre}`}>{TEXTO[d.estado]}</Link>
                         {!listo && <div className="sub" style={{ margin: 0 }}>vence {verFecha(d.vence)}</div>}
                         {d.monto && <div className="sub" style={{ margin: 0 }}>RD${verMonto(d.monto)}</div>}
                         {!listo && !f.cerrado && ["606", "607", "608"].includes(m.formato) && (

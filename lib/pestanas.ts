@@ -24,7 +24,8 @@ export const PESTANAS_CLIENTE: Seccion[] = [
 ];
 
 // Pestañas de cada empresa que en el menú van en la sección Administración (rediseño R1, n.º 21 de la lista).
-export const PESTANAS_ADMINISTRACION = ["/usuarios", "/historial"];
+// R4: también la ficha («Administración › Empresas Empire» en la lista de rediseños).
+export const PESTANAS_ADMINISTRACION = ["/empresa", "/usuarios", "/historial"];
 
 // Pestañas que no van en el menú porque se abren desde otra (el estado de cuenta, desde Cuentas por cobrar o por pagar).
 export const FUERA_DEL_MENU = ["/cxc/estado", "/cxp/estado"];

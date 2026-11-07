@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1, R2 y R3 en producción, sigue la R4; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R3 en producción, R4 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -793,6 +793,19 @@ No se pasa a la siguiente sin su autorización expresa.
   «Cliente · Sube documentos» con solo Inicio, Mis facturas, Mis documentos y Mis solicitudes; todo rol de cliente ve el inicio de
   la aplicación (`paraClientes`). 227 pruebas. Probado en pantalla. En `main` y producción el 7-nov-2026 («sí» de Patricia,
   `539e592`, con la migración 047). Sigue la R4 (el trabajo primero) con su «sí».
+  «sí» de Patricia del 7-nov a empezar la R4. **R4 · El trabajo primero** (sin migración): la sección Firma del menú va por
+  trabajos (Trabajo del mes, Facturas y documentos, Impuestos, Reportes, Expediente y trámites, Cobros y pagos, Contabilidad del
+  cliente si la lleva; lo que no tenga lugar va en «Otros»). Lo de todos los clientes abre la pantalla de la firma; lo de un cliente
+  abre el cliente elegido arriba o `/firma/[fid]/elegir?a=` (dentro de Empire siempre pide elegir). Ya no hay un bloque del cliente
+  con todo adentro. La ficha pasa a Administración (`PESTANAS_ADMINISTRACION` = ficha, usuarios, historial). «Facturas por revisar»
+  pasa a **Facturas del cliente** (`/firma/[fid]/facturas-subidas`: cliente elegido adentro, filtros por estado, «Cargar o revisar
+  las de…»). Impuestos del mes: cada casilla abre el formulario exacto (`/dgii?mes=&desde=impuestos#f606`, `/dgii/it1`,
+  `/dgii/ir17`) y `VolverAImpuestos` (`app/e/[id]/dgii/volver.tsx`) vuelve al tablero en el mismo mes. Documentos recibidos
+  (`/firma/[fid]/documentos`, con filtro de cliente): cada foto o PDF se completa y se aprueba ahí (`app/firma/documentos-acciones.ts`:
+  `procesarDocumento` crea la factura del cliente con `subirFactura` + `aprobarSubida` → borrador de compra para el 606 o de venta para
+  el 607 con el archivo, y deja el documento procesado; `descartarDocumento` con motivo); los estados de banco y contratos se
+  procesan en el cliente. 227 pruebas. Probado en pantalla (menú, tablero → IT-1 y vuelta, facturas del cliente, documento → borrador
+  de compra B0100000777 con su archivo). En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

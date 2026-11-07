@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VolverAImpuestos } from "./volver";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -22,10 +23,10 @@ const suma = <T,>(xs: T[], f: (x: T) => bigint) => xs.reduce((s, x) => s + f(x),
 
 export default async function ReportesDgii({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; desde?: string }>;
 }) {
   const { id } = await params;
-  const { mes } = await searchParams;
+  const { mes, desde } = await searchParams;
   const { permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const p = periodoDe((mes ?? "").replace("-", "")) ?? periodoDe(periodoAnterior(hoy))!;
@@ -44,6 +45,7 @@ export default async function ReportesDgii({ params, searchParams }: {
 
   return (
     <>
+      <VolverAImpuestos id={id} desde={desde} mes={mes} />
       <div className="entre">
         <div>
           <h1>Reportes DGII</h1>
