@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño propuesto, todo lo demás en pausa; entrega A en producción); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -753,6 +753,16 @@ No se pasa a la siguiente sin su autorización expresa.
   606/607/608, IT-1, IR-17, Impuestos del mes y Reporte mensual no dependen de asientos; estados, IR-2 y proyección sí. 7 preguntas
   en el documento (Prime con contabilidad, asientos viejos escondidos, NCF sin asiento, «por revisar», «solo mis clientes»,
   saldos por año, empezar por R1). En pausa: entrega B, 5b, 6b, 7b/7c, 8c.
+  «sí» de Patricia del 7-nov a empezar por la R1. **R1 · Menú en cuatro secciones** (sin migración; `app/e/[id]/menu.tsx`,
+  `.seccion` en `app/globals.css`, `PESTANAS_ADMINISTRACION` en `lib/pestanas.ts`, `esPrime` en `lib/ficha.ts`): desplegables
+  `<details>` Firma (pantallas de la firma + las pestañas del cliente elegido, hasta la R3/R4), Contabilidad Empire (las pestañas de la
+  empresa propia cuando está elegida; si no, enlace para abrirla o, sin propia, «Elegirla»), Talleres («Próximamente») y
+  Administración (Empresas Empire, Personas y accesos, Roles y permisos —solo administradores—, Actividad y, de la empresa elegida,
+  Usuarios y permisos e Historial de cambios). Se abre sola la sección de la pantalla actual. El usuario de un cliente sigue viendo
+  solo su aplicación. «Clientes de la firma» pasa a **Empresas Empire** (también en avisos y textos) con la etiqueta **Prime**
+  (modalidad 2 o 3). Sin RNC de la firma, aviso en el Inicio y en Datos de la firma (anclas `#datos-firma`, `#empresa-propia`).
+  Recorrido `pruebas/navegador/firma.cjs` ajustado al menú nuevo. Probado en pantalla (escritorio, celular y usuario de cliente);
+  223 pruebas. En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
