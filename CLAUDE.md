@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1 en producción, sigue la R2; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -762,7 +762,7 @@ No se pasa a la siguiente sin su autorización expresa.
   solo su aplicación. «Clientes de la firma» pasa a **Empresas Empire** (también en avisos y textos) con la etiqueta **Prime**
   (modalidad 2 o 3). Sin RNC de la firma, aviso en el Inicio y en Datos de la firma (anclas `#datos-firma`, `#empresa-propia`).
   Recorrido `pruebas/navegador/firma.cjs` ajustado al menú nuevo. Probado en pantalla (escritorio, celular y usuario de cliente);
-  223 pruebas. En la rama, esperando el «sí» de Patricia.
+  223 pruebas. En `main` y producción el 7-nov-2026 («sí» de Patricia, `0433889`). Sigue la R2 (Contabilidad Empire) con su «sí».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
