@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R3 en producción, R4 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R4 en producción, sigue la R5; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -805,7 +805,8 @@ No se pasa a la siguiente sin su autorización expresa.
   `procesarDocumento` crea la factura del cliente con `subirFactura` + `aprobarSubida` → borrador de compra para el 606 o de venta para
   el 607 con el archivo, y deja el documento procesado; `descartarDocumento` con motivo); los estados de banco y contratos se
   procesan en el cliente. 227 pruebas. Probado en pantalla (menú, tablero → IT-1 y vuelta, facturas del cliente, documento → borrador
-  de compra B0100000777 con su archivo). En la rama, esperando el «sí» de Patricia.
+  de compra B0100000777 con su archivo). En `main` y producción el 7-nov-2026 («sí» de Patricia, `9031dac`). Sigue la R5 (estados
+  financieros sin asientos) con su «sí»; después, el n.º 9 (facturas y compras sin asiento, retenciones en el registro) y la R6.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
