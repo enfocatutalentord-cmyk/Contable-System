@@ -13,7 +13,7 @@ const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Sa
 export default async function FacturasPorRevisar({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;
   const { firma, usuario } = await accesoFirma(fid, false);
-  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa && !c.propia);
   const porCliente = await Promise.all(clientes.map((c) => conEmpresa(c.id, (tx) => listarSubidas(tx, "recibida"))));
   const filas = clientes.flatMap((c, i) => porCliente[i].map((f) => ({ ...f, cliente: c }))).sort((a, b) => a.subido_en.getTime() - b.subido_en.getTime());
   return (

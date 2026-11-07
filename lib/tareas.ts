@@ -7,10 +7,13 @@ import type { Tx } from "./db";
 export const ALCANCES: Record<string, string> = {
   firma: "Una para la firma", todos: "Una por cliente activo", tss: "Una por cliente con TSS", iguala: "Una por cliente con iguala",
 };
+// Dónde se ven las tareas (rediseño R2): las de igualas y cobros, en Contabilidad Empire; las demás, en la Firma.
+export type SeccionTarea = "firma" | "empire";
+export const SECCIONES_TAREA: Record<SeccionTarea, string> = { firma: "Firma (trabajo a los clientes)", empire: "Contabilidad Empire (igualas y cobros)" };
 export const DIAS_SEMANA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 
 export type Plantilla = {
-  id: string; orden: number; titulo: string; dia_desde: number | null; dia_hasta: number | null; dia_semana: number | null; alcance: string; activa: boolean;
+  id: string; orden: number; titulo: string; dia_desde: number | null; dia_hasta: number | null; dia_semana: number | null; alcance: string; activa: boolean; seccion: SeccionTarea;
 };
 
 const ultimoDia = (a: number, m: number) => new Date(Date.UTC(a, m, 0)).getUTCDate();
@@ -31,8 +34,9 @@ export function fechasDe(p: Pick<Plantilla, "dia_desde" | "dia_hasta" | "dia_sem
   return [{ desde: iso(a, m, Math.min(p.dia_desde!, fin)), hasta: iso(a, m, Math.min(p.dia_hasta!, fin)), periodo: mes }];
 }
 
-export const listarPlantillas = (tx: Tx, firmaId: string) => tx<Plantilla[]>`
-  SELECT id, orden, titulo, dia_desde, dia_hasta, dia_semana, alcance, activa FROM plantillas_tarea WHERE firma_id = ${firmaId} ORDER BY orden, titulo`;
+export const listarPlantillas = (tx: Tx, firmaId: string, seccion: SeccionTarea | null = null) => tx<Plantilla[]>`
+  SELECT id, orden, titulo, dia_desde, dia_hasta, dia_semana, alcance, activa, seccion FROM plantillas_tarea
+   WHERE firma_id = ${firmaId} AND (${seccion}::text IS NULL OR seccion = ${seccion}) ORDER BY orden, titulo`;
 
 // Crea las tareas del mes que falten (no repite: una por plantilla, cliente y período). Devuelve cuántas creó.
 export async function generarTareas(tx: Tx, firmaId: string, mes: string): Promise<number> {
@@ -64,11 +68,12 @@ export type Tarea = {
   responsable_id: string | null; responsable: string | null; hecha_por: string | null; hecha_en: Date | null;
 };
 
-export const listarTareas = (tx: Tx, firmaId: string, mes: string) => tx<Tarea[]>`
+export const listarTareas = (tx: Tx, firmaId: string, mes: string, seccion: SeccionTarea | null = null) => tx<Tarea[]>`
   SELECT t.id, t.titulo, to_char(t.desde, 'YYYY-MM-DD') AS desde, to_char(t.hasta, 'YYYY-MM-DD') AS hasta, t.estado, t.empresa_id,
          e.nombre AS cliente, t.responsable_id, r.nombre AS responsable, h.nombre AS hecha_por, t.hecha_en
     FROM tareas t LEFT JOIN empresas e ON e.id = t.empresa_id LEFT JOIN usuarios r ON r.id = t.responsable_id LEFT JOIN usuarios h ON h.id = t.hecha_por
    WHERE t.firma_id = ${firmaId} AND to_char(t.desde, 'YYYY-MM') = ${mes}
+     AND (${seccion}::text IS NULL OR COALESCE((SELECT p.seccion FROM plantillas_tarea p WHERE p.id = t.plantilla_id), 'firma') = ${seccion})
    ORDER BY t.estado = 'hecha', t.desde, t.hasta, t.titulo, e.nombre NULLS FIRST`;
 
 // Marca una tarea hecha (o la reabre). La de un cliente, al hacerse, queda en su bitácora.

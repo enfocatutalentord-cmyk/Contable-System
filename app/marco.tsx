@@ -9,7 +9,7 @@ import { SelectorCliente } from "./selector-cliente";
 // Marco único de la aplicación: el mismo menú en toda la firma y, arriba, el selector de cliente.
 // Con «Todos los clientes» se ven las pantallas de la firma; al elegir un cliente, cada pestaña muestra solo lo suyo
 // (como el selector de cliente de QuickBooks Online Accountant).
-export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditoria, pestanas = null, soloCliente = false, franja, children }: {
+export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditoria, pestanas = null, pestanasPropia = false, soloCliente = false, franja, children }: {
   firma: { id: string; nombre: string };
   clientes: { id: string; nombre: string; propia?: boolean }[];
   actual: string | null;
@@ -18,6 +18,7 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
   admin: boolean;
   auditoria: boolean;
   pestanas?: string[] | null;
+  pestanasPropia?: string[] | null | false; // lo que ve la persona en la empresa propia (false = sin acceso)
   soloCliente?: boolean;
   franja?: React.ReactNode; // aviso fijo arriba (supervisión de la plataforma)
   children: React.ReactNode;
@@ -29,7 +30,8 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
     <div className="app">
       <nav className="menu" aria-label="Menú principal">
         <MenuMovil marca={<MarcaMenu />}>
-          <Menu firmaId={firma.id} empresaId={actual} admin={admin} auditoria={auditoria} pestanas={pestanas} soloCliente={soloCliente} propia={propia} />
+          <Menu firmaId={firma.id} empresaId={actual} admin={admin} auditoria={auditoria} pestanas={pestanas} soloCliente={soloCliente} propia={propia}
+            pestanasPropia={pestanasPropia} />
           <div className="pie">
             <Link href="/cuenta">{usuario.nombre}</Link> · {perfil}
             <form action={salir}><button style={{ marginTop: 8 }}>Salir</button></form>

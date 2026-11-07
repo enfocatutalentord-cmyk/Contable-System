@@ -38,6 +38,14 @@ export const esPestana = (v: string) => TODAS_LAS_PESTANAS.includes(v);
 export const PESTANAS_PRIVADAS = ["/salidas", "/socia"];
 export const GRUPO_PRIVADO = "Cuenta de la socia";
 
+// Pestañas que solo existen en la empresa propia, Contabilidad Empire (rediseño R2, n.º 4): lo que Empire le cobra a sus clientes
+// y lo personal de la socia. En un cliente no se ven ni se abren.
+export const PESTANAS_SOLO_PROPIA = ["/igualas", "/recurrentes", "/propuestas", ...PESTANAS_PRIVADAS];
+
+// Lo que ve un rol en una empresa según sea la propia o un cliente.
+export const pestanasEn = (pestanas: string[] | null, propia: boolean): string[] | null =>
+  propia ? pestanas : (pestanas ?? TODAS_LAS_PESTANAS).filter((r) => !PESTANAS_SOLO_PROPIA.includes(r));
+
 // Lo que ve un rol en un cliente: null = todo (administrador). Un rol sin lista ve todo menos lo privado.
 export function pestanasDelRol(pestanas: string[] | null, administrador: boolean): string[] | null {
   if (administrador) return null;

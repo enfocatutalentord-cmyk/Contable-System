@@ -10,7 +10,7 @@ export default async function Elegir({ params, searchParams }: { params: Promise
   const { fid } = await params;
   const { a } = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
-  const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
   // El resumen («») llega como «/» en la dirección.
   const pestanas = PESTANAS_CLIENTE.flatMap((s) => s.enlaces).map(([r, n]) => [r || "/", n] as const);
   const pestana = pestanas.find(([r]) => r === a);

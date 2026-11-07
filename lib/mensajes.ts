@@ -6,6 +6,9 @@ export const CAMPOS = [
   "nombre", "empresa", "mes", "monto", "enlace", "servicio", "número", "concepto", "declaración", "período", "fecha límite",
   "cantidad", "tipo", "años", "documento",
 ] as const;
+// Mensajes de cobro (rediseño R2, n.º 6): se ven y se editan en Contabilidad Empire; los demás, en la Firma.
+export const CLAVES_COBRO = ["cobro_iguala", "envio_factura", "pago_atrasado", "pago_recibido", "cuenta_bancaria", "correo_factura"];
+export const esDeCobro = (clave: string) => CLAVES_COBRO.includes(clave);
 export type Datos = Partial<Record<(typeof CAMPOS)[number], string>>;
 
 const CORCHETES = /\[([^\]\n]{1,40})\]/g;

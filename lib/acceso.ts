@@ -4,7 +4,7 @@ import { cache } from "react";
 import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
-import { pestanaDeRuta, pestanasDelRol, puedeVer } from "./pestanas";
+import { PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 
 export type Empresa = {
@@ -31,10 +31,10 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null })[]>`
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
            f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes,
-           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador
+           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia
       FROM empresas e
       JOIN firmas f ON f.id = e.firma_id
       JOIN miembros_firma mf ON mf.firma_id = e.firma_id AND mf.usuario_id = ${usuario.id}
@@ -47,16 +47,18 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     notFound();
   }
   if (!fila.administrador && !fila.permisos) notFound();
-  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, ...empresa } = fila;
+  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, ...empresa } = fila;
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
   exigirDosPasos(usuario, exigir_dos_pasos);
-  const visibles = pestanasDelRol(pestanas, administrador || !!rol_administrador);
+  const visibles = pestanasEn(pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia);
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
   const pestana = resto === null ? null : pestanaDeRuta(resto);
   if (pestana !== null && !puedeVer(visibles, pestana)) {
+    // Igualas, recurrentes, propuestas y lo de la socia solo existen en la empresa propia (rediseño R2).
+    if (!es_propia && PESTANAS_SOLO_PROPIA.includes(pestana)) redirect(`/e/${empresaId}?solo_empire=1`);
     const primera = visibles?.[0];
     if (primera === undefined) notFound();
     redirect(`/e/${empresaId}${primera}?sin_pestana=1`);
@@ -94,6 +96,17 @@ export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana
   if (pestana !== undefined && !puedeVer(acceso.pestanas, pestana)) redirect(`${inicio}?sin_pestana=1`);
   if (!puede(acceso.permisos, permiso)) redirect(`${inicio}?sin_permiso=1`);
   return acceso;
+}
+
+// Pestañas que la persona ve en la empresa propia de la firma (Contabilidad Empire en el menú, rediseño R2): null = todas;
+// false = no tiene acceso a ella.
+export async function pestanasDePropia(propiaId: string | null, usuarioId: string, administrador: boolean): Promise<string[] | null | false> {
+  if (!propiaId) return false;
+  if (administrador) return null;
+  const [m] = await db()<{ pestanas: string[] | null; rol_administrador: boolean }[]>`
+    SELECT p.pestanas, (p.sistema AND p.nombre = 'Administrador') AS rol_administrador
+      FROM miembros m JOIN perfiles p ON p.id = m.perfil_id WHERE m.empresa_id = ${propiaId} AND m.usuario_id = ${usuarioId}`;
+  return m ? pestanasDelRol(m.pestanas, m.rol_administrador) : false;
 }
 
 export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean; suspendida: boolean; empresa_propia_id: string | null; alta_clientes: boolean };

@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1 en producción, sigue la R2; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1 en producción, R2 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -763,6 +763,19 @@ No se pasa a la siguiente sin su autorización expresa.
   (modalidad 2 o 3). Sin RNC de la firma, aviso en el Inicio y en Datos de la firma (anclas `#datos-firma`, `#empresa-propia`).
   Recorrido `pruebas/navegador/firma.cjs` ajustado al menú nuevo. Probado en pantalla (escritorio, celular y usuario de cliente);
   223 pruebas. En `main` y producción el 7-nov-2026 («sí» de Patricia, `0433889`). Sigue la R2 (Contabilidad Empire) con su «sí».
+  «sí» de Patricia del 7-nov a empezar la R2. **R2 · Contabilidad Empire** (migración 046): la empresa propia deja de ser un
+  cliente. `PESTANAS_SOLO_PROPIA` (igualas, recurrentes, propuestas, salidas, socia) y `pestanasEn` en `lib/pestanas.ts`:
+  `accesoEmpresa` las quita fuera de la propia (si se abren en un cliente lleva a `?solo_empire=1` con aviso; los datos que hubiera
+  se conservan). `pestanasDePropia` (`lib/acceso.ts`) da al menú lo que la persona ve en la propia: la sección Contabilidad Empire
+  muestra siempre sus pestañas («Resumen de Empire», con sus avisos de cobro de `alertasDeEmpresa`) y «Cobros de Empire»: Tareas de
+  cobro (`/firma/[fid]/empire/tareas`), Mensajes de cobro (`/firma/[fid]/empire/mensajes`) y Presupuesto (solo administradores; lugar
+  reservado hasta el Excel PRESUPUESTO 2026). `plantillas_tarea.seccion` ('firma' | 'empire'; las tres de igualas pasan a 'empire',
+  también en `crear_plantillas_tarea`); pantalla común `app/firma/[fid]/tareas/vista.tsx` con «Se ve en» en el cronograma.
+  `CLAVES_COBRO`/`esDeCobro` en `lib/mensajes.ts` (cobro de iguala, envío de factura, pago atrasado, pago recibido, cuenta bancaria y
+  el correo de la factura); pantalla común `app/firma/[fid]/mensajes/vista.tsx` (los enlaces compartidos quedan en la Firma). La
+  propia sale del selector «Viendo» (dentro de ella dice «Contabilidad Empire»), de la lista de Empresas Empire (se sigue eligiendo
+  abajo) y de Inicio, Alertas, Documentos, Facturas por revisar, Impuestos del mes, Solicitudes, Trámites, Bitácora y Elegir de la
+  Firma. Pruebas `pruebas/rediseno.test.mjs` (226 en total). Probado en pantalla. En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

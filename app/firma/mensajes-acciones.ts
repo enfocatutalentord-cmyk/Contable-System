@@ -24,7 +24,7 @@ export async function guardarPlantillaMensaje(firmaId: string, plantillaId: stri
   } catch (e) {
     return { error: mensajeError(e) };
   }
-  revalidatePath(`/firma/${firmaId}/mensajes`);
+  revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Mensaje guardado. Los próximos envíos usan este texto." };
 }
 
@@ -39,6 +39,6 @@ export async function retirarEnlace(firmaId: string, empresaId: string, enlaceId
   } catch (x) {
     return { error: x instanceof ErrorMensaje ? x.message : mensajeError(x) };
   }
-  revalidatePath(`/firma/${firmaId}/mensajes`);
+  revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Enlace retirado: ya no descarga el documento." };
 }

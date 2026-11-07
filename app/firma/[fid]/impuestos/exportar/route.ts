@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fid: str
   if (await soloCliente(fid, usuario.id)) notFound(); // solo el equipo de la firma
   const sp = new URL(req.url).searchParams;
   const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.get("mes") ?? "") ? sp.get("mes")! : hoyISO().slice(0, 7);
-  const filas = await impuestosDeFirma((await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa), mes.replace("-", ""), hoyISO());
+  const filas = await impuestosDeFirma((await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa && !c.propia && c.estado_cliente !== "prospecto"), mes.replace("-", ""), hoyISO());
   const ahora = new Date().toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
   const tabla = {
     titulo: "Impuestos del mes", empresa: firma.nombre + (firma.rnc ? ` · RNC ${firma.rnc}` : ""), horizontal: true,

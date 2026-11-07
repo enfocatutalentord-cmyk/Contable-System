@@ -16,7 +16,7 @@ export default async function BitacoraFirma({ params, searchParams }: {
   const { firma, usuario } = await accesoFirma(fid, false);
   const hoy = hoyISO();
   const f = leerFiltrosBitacora(sp, hoy);
-  const [clientes, equipo] = await Promise.all([clientesDeFirma(fid, usuario.id, firma.administrador), equipoDe(fid)]);
+  const [clientes, equipo] = await Promise.all([clientesDeFirma(fid, usuario.id, firma.administrador).then((cs) => cs.filter((c) => !c.propia)), equipoDe(fid)]);
   const nombres = new Map(equipo.map((p) => [p.id, p.nombre]));
   const datos = await Promise.all(clientes.map((c) => conEmpresa(c.id, async (tx) => ({
     gestiones: await listarGestiones(tx, f, nombres), notificaciones: (await listarNotificaciones(tx)).filter((n) => n.estado !== "pagada"),

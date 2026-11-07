@@ -14,7 +14,7 @@ export default async function SolicitudesDeLaFirma({ params }: { params: Promise
   const { firma, usuario } = await accesoFirma(fid, false);
   if (await soloCliente(fid, usuario.id)) notFound();
   const hoy = hoyISO();
-  const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
   const datos = await Promise.all(clientes.map((c) => conEmpresa(c.id, async (tx) => ({
     c,
     solicitudes: await listarSolicitudes(tx, true),

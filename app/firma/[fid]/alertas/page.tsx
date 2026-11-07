@@ -15,7 +15,7 @@ export default async function Alertas({ params, searchParams }: {
   const { fid } = await params;
   const { tipo } = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
-  const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
   const todas = await alertasDeFirma(clientes, hoyISO());
   const filtro = tipo && tipo in TIPOS_ALERTA ? tipo : "";
   const visibles = filtro ? todas.filter((a) => a.tipo === filtro) : todas;

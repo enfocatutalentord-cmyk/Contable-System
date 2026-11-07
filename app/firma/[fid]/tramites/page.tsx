@@ -14,7 +14,7 @@ export default async function TramitesAbiertos({ params }: { params: Promise<{ f
   const { firma, usuario } = await accesoFirma(fid, false);
   if (await soloCliente(fid, usuario.id)) notFound();
   const hoy = hoyISO();
-  const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
   const filas = (await Promise.all(clientes.map(async (c) => (await conEmpresa(c.id, (tx) => listarTramites(tx, true))).map((t) => ({ c, t })))))
     .flat().sort((a, b) => a.t.plazo.localeCompare(b.t.plazo));
   const vencidos = filas.filter((f) => f.t.plazo < hoy).length;

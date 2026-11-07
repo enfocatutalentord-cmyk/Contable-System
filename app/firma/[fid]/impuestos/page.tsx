@@ -31,7 +31,7 @@ export default async function ImpuestosDelMes({ params, searchParams }: {
   const periodo = mes.replace("-", "");
   const ver = sp.ver && sp.ver in FILTROS ? sp.ver : "todos";
   const mios = sp.mios === "1";
-  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa && c.estado_cliente !== "prospecto" && (!mios || c.responsable_id === usuario.id));
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => c.activa && !c.propia && c.estado_cliente !== "prospecto" && (!mios || c.responsable_id === usuario.id));
   const todas = await impuestosDeFirma(clientes, periodo, hoy);
   const filas = todas.filter((f) =>
     ver === "pendientes" ? !f.cerrado && !f.listo : ver === "listos" ? f.listo : ver === "cerrados" ? f.cerrado : true);

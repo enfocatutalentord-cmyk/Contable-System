@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { accesoFirma, esUuid, soloCliente } from "@/lib/acceso";
 import { conUsuario, mensajeError } from "@/lib/db";
-import { ALCANCES, marcarTarea } from "@/lib/tareas";
+import { ALCANCES, marcarTarea, SECCIONES_TAREA } from "@/lib/tareas";
 import type { Estado } from "../acciones-cuenta";
 
 // Bloque 3, entrega 3b: tareas del mes (cualquiera del equipo) y cronograma (lo ajusta un administrador de la firma).
@@ -37,7 +37,7 @@ export async function asignarTarea(firmaId: string, tareaId: string, _: Estado, 
     }
     await tx`UPDATE tareas SET responsable_id = ${responsable || null} WHERE id = ${tareaId} AND firma_id = ${firmaId}`;
   });
-  revalidatePath(`/firma/${firmaId}/tareas`);
+  revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Responsable guardado." };
 }
 
@@ -52,15 +52,17 @@ export async function guardarPlantilla(firmaId: string, plantillaId: string | nu
   const { usuario } = await accesoFirma(firmaId); // solo administradores
   const titulo = String(fd.get("titulo") ?? "").trim().replace(/\s+/g, " ");
   const alcance = String(fd.get("alcance") ?? "firma");
+  const seccion = String(fd.get("seccion") ?? "firma");
   const semana = entero(fd, "dia_semana", 7);
   const desde = semana ? null : entero(fd, "dia_desde", 31);
   const hasta = semana ? null : entero(fd, "dia_hasta", 31) ?? desde;
   if (!titulo || titulo.length > 200) return { error: "Escribe la tarea (hasta 200 caracteres)." };
   if (!(alcance in ALCANCES)) return { error: "Elige para quién es." };
+  if (!(seccion in SECCIONES_TAREA)) return { error: "Elige dónde se ve." };
   if ([semana, desde, hasta].some((x) => Number.isNaN(x))) return { error: "Revisa los días." };
   if (!semana && (!desde || !hasta || desde > hasta)) return { error: "Pon el día de inicio y el de fin (o un día de la semana)." };
   if (plantillaId && !esUuid(plantillaId)) return { error: "La tarea no existe." };
-  const datos = { titulo, alcance, dia_semana: semana, dia_desde: desde, dia_hasta: hasta };
+  const datos = { titulo, alcance, seccion, dia_semana: semana, dia_desde: desde, dia_hasta: hasta };
   try {
     await conUsuario(usuario.id, async (tx) => {
       if (plantillaId) {
@@ -73,6 +75,6 @@ export async function guardarPlantilla(firmaId: string, plantillaId: string | nu
   } catch (e) {
     return { error: mensajeError(e) };
   }
-  revalidatePath(`/firma/${firmaId}/tareas`);
+  revalidatePath(`/firma/${firmaId}`, "layout");
   return { ok: "Cronograma guardado. Los cambios valen para las tareas que se generen desde ahora." };
 }

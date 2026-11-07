@@ -26,7 +26,8 @@ export default async function Clientes({ params, searchParams }: {
   ]);
   const f = leerFiltrosLista(sp);
   const filtrando = Object.values(f).some(Boolean);
-  const clientes = filtrarClientes(todos, f);
+  // La empresa propia no es un cliente (rediseño R2): no sale en la lista; se elige abajo y se trabaja en Contabilidad Empire.
+  const clientes = filtrarClientes(todos.filter((c) => !c.propia), f);
   const r = resumenLista(todos, hoyISO());
   const propia = todos.find((c) => c.propia);
   const filtro = (campo: string, valor: string) => `/firma/${fid}/clientes?${new URLSearchParams({ [campo]: valor })}`;
@@ -82,7 +83,6 @@ export default async function Clientes({ params, searchParams }: {
               <tr key={c.id} style={c.activa ? undefined : { opacity: 0.6 }}>
                 <td>
                   <Link href={`/e/${c.id}`}><strong>{c.nombre}</strong></Link>
-                  {c.propia && <span className="etiqueta-propia"> · empresa propia</span>}
                   {esPrime(c.modalidad) && <span className="etiqueta-prime" title="Modalidad 2 o 3: usa el sistema Empire Prime">Prime</span>}
                   <div className="sub" style={{ margin: 0 }}>{c.rnc ?? "Sin RNC"} · <Link href={`/e/${c.id}/empresa`}>Ficha</Link></div>
                 </td>

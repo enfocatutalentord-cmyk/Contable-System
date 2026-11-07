@@ -14,7 +14,7 @@ export default async function InicioFirma({ params, searchParams }: {
   const { fid } = await params;
   const sp = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
-  const clientes = await clientesDeFirma(fid, usuario.id, firma.administrador);
+  const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
   const [resumenes, eventos, alertas] = await Promise.all([Promise.all(clientes.map((c) => resumenCliente(c.id))), actividad(clientes, 12), alertasDeFirma(clientes, hoyISO())]);
   const filas = clientes.map((c, i) => ({ ...c, ...resumenes[i] }));
   const suma = (f: (r: (typeof filas)[number]) => bigint | number) => filas.reduce((s, r) => s + BigInt(f(r)), 0n);

@@ -147,7 +147,7 @@ export default async function VerFactura({ params, searchParams }: {
                   {correo.preparado.emisor.correo
                     ? ` Si el cliente responde, la respuesta llega a ${correo.preparado.emisor.correo}.`
                     : " La ficha no tiene correo: si el cliente responde, la respuesta llega al correo del sistema. Agrégalo en Ficha de la empresa › Datos generales."}
-                  {" "}El texto predeterminado («Correo: envío de factura») se cambia en Mensajes predeterminados, en la firma.
+                  {" "}El texto predeterminado («Correo: envío de factura») se cambia en Contabilidad Empire › Mensajes de cobro.
                 </p>
               </Formulario>
             )}

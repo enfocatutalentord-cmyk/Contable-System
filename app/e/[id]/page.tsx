@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { accesoEmpresa } from "@/lib/acceso";
+import { accesoEmpresa, misFirmas } from "@/lib/acceso";
+import { alertasDeEmpresa } from "@/lib/alertas";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
@@ -12,10 +13,10 @@ import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
 
 export default async function InicioEmpresa({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sin_permiso?: string; sin_pestana?: string }>;
+  searchParams: Promise<{ sin_permiso?: string; sin_pestana?: string; solo_empire?: string }>;
 }) {
   const { id } = await params;
-  const { sin_permiso, sin_pestana } = await searchParams;
+  const { sin_permiso, sin_pestana, solo_empire } = await searchParams;
   const { empresa, permisos, pestanas, perfil, usuario } = await accesoEmpresa(id);
   // El prospecto y el cliente con aplicación ven su propia pantalla de inicio (bloque 8a).
   if (perfil === ROL_PROSPECTO || perfil === ROL_CLIENTE_APP) return <InicioClienteApp id={id} nombre={empresa.nombre} usuario={usuario.nombre} />;
@@ -23,7 +24,9 @@ export default async function InicioEmpresa({ params, searchParams }: {
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;
 
-  const { cuentas, delMes, recientes, cxc, cxp, borradores } = await conEmpresa(id, async (tx) => {
+  // Contabilidad Empire (rediseño R2): sus avisos de cobro (igualas vencidas, acuerdos) salen aquí, no en las alertas de la Firma.
+  const propia = (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
+  const { cuentas, delMes, recientes, cxc, cxp, borradores, avisos } = await conEmpresa(id, async (tx) => {
     const cuentas = await saldosPorCuenta(tx, inicioAnio, hoy);
     const [{ n }] = await tx<{ n: number }[]>`
       SELECT count(*)::int AS n FROM asientos WHERE estado = 'contabilizado' AND fecha BETWEEN ${primerDiaMes(hoy)} AND ${hoy}`;
@@ -34,7 +37,8 @@ export default async function InicioEmpresa({ params, searchParams }: {
         FROM asientos a ORDER BY a.creado DESC LIMIT 6`;
     const cxc = await antiguedad(tx, hoy);
     const cxp = await antiguedadCxp(tx, hoy);
-    return { cuentas, delMes: n, recientes, cxc, cxp, borradores: b };
+    const avisos = propia ? await alertasDeEmpresa(tx, { empresaId: id, hoy, propia: true }) : [];
+    return { cuentas, delMes: n, recientes, cxc, cxp, borradores: b, avisos };
   });
 
   const clase = (c: string) => cuentas.find((x) => x.codigo === c);
@@ -51,13 +55,22 @@ export default async function InicioEmpresa({ params, searchParams }: {
 
   return (
     <>
+      {solo_empire && <p className="aviso">Igualas, facturas recurrentes y propuestas son lo que Empire le cobra a sus clientes: están en Contabilidad Empire, no dentro de cada cliente.</p>}
       {sin_pestana && <p className="aviso">Tu rol no incluye esa pestaña. Pídele a un administrador de la firma que te la agregue.</p>}
       {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
-      <h1>Inicio</h1>
+      <h1>{propia ? "Resumen de Empire" : "Inicio"}</h1>
       <p className="sub">
         {empresa.nombre} · cifras al {verFecha(hoy)}
         {empresa.fecha_bloqueo && <> · período cerrado hasta el {verFecha(empresa.fecha_bloqueo)}</>}
       </p>
+      {avisos.length > 0 && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Avisos</h2>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {avisos.map((a, i) => <li key={i} className={a.nivel === "urgente" ? "error" : undefined}><Link href={a.enlace}>{a.texto}</Link></li>)}
+          </ul>
+        </div>
+      )}
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Activos</div><div className="valor">{verMonto(saldo("1"))}</div></div>
         <div className="tarjeta cifra"><div className="etiqueta">Pasivos</div><div className="valor">{verMonto(saldo("2"))}</div></div>
