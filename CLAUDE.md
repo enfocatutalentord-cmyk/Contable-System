@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 6-nov-2026 (entrega A, facturas por correo, en `main` y producción; sigue la B); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño propuesto, todo lo demás en pausa; entrega A en producción); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -742,6 +742,17 @@ No se pasa a la siguiente sin su autorización expresa.
   Pruebas `pruebas/correo-facturas.test.mjs` (223 en total). En `main` el 6-nov-2026 («sí» de Patricia; publicado en producción,
   `ababe2a`). Pendiente: probar un envío real con Gmail en producción; Patricia revisa el texto del correo. Sigue la B (normas y
   tasas) con su «sí».
+- **Rediseño (en curso desde el 7-nov-2026; todo lo demás en pausa hasta terminarlo).** Documento de Patricia «Sistema Empire ·
+  Lista de rediseños» (6-nov-2026, 8 págs., en `Downloads`; 22 cambios): cuatro secciones (Firma, Contabilidad Empire, Talleres,
+  Administración) con desplegables; en Firma se elige el trabajo y después el cliente; a los clientes no se les hacen asientos (sus
+  facturas alimentan impuestos, reportes y estados); la empresa propia sale de la lista de clientes como Contabilidad Empire;
+  permisos por persona con casillas por sección. Datos: no se borra nada (se esconde), la oficina sigue trabajando. Propuesta en
+  https://claude.ai/artifact/Vyop1x7vUXwWV97eRa3nKk, esperando el «sí» de Patricia: 6 entregas R1 menú en cuatro secciones (1, 7, 17,
+  18, 21), R2 Contabilidad Empire (3–6), R3 clientes sin asientos (8, 9, 14, 15, 20), R4 el trabajo primero (2, 11, 12), R5 estados
+  financieros sin asientos (10; también IR-2 A-1/B-1 y proyección), R6 permisos por persona (19, 22); el n.º 13 es la 5b. Revisado:
+  606/607/608, IT-1, IR-17, Impuestos del mes y Reporte mensual no dependen de asientos; estados, IR-2 y proyección sí. 7 preguntas
+  en el documento (Prime con contabilidad, asientos viejos escondidos, NCF sin asiento, «por revisar», «solo mis clientes»,
+  saldos por año, empezar por R1). En pausa: entrega B, 5b, 6b, 7b/7c, 8c.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
