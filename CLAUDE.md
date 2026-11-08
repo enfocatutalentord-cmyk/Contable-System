@@ -622,6 +622,10 @@ No se pasa a la siguiente sin su autorización expresa.
   empresa propia con el precio de la categoría del cliente (sin servicio, en 0). Pruebas `pruebas/formularios.test.mjs` (198 en
   total). En `main` el 5-nov-2026 («sí» de Patricia). Pendiente: ajustar las preguntas a EMP-F01/F03/F04 cuando las suba. Sigue la 6b
   (levantamiento y diagnóstico): necesita el levantamiento con sus anexos 1–5 y la lista EMP-P01.
+  8-nov-2026: Patricia subió EMP-P01 (37 servicios), Formulario y Ficha de Levantamiento, anexos 1, 2, 3 y 5 (falta el 4, pasivos) y el Manual de la
+  Coordinadora v2.0 (no trae las plantillas de la 5b). Propuesta de la 6b en 3 partes (6b.1 lista de precios, 6b.2 levantamiento y estado inicial, 6b.3
+  diagnóstico y propuesta) en https://claude.ai/artifact/2Px23rimYxGZb6LShBcCpD, esperando su «sí». Reglas por aplicar: empate de categorías = Mediana, iguala
+  mínima RD$4,000, emprendedor sin descuento. La lista no trae precio de iguala.
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,
