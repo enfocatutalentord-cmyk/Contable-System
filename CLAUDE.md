@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R5 en producción, n.º 9 en la rama esperando el «sí»; sigue la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R5 y n.º 9 en producción; sigue la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -841,7 +841,8 @@ No se pasa a la siguiente sin su autorización expresa.
   «Anular». Así el 606, 607, IT-1 e IR-17 siguen saliendo igual. Las pruebas de ventas, compras y propuestas marcan sus empresas con
   «lleva contabilidad»; nueva `pruebas/registro-sin-asiento.test.mjs` (235 en total). Probado en pantalla con Salón Rosa: compra
   registrada sin asiento y pagada con ITBIS retenido 108 (el 606 de noviembre lo toma), factura cobrada en efectivo, menú sin cobros
-  ni pagos. En la rama, esperando el «sí» de Patricia.
+  ni pagos. En `main` y producción el 7-nov-2026 («sí» de Patricia, `d23bbed`, con la migración 049). Sigue la R6 (permisos por
+  persona) con su «sí»; es la última del rediseño.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
