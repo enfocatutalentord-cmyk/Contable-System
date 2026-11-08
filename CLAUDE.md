@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R5 y n.º 9 en producción, R6 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño completo en producción: R1–R6 y n.º 9; vuelve el plan en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -858,7 +858,9 @@ No se pasa a la siguiente sin su autorización expresa.
   equipo no tienen la verificación en dos pasos y enlace para exigirla. Pruebas `pruebas/permisos-persona.test.mjs` (238 en total).
   Probado en pantalla con una «Sara Secretaria» local (plantilla Coordinadora sin «Contabilizar», todos los clientes, crea clientes):
   ve ambos clientes, su menú sigue sus casillas, una pantalla sin permiso la devuelve con aviso, creó «Cliente de Sara SRL», no llega a
-  Personas y accesos. En la rama, esperando el «sí» de Patricia. En producción lo hace Patricia: quitar «Manaury Prueba» (Quitar de la
+  Personas y accesos. En `main` y producción el 7-nov-2026 («sí» de Patricia, `d851410`, con la migración 050). **Rediseño completo**
+  (los 22 cambios de la lista, salvo el n.º 13, generador de documentos = 5b, que espera las plantillas en Word). Vuelve el plan en pausa:
+  entrega B (normas y tasas), 5b, 6b, 7b/7c y 8c, cada uno con su «sí». En producción lo hace Patricia: quitar «Manaury Prueba» (Quitar de la
   firma), marcar «Exigir verificación en dos pasos» en Datos de la firma y corregir el RNC repetido de Goemhy y «Gomez Guerrero».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
