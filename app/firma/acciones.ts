@@ -11,6 +11,7 @@ import { avisarCambio, quitarDosPasos } from "@/lib/cuenta-dos-pasos";
 import { asegurarUsuario, avisoEnlace, revisarQueQuedeAdministrador } from "@/lib/equipo";
 import { esPermiso, TODOS_LOS_PERMISOS } from "@/lib/permisos";
 import { esPestana, pestanasAGuardar } from "@/lib/pestanas";
+import { leerPermisosPersona } from "@/lib/permisos-persona";
 import { correosAdministradores, registrar } from "@/lib/plataforma";
 import type { Estado } from "../acciones-cuenta";
 
@@ -318,4 +319,30 @@ export async function quitarPermisoSupervision(firmaId: string, _: Estado): Prom
     `${usuario.nombre} quitó el permiso de supervisión de la plataforma. Si había una supervisión en curso, terminó.`);
   revalidatePath(`/firma/${firmaId}/equipo`);
   return { ok: "Permiso de supervisión quitado." };
+}
+
+// Permisos propios de una persona del equipo (rediseño R6): casillas por sección y alcance. Solo una administradora los cambia.
+export async function guardarPermisosPersona(firmaId: string, personaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  if (!esUuid(personaId)) return { error: "Persona no válida." };
+  const p = leerPermisosPersona(fd);
+  try {
+    await conUsuario(usuario.id, async (tx) => {
+      const [m] = await tx`SELECT 1 FROM miembros_firma WHERE firma_id = ${firmaId} AND usuario_id = ${personaId}`;
+      if (!m) throw new ErrorContable("Esa persona no es parte de la firma");
+      const validos = new Set((await tx<{ id: string }[]>`SELECT id FROM empresas WHERE firma_id = ${firmaId}`).map((e) => e.id));
+      const elegidos = p.elegidos.filter((id) => validos.has(id));
+      await tx`UPDATE miembros_firma SET
+                 permisos_clientes = ${p.clientes?.permisos ?? null}, pestanas_clientes = ${p.clientes?.pestanas ?? null},
+                 alcance = ${p.alcance}, clientes = ${elegidos}::uuid[],
+                 permisos_empire = ${p.empire?.permisos ?? null}, pestanas_empire = ${p.empire?.pestanas ?? null},
+                 crear_clientes = ${p.crearClientes}, plantillas = ${p.plantillas},
+                 permisos_por = ${usuario.nombre}, permisos_en = now()
+               WHERE firma_id = ${firmaId} AND usuario_id = ${personaId}`;
+    });
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/firma/${firmaId}`, "layout");
+  return { ok: p.clientes || p.empire ? "Permisos guardados. Valen desde su próxima pantalla." : "Sin permisos propios: sigue con sus roles cliente por cliente." };
 }

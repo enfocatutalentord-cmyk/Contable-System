@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R5 y n.º 9 en producción; sigue la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R5 y n.º 9 en producción, R6 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -843,6 +843,23 @@ No se pasa a la siguiente sin su autorización expresa.
   registrada sin asiento y pagada con ITBIS retenido 108 (el 606 de noviembre lo toma), factura cobrada en efectivo, menú sin cobros
   ni pagos. En `main` y producción el 7-nov-2026 («sí» de Patricia, `d23bbed`, con la migración 049). Sigue la R6 (permisos por
   persona) con su «sí»; es la última del rediseño.
+  «sí» de Patricia del 7-nov a empezar la R6. **R6 · Permisos por persona** (migración 050, `lib/permisos-persona.ts`,
+  `app/firma/[fid]/equipo/permisos-persona.tsx`, acción `guardarPermisosPersona`): `miembros_firma` guarda permisos y pantallas propios
+  por sección (`permisos_clientes`/`pestanas_clientes` para la Firma y `permisos_empire`/`pestanas_empire` para Contabilidad Empire),
+  el alcance (`todos`, `mis_clientes` = donde es responsable, `elegidos` con `clientes uuid[]`), `crear_clientes` y las plantillas
+  usadas. En Personas y accesos, cada persona del equipo (no administradora) tiene «Permisos propios»: casillas de permisos y de
+  pantallas por grupo, botones «+ <rol>» que suman las casillas del rol sin quitar las marcadas (los roles quedan como plantillas que se
+  combinan; cambiar a la persona no cambia el rol), alcance y «Crear clientes». `accesoEmpresa`: en la propia mandan los de Empire; en
+  un cliente de su alcance, los de la Firma (perfil «Permisos propios»); si no, su rol cliente por cliente como antes (nada cambia hasta
+  marcarlos). `clientesDeFirma`, `pestanasDePropia` y `soloCliente` lo tienen en cuenta. «Registrar» deja borradores y «Contabilizar
+  (aprobar)» los emite o postea (lo que registra quien no aprueba queda pendiente). Crear clientes: `Firma.crear_clientes`
+  (administradora o la casilla); quien lo crea sin ser administradora queda como responsable y, con alcance «elegidos», lo suma a su
+  lista. `equipoDe` ya no incluye a los usuarios de clientes (listas de responsables). Aviso en Personas y accesos con quienes del
+  equipo no tienen la verificación en dos pasos y enlace para exigirla. Pruebas `pruebas/permisos-persona.test.mjs` (238 en total).
+  Probado en pantalla con una «Sara Secretaria» local (plantilla Coordinadora sin «Contabilizar», todos los clientes, crea clientes):
+  ve ambos clientes, su menú sigue sus casillas, una pantalla sin permiso la devuelve con aviso, creó «Cliente de Sara SRL», no llega a
+  Personas y accesos. En la rama, esperando el «sí» de Patricia. En producción lo hace Patricia: quitar «Manaury Prueba» (Quitar de la
+  firma), marcar «Exigir verificación en dos pasos» en Datos de la firma y corregir el RNC repetido de Goemhy y «Gomez Guerrero».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

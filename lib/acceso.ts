@@ -6,6 +6,7 @@ import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
 import { PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
+import { alcanceIncluye } from "./permisos-persona.ts";
 
 export type Empresa = {
   id: string; nombre: string; rnc: string | null; moneda: string; fecha_bloqueo: string | null;
@@ -31,10 +32,14 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean; lleva_contabilidad: boolean })[]>`
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean; lleva_contabilidad: boolean;
+    responsable_id: string | null; mf_permisos_clientes: string[] | null; mf_pestanas_clientes: string[] | null; mf_alcance: string; mf_clientes: string[];
+    mf_permisos_empire: string[] | null; mf_pestanas_empire: string[] | null })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
            f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes,
-           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia, e.lleva_contabilidad
+           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia, e.lleva_contabilidad, e.responsable_id,
+           mf.permisos_clientes AS mf_permisos_clientes, mf.pestanas_clientes AS mf_pestanas_clientes, mf.alcance AS mf_alcance,
+           mf.clientes::text[] AS mf_clientes, mf.permisos_empire AS mf_permisos_empire, mf.pestanas_empire AS mf_pestanas_empire
       FROM empresas e
       JOIN firmas f ON f.id = e.firma_id
       JOIN miembros_firma mf ON mf.firma_id = e.firma_id AND mf.usuario_id = ${usuario.id}
@@ -46,12 +51,22 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     if (s) return s;
     notFound();
   }
-  if (!fila.administrador && !fila.permisos) notFound();
-  const { administrador, perfil, permisos, pestanas, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, lleva_contabilidad, ...empresa } = fila;
+  // Permisos propios de la persona (rediseño R6): en la empresa propia, los de Contabilidad Empire; en un cliente de su alcance, los de la
+  // Firma. Mandan sobre el rol que tenga en esa empresa. Sin permisos propios, sigue su rol cliente por cliente.
+  const propios = fila.administrador ? null
+    : fila.es_propia ? (fila.mf_permisos_empire ? { permisos: fila.mf_permisos_empire, pestanas: fila.mf_pestanas_empire ?? [""] } : null)
+    : fila.mf_permisos_clientes && alcanceIncluye({ alcance: fila.mf_alcance, clientes: fila.mf_clientes ?? [] }, fila, usuario.id)
+      ? { permisos: fila.mf_permisos_clientes, pestanas: fila.mf_pestanas_clientes ?? [""] } : null;
+  if (!fila.administrador && !fila.permisos && !propios) notFound();
+  const { administrador, perfil, permisos: permisosRol, pestanas: pestanasRol, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, lleva_contabilidad,
+    responsable_id: _r, mf_permisos_clientes: _a, mf_pestanas_clientes: _b, mf_alcance: _c, mf_clientes: _d, mf_permisos_empire: _e, mf_pestanas_empire: _f, ...empresa } = fila;
+  void [_r, _a, _b, _c, _d, _e, _f];
+  const permisos = propios ? propios.permisos : permisosRol;
+  const pestanas = propios ? propios.pestanas : pestanasRol;
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
   exigirDosPasos(usuario, exigir_dos_pasos);
-  const visibles = pestanasEn(pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia, lleva_contabilidad);
+  const visibles = pestanasEn(propios ? pestanas : pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia, lleva_contabilidad);
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
@@ -69,10 +84,10 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     usuario,
     empresa,
     adminFirma: administrador,
-    perfil: administrador ? "Administrador de la firma" : perfil!,
+    perfil: administrador ? "Administrador de la firma" : propios ? "Permisos propios" : perfil!,
     permisos: administrador ? TODOS_LOS_PERMISOS : (permisos!.filter((p) => (TODOS_LOS_PERMISOS as string[]).includes(p)) as Permiso[]),
     pestanas: visibles,
-    paraClientes: !administrador && !!para_clientes,
+    paraClientes: !administrador && !propios && !!para_clientes,
   };
 });
 
@@ -105,17 +120,22 @@ export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana
 export async function pestanasDePropia(propiaId: string | null, usuarioId: string, administrador: boolean): Promise<string[] | null | false> {
   if (!propiaId) return false;
   if (administrador) return null;
+  const [mf] = await db()<{ pestanas: string[] | null; permisos: string[] | null }[]>`
+    SELECT mf.pestanas_empire AS pestanas, mf.permisos_empire AS permisos FROM miembros_firma mf JOIN empresas e ON e.firma_id = mf.firma_id
+     WHERE e.id = ${propiaId} AND mf.usuario_id = ${usuarioId}`;
+  if (mf?.permisos) return mf.pestanas ?? [""];
   const [m] = await db()<{ pestanas: string[] | null; rol_administrador: boolean }[]>`
     SELECT p.pestanas, (p.sistema AND p.nombre = 'Administrador') AS rol_administrador
       FROM miembros m JOIN perfiles p ON p.id = m.perfil_id WHERE m.empresa_id = ${propiaId} AND m.usuario_id = ${usuarioId}`;
   return m ? pestanasDelRol(m.pestanas, m.rol_administrador) : false;
 }
 
-export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean; suspendida: boolean; empresa_propia_id: string | null; alta_clientes: boolean };
+export type Firma = { id: string; nombre: string; rnc: string | null; administrador: boolean; exigir_dos_pasos: boolean; suspendida: boolean; empresa_propia_id: string | null; alta_clientes: boolean; crear_clientes: boolean };
 
 export const misFirmas = cache(async (usuarioId: string): Promise<Firma[]> => {
   return db()<Firma[]>`
-    SELECT f.id, f.nombre, f.rnc, mf.administrador, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, f.empresa_propia_id, f.alta_clientes FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
+    SELECT f.id, f.nombre, f.rnc, mf.administrador, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, f.empresa_propia_id, f.alta_clientes,
+           mf.administrador OR mf.crear_clientes AS crear_clientes FROM miembros_firma mf JOIN firmas f ON f.id = mf.firma_id
      WHERE mf.usuario_id = ${usuarioId} ORDER BY f.nombre`;
 });
 
@@ -133,7 +153,7 @@ export async function accesoFirma(firmaId: string, soloAdministrador = true): Pr
 // ¿La persona entra a esta firma solo como usuario de empresas cliente? Entonces no ve las pantallas de la firma.
 export const soloCliente = cache(async (firmaId: string, usuarioId: string): Promise<boolean> => {
   const [r] = await db()<{ solo: boolean }[]>`
-    SELECT NOT mf.administrador AND EXISTS (SELECT 1 FROM miembros m JOIN empresas e ON e.id = m.empresa_id
+    SELECT NOT mf.administrador AND mf.permisos_clientes IS NULL AND mf.permisos_empire IS NULL AND EXISTS (SELECT 1 FROM miembros m JOIN empresas e ON e.id = m.empresa_id
                                              WHERE m.usuario_id = mf.usuario_id AND e.firma_id = mf.firma_id)
            AND NOT EXISTS (SELECT 1 FROM miembros m JOIN empresas e ON e.id = m.empresa_id JOIN perfiles p ON p.id = m.perfil_id
                             WHERE m.usuario_id = mf.usuario_id AND e.firma_id = mf.firma_id AND NOT p.para_clientes) AS solo

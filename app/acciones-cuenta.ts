@@ -93,12 +93,19 @@ export async function salir(): Promise<void> {
 
 // Nuevo cliente de la firma (solo administradores de la firma).
 export async function nuevaEmpresa(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await accesoFirma(firmaId);
+  const { usuario, firma } = await accesoFirma(firmaId, false);
+  if (!firma.crear_clientes) return { error: "Crear clientes no está entre tus permisos. Pídeselo a una administradora." };
   const ficha = leerFicha(fd);
   if (typeof ficha === "string") return { error: ficha };
   let id: string;
   try {
     id = await crearEmpresa({ firmaId, usuarioId: usuario.id, ficha });
+    // Quien lo crea sin ser administradora queda como responsable y, si trabaja con clientes elegidos, con este en su lista.
+    if (!firma.administrador) {
+      await db()`UPDATE empresas SET responsable_id = COALESCE(responsable_id, ${usuario.id}) WHERE id = ${id}`;
+      await db()`UPDATE miembros_firma SET clientes = array_append(clientes, ${id}::uuid)
+                  WHERE firma_id = ${firmaId} AND usuario_id = ${usuario.id} AND alcance = 'elegidos' AND NOT (${id}::uuid = ANY (clientes))`;
+    }
   } catch (e) {
     return { error: mensajeError(e) };
   }

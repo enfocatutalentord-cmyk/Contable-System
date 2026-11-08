@@ -17,8 +17,15 @@ export type ClienteFirma = {
 };
 
 // El equipo de la firma (para elegir responsables).
+// El equipo de la firma, sin los usuarios de los clientes (rediseño R6: no aparecen en las listas de responsables).
 export const equipoDe = (firmaId: string) => db()<{ id: string; nombre: string }[]>`
-  SELECT u.id, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id WHERE mf.firma_id = ${firmaId} ORDER BY u.nombre`;
+  SELECT u.id, u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id
+   WHERE mf.firma_id = ${firmaId}
+     AND (mf.administrador OR mf.permisos_clientes IS NOT NULL OR mf.permisos_empire IS NOT NULL
+          OR EXISTS (SELECT 1 FROM miembros m JOIN empresas e ON e.id = m.empresa_id JOIN perfiles p ON p.id = m.perfil_id
+                      WHERE m.usuario_id = mf.usuario_id AND e.firma_id = mf.firma_id AND NOT p.para_clientes)
+          OR NOT EXISTS (SELECT 1 FROM miembros m JOIN empresas e ON e.id = m.empresa_id WHERE m.usuario_id = mf.usuario_id AND e.firma_id = mf.firma_id))
+   ORDER BY u.nombre`;
 
 // El administrador de la firma ve todos los clientes; el resto, los que tiene asignados.
 export async function clientesDeFirma(firmaId: string, usuarioId: string, administrador: boolean, conInactivos = false): Promise<ClienteFirma[]> {
@@ -32,7 +39,11 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
       JOIN firmas f ON f.id = e.firma_id
       LEFT JOIN usuarios r ON r.id = e.responsable_id
      WHERE e.firma_id = ${firmaId} AND (${conInactivos} OR e.activa)
-       AND (${administrador} OR EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = e.id AND m.usuario_id = ${usuarioId}))
+       AND (${administrador} OR EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = e.id AND m.usuario_id = ${usuarioId})
+            OR EXISTS (SELECT 1 FROM miembros_firma mf WHERE mf.firma_id = e.firma_id AND mf.usuario_id = ${usuarioId}
+                        AND CASE WHEN e.id = f.empresa_propia_id THEN mf.permisos_empire IS NOT NULL
+                                 ELSE mf.permisos_clientes IS NOT NULL AND (mf.alcance = 'todos' OR (mf.alcance = 'mis_clientes' AND e.responsable_id = ${usuarioId})
+                                                                            OR e.id = ANY (mf.clientes)) END))
      ORDER BY e.id = f.empresa_propia_id DESC, e.activa DESC, e.nombre`;
 }
 

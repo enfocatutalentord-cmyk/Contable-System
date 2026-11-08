@@ -29,7 +29,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
   const avisosArriba = <>
     {solo_empire && <p className="aviso">Igualas, facturas recurrentes y propuestas son lo que Empire le cobra a sus clientes: están en Contabilidad Empire, no dentro de cada cliente.</p>}
     {sin_contabilidad && <p className="aviso">A este cliente no se le lleva contabilidad en el sistema (asientos, libros, catálogo, bancos, cierre, cobros ni pagos): sus facturas y compras sirven para los impuestos y los reportes, y el cobro o el pago se anota dentro de cada una. Si la lleva, márcalo en Ficha › Relación con Empire.</p>}
-    {sin_pestana && <p className="aviso">Tu rol no incluye esa pestaña. Pídele a un administrador de la firma que te la agregue.</p>}
+    {sin_pestana && <p className="aviso">Tus permisos no incluyen esa pantalla. Pídele a una administradora de la firma que te la agregue.</p>}
     {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
   </>;
   // Un cliente sin contabilidad ve el trabajo del mes, no cifras contables (rediseño R3, n.º 15).

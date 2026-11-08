@@ -44,7 +44,7 @@ export default async function InicioFirma({ params, searchParams }: {
           <h1>Inicio de la firma</h1>
           <p className="sub">Hola, {usuario.nombre}. Para trabajar en un cliente, elígelo arriba en «Viendo» o toca su nombre.</p>
         </div>
-        {firma.administrador && <Link className="boton primario" href={`/firma/${fid}/clientes/nuevo`}>+ Nuevo cliente</Link>}
+        {firma.crear_clientes && <Link className="boton primario" href={`/firma/${fid}/clientes/nuevo`}>+ Nuevo cliente</Link>}
       </div>
 
       <div className="cifras">
