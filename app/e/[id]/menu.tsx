@@ -26,7 +26,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const enPropia = !!propia && empresaId === propia.id;
 
   const deLaFirma: [string, string][] = [
-    ...(admin ? [[`${firma}/clientes`, "Empresas Empire"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"]] as [string, string][] : []),
+    ...(admin ? [[`${firma}/clientes`, "Empresas Empire"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"], [`${firma}/normas`, "Normas y tasas"]] as [string, string][] : []),
     [`${firma}/actividad`, "Actividad"],
   ];
   const visible = (r: string) => !FUERA_DEL_MENU.includes(r) && puedeVer(pestanas, r) && (r !== "/historial" || auditoria || !base);

@@ -53,10 +53,14 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
   const anterior = m === 1 ? `${a - 1}12` : `${a}${String(m - 1).padStart(2, "0")}`;
   const obligaciones = (await tx<{ clave: string }[]>`SELECT clave FROM obligaciones_empresa WHERE activa`).map((o) => o.clave);
   const presentadas = new Set((await tx<{ formato: string; periodo: string }[]>`SELECT formato, periodo FROM envios_dgii`).map((e) => `${e.formato}:${e.periodo}`));
+  // Fechas del calendario fiscal de la firma y sus prórrogas (entrega B · Normas y tasas).
+  const fechas = Object.fromEntries((await tx<{ formato: string; vence: string }[]>`
+    SELECT f AS formato, to_char(vencimiento_fiscal(f, ${anterior}), 'YYYY-MM-DD') AS vence FROM unnest(ARRAY['606', '607', '608', 'IT-1', 'IR-17']) AS f`)
+    .map((f) => [f.formato, f.vence]));
   for (const clave of obligaciones) {
     const x = MENSUALES[clave];
     if (!x || presentadas.has(`${x.formato}:${anterior}`)) continue;
-    const vence = `${hoy.slice(0, 7)}-${String(x.dia).padStart(2, "0")}`;
+    const vence = fechas[x.formato] ?? `${hoy.slice(0, 7)}-${String(x.dia).padStart(2, "0")}`;
     if (dias(hoy, vence) > 7) continue;
     poner("declaracion", dias(hoy, vence) < 0 ? "urgente" : "aviso", `${x.formato} de ${MESES[Number(anterior.slice(4)) - 1]} sin presentar: ${faltan(hoy, vence)}`, `${base}/dgii`, vence);
   }
@@ -71,8 +75,9 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
     const mc = e.mes_cierre;
     const anioFin = Number(hoy.slice(5, 7)) > mc ? a : a - 1;
     const fin = new Date(Date.UTC(anioFin, mc, 0)).toISOString().slice(0, 10);
-    const vence = mas(fin, 120);
     const periodo = fin.slice(0, 4) + fin.slice(5, 7);
+    const [{ v }] = await tx<{ v: string }[]>`SELECT to_char(vencimiento_fiscal('IR-2', ${periodo}), 'YYYY-MM-DD') AS v`;
+    const vence = v ?? mas(fin, 120);
     if (!presentadas.has(`IR-2:${periodo}`) && dias(hoy, vence) <= 30) {
       poner("declaracion", dias(hoy, vence) < 0 ? "urgente" : "aviso", `IR-2 del ejercicio ${fin.slice(0, 4)} sin presentar: ${faltan(hoy, vence)}`, `${base}/dgii/ir2`, vence);
     }

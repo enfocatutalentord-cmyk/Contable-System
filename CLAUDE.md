@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño completo en producción: R1–R6 y n.º 9; vuelve el plan en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (entrega B · Normas y tasas en la rama, esperando el «sí» de Patricia; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -742,6 +742,23 @@ No se pasa a la siguiente sin su autorización expresa.
   Pruebas `pruebas/correo-facturas.test.mjs` (223 en total). En `main` el 6-nov-2026 («sí» de Patricia; publicado en producción,
   `ababe2a`). Pendiente: probar un envío real con Gmail en producción; Patricia revisa el texto del correo. Sigue la B (normas y
   tasas) con su «sí».
+  «sí» de Patricia del 7-nov a empezar la B (recomendadas: responsable Patricia y la puede cambiar; revisión mensual con recordatorio
+  a los 30 días; la tasa nueva va a todas las empresas con opción de quitar algunas). **Entrega B · Normas y tasas** (migración 051,
+  `lib/normas-reglas.ts` puro, `lib/normas.ts`, `app/firma/normas-acciones.ts`, pantalla `/firma/[fid]/normas` en Administración,
+  solo administradores; descarga del adjunto `/firma/[fid]/normas/revision/[rid]`). Tasas y retenciones de todas las empresas de la
+  firma (la propia incluida) juntas por concepto, tasa y vigencia, con estado vigente/próxima/cerrada. «Cargar una tasa nueva»
+  (`cargarTasaNueva`, en cada empresa marcada con `conEmpresa`, así queda en su historial): cierra la vigente el día antes y crea la
+  nueva con las mismas cuentas y códigos 606/IR-17, nombre nuevo opcional y la norma en la nota; no la aplica si ya estaba, si la
+  empresa no tiene el concepto o si su tasa empieza después; lo registrado no cambia. `calendario_fiscal` por firma (606/607/608 día
+  15, IT-1 20, IR-17 10, IR-2 120 días tras el cierre, con su norma; `crear_calendario_fiscal`, también al crear una firma) y
+  `prorrogas_fiscales` (un mes con otra fecha; manda sobre el calendario). `vencimiento_fiscal(formato, periodo)` (SECURITY DEFINER;
+  día inexistente = último del mes) lo usan `estadoDelMes`/`vencimientos` (Impuestos del mes), `alertasDeEmpresa` (declaraciones e
+  IR-2) y el reporte mensual. `firmas.responsable_normas_id` (administradora; se dejó a Patricia) y `revisiones_normas` (fecha, qué se
+  revisó, si hubo cambios, PDF/JPG/PNG ≤ 4 MB; no se cambian). `historial_normas` guarda cada cambio de la pantalla. Avisos de la
+  firma (`avisosNormasDeFirma`, en el Inicio y en Alertas, para administradores y la responsable): tasa que cambia en 30 días, prórroga
+  que vence en 30 días y recordatorio a los 30 días sin revisión (urgente a los 60). Tipos de comprobante para consultar (crédito del
+  ITBIS y empresas con rango activo). Pruebas `pruebas/normas.test.mjs` (243 en total). Probado en pantalla: tasa de prueba en 3 de 4
+  empresas con aviso, prórroga del IT-1 que el tablero toma, revisión que quita el recordatorio, Sara (no administradora) no entra.
 - **Rediseño (en curso desde el 7-nov-2026; todo lo demás en pausa hasta terminarlo).** Documento de Patricia «Sistema Empire ·
   Lista de rediseños» (6-nov-2026, 8 págs., en `Downloads`; 22 cambios): cuatro secciones (Firma, Contabilidad Empire, Talleres,
   Administración) con desplegables; en Firma se elige el trabajo y después el cliente; a los clientes no se les hacen asientos (sus

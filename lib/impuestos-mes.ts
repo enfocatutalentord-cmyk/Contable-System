@@ -32,6 +32,14 @@ export function venceMensual(periodo: string, dia: number): string {
   return `${an}-${String(mn).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
+// Fechas límite del período según el calendario fiscal de la firma y sus prórrogas (entrega B · Normas y tasas). Corre en conEmpresa.
+// Para el IR-2 el período es el mes de cierre del ejercicio.
+export async function vencimientos(tx: Tx, periodo: string, formatos: string[] = ["606", "607", "608", "IT-1", "IR-17"]): Promise<Record<string, string>> {
+  const filas = await tx<{ formato: string; vence: string }[]>`
+    SELECT f AS formato, to_char(vencimiento_fiscal(f, ${periodo}), 'YYYY-MM-DD') AS vence FROM unnest(${formatos}::text[]) AS f`;
+  return Object.fromEntries(filas.map((f) => [f.formato, f.vence]));
+}
+
 export const finDeMes = (periodo: string) =>
   new Date(Date.UTC(Number(periodo.slice(0, 4)), Number(periodo.slice(4)), 0)).toISOString().slice(0, 10);
 
@@ -62,9 +70,10 @@ export async function estadoDelMes(tx: Tx, periodo: string, hoy: string): Promis
   const envios = new Map((await tx<{ formato: string; en_cero: boolean; monto_pagar: string | null; fecha_limite: string | null }[]>`
     SELECT formato, en_cero, monto_pagar::text, to_char(fecha_limite, 'YYYY-MM-DD') AS fecha_limite FROM envios_dgii WHERE periodo = ${periodo}`)
     .map((e) => [e.formato, e]));
+  const fechas = await vencimientos(tx, periodo);
   const declaraciones: Declaracion[] = MENSUALES.filter((m) => activas.has(m.clave)).map((m) => {
     const e = envios.get(m.formato);
-    const vence = venceMensual(periodo, m.dia);
+    const vence = fechas[m.formato] ?? venceMensual(periodo, m.dia);
     const estado: EstadoDeclaracion = e ? (e.en_cero ? "en_cero" : "presentada") : vence < hoy ? "vencida" : "pendiente";
     return { formato: m.formato, nombre: m.nombre, ruta: m.ruta, estado, vence, monto: e?.monto_pagar ?? null, fechaLimite: e?.fecha_limite ?? null };
   });

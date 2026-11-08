@@ -3,6 +3,7 @@ import { accesoFirma } from "@/lib/acceso";
 import { TIPOS_ALERTA } from "@/lib/alertas";
 import { alertasDeFirma, clientesDeFirma } from "@/lib/firma";
 import { hoyISO } from "@/lib/montos";
+import { avisosNormasDeFirma } from "@/lib/normas";
 import { EnviarWhatsApp } from "@/app/whatsapp";
 
 export const metadata = { title: "Alertas · Empire Tax’N Legal" };
@@ -16,7 +17,7 @@ export default async function Alertas({ params, searchParams }: {
   const { tipo } = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
   const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
-  const todas = await alertasDeFirma(clientes, hoyISO());
+  const [todas, normas] = await Promise.all([alertasDeFirma(clientes, hoyISO()), avisosNormasDeFirma(fid, hoyISO(), usuario.id, firma.administrador)]);
   const filtro = tipo && tipo in TIPOS_ALERTA ? tipo : "";
   const visibles = filtro ? todas.filter((a) => a.tipo === filtro) : todas;
   const urgentes = todas.filter((a) => a.nivel === "urgente").length;
@@ -36,6 +37,17 @@ export default async function Alertas({ params, searchParams }: {
           <Link key={k} className={`boton${filtro === k ? " primario" : ""}`} href={`/firma/${fid}/alertas?tipo=${k}`}>{v} ({cuenta(k)})</Link>
         ))}
       </nav>
+      {normas.length > 0 && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <div className="entre">
+            <h2 style={{ margin: 0 }}>Normas y tasas</h2>
+            <Link href={`/firma/${fid}/normas`}>Abrir</Link>
+          </div>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+            {normas.map((a, i) => <li key={i} style={a.nivel === "urgente" ? { color: "var(--peligro)" } : undefined}><Link href={a.enlace}>{a.texto}</Link></li>)}
+          </ul>
+        </div>
+      )}
       <div className="tabla-envoltura">
         <table>
           <thead><tr><th>Cliente</th><th>Qué</th><th>Alerta</th><th>Mensaje</th></tr></thead>

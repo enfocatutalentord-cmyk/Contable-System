@@ -6,7 +6,7 @@ import { periodoDe } from "./formatos-dgii.ts";
 import { nombrePeriodo } from "./igualas.ts";
 import { calcularIr17 } from "./ir17.ts";
 import { calcularIt1 } from "./it1.ts";
-import { estadoDelMes, finDeMes, venceMensual } from "./impuestos-mes.ts";
+import { estadoDelMes, finDeMes, vencimientos } from "./impuestos-mes.ts";
 import { deCentavos, verFecha, verMonto } from "./montos.ts";
 import type { Tabla } from "./exportar.ts";
 
@@ -93,14 +93,15 @@ export async function armarReporte(tx: Tx, empresaId: string, periodo: string, h
   };
   let itbis: DatosReporte["itbis"] = null, retenciones: DatosReporte["retenciones"] = null;
   const cero = (x?: string) => x ?? "0.00";
+  const fechas = await vencimientos(tx, periodo, ["IT-1", "IR-17"]); // calendario fiscal de la firma (entrega B)
   if (declara.has("IT-1")) {
     const [c, fuente] = await casillas("IT-1");
-    itbis = { fuente, cobrado: cero(c.I21), deducible: cero(c.I25), aPagar: cero(c.I38 ?? c.I33), saldoFavor: cero(c.I34), vence: venceMensual(periodo, 20) };
-    retenciones = { itbis: cero(c.I67), isr: "0.00", venceItbis: venceMensual(periodo, 20), venceIsr: venceMensual(periodo, 10) };
+    itbis = { fuente, cobrado: cero(c.I21), deducible: cero(c.I25), aPagar: cero(c.I38 ?? c.I33), saldoFavor: cero(c.I34), vence: fechas["IT-1"] };
+    retenciones = { itbis: cero(c.I67), isr: "0.00", venceItbis: fechas["IT-1"], venceIsr: fechas["IR-17"] };
   }
   if (declara.has("IR-17")) {
     const [c] = await casillas("IR-17");
-    retenciones = { ...(retenciones ?? { itbis: "0.00", venceItbis: venceMensual(periodo, 20) }), isr: cero(c.R37), venceIsr: venceMensual(periodo, 10) };
+    retenciones = { ...(retenciones ?? { itbis: "0.00", venceItbis: fechas["IT-1"] }), isr: cero(c.R37), venceIsr: fechas["IR-17"] };
   }
   const notificaciones = (await tx<{ tipo: string; concepto: string | null; monto: string; fecha_limite: string; estado: string }[]>`
     SELECT tipo, concepto, monto::text, to_char(fecha_limite, 'YYYY-MM-DD') AS fecha_limite, estado FROM notificaciones_pago

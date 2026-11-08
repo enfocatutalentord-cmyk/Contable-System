@@ -2,6 +2,7 @@ import Link from "next/link";
 import { accesoFirma } from "@/lib/acceso";
 import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from "@/lib/firma";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
+import { avisosNormasDeFirma } from "@/lib/normas";
 
 export const metadata = { title: "Inicio de la firma · Empire Tax’N Legal" };
 
@@ -15,7 +16,8 @@ export default async function InicioFirma({ params, searchParams }: {
   const sp = await searchParams;
   const { firma, usuario } = await accesoFirma(fid, false);
   const clientes = (await clientesDeFirma(fid, usuario.id, firma.administrador)).filter((c) => !c.propia);
-  const [resumenes, eventos, alertas] = await Promise.all([Promise.all(clientes.map((c) => resumenCliente(c.id))), actividad(clientes, 12), alertasDeFirma(clientes, hoyISO())]);
+  const [resumenes, eventos, alertas, normas] = await Promise.all([Promise.all(clientes.map((c) => resumenCliente(c.id))), actividad(clientes, 12), alertasDeFirma(clientes, hoyISO()),
+    avisosNormasDeFirma(fid, hoyISO(), usuario.id, firma.administrador)]);
   const filas = clientes.map((c, i) => ({ ...c, ...resumenes[i] }));
   const suma = (f: (r: (typeof filas)[number]) => bigint | number) => filas.reduce((s, r) => s + BigInt(f(r)), 0n);
   const pendientes = (r: (typeof filas)[number]) => [
@@ -59,6 +61,17 @@ export default async function InicioFirma({ params, searchParams }: {
         <div className="tarjeta cifra"><div className="etiqueta">Movimientos del banco por conciliar</div><div className="valor">{suma((r) => r.movimientosBanco).toString()}</div></div>
       </div>
 
+      {normas.length > 0 && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <div className="entre">
+            <h2 style={{ margin: 0 }}>Normas y tasas</h2>
+            <Link href={`/firma/${fid}/normas`}>Abrir</Link>
+          </div>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+            {normas.map((a, i) => <li key={i} style={a.nivel === "urgente" ? { color: "var(--peligro)" } : undefined}><Link href={a.enlace}>{a.texto}</Link></li>)}
+          </ul>
+        </div>
+      )}
       {alertas.length > 0 && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
           <div className="entre">
