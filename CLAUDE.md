@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (entrega B · Normas y tasas en la rama, esperando el «sí» de Patricia; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (entrega B · Normas y tasas en producción; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -758,7 +758,8 @@ No se pasa a la siguiente sin su autorización expresa.
   firma (`avisosNormasDeFirma`, en el Inicio y en Alertas, para administradores y la responsable): tasa que cambia en 30 días, prórroga
   que vence en 30 días y recordatorio a los 30 días sin revisión (urgente a los 60). Tipos de comprobante para consultar (crédito del
   ITBIS y empresas con rango activo). Pruebas `pruebas/normas.test.mjs` (243 en total). Probado en pantalla: tasa de prueba en 3 de 4
-  empresas con aviso, prórroga del IT-1 que el tablero toma, revisión que quita el recordatorio, Sara (no administradora) no entra.
+  empresas con aviso, prórroga del IT-1 que el tablero toma, revisión que quita el recordatorio, Sara (no administradora) no entra. En `main` y producción el 7-nov-2026 («sí» de Patricia,
+  `3b06a9a`, con la migración 051). En producción: Patricia registra su primera revisión y confirma las fechas del calendario.
 - **Rediseño (en curso desde el 7-nov-2026; todo lo demás en pausa hasta terminarlo).** Documento de Patricia «Sistema Empire ·
   Lista de rediseños» (6-nov-2026, 8 págs., en `Downloads`; 22 cambios): cuatro secciones (Firma, Contabilidad Empire, Talleres,
   Administración) con desplegables; en Firma se elige el trabajo y después el cliente; a los clientes no se les hacen asientos (sus
