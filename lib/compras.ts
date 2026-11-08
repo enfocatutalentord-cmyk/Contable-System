@@ -6,6 +6,7 @@ import { aPesos, cantidadTexto, redondearDiv, tasaDeTexto, tasaTexto } from "./c
 import type { Tx } from "./db";
 import { aplicarTasa, COMPROBANTES, leerPorcentaje, listarImpuestos, listarRetenciones } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
+import { llevaContabilidad } from "./reportes.ts";
 import { MOTIVOS_608, tomarNcf, type TipoNcf } from "./ventas.ts";
 
 // Tipo de bienes y servicios comprados (formato 606).
@@ -186,7 +187,7 @@ export async function saldoCompra(tx: Tx, compraId: string): Promise<bigint> {
 // Registra un borrador: valida, asigna el NCF propio si aplica y registra el asiento contabilizado.
 export async function registrarCompra(
   tx: Tx, d: { empresaId: string; usuarioId: string; compraId: string }, opciones: { autorizada?: boolean } = {},
-): Promise<{ ncf: string; asiento: number }> {
+): Promise<{ ncf: string; asiento: number | null }> {
   const [c] = await tx<{
     estado: string; tipo_comprobante: TipoCompra; ncf: string | null; fecha: string; moneda: string; tasa: string; total: string;
     itbis_al_costo: boolean; creado_por: string; compra_origen_id: string | null; proveedor_id: string; proveedor: string;
@@ -262,22 +263,23 @@ export async function registrarCompra(
   let ncfVence: string | null = null;
   if (esPropio(t)) ({ ncf, vence: ncfVence } = await tomarNcf(tx, t as TipoNcf, c.fecha));
   else await revisarDuplicado(tx, c.proveedor_id, ncf, d.compraId);
-  const asiento = await insertarAsiento(tx, {
+  // Un cliente sin contabilidad (rediseño, n.º 9): la compra es un registro para el 606 y no lleva asiento.
+  const asiento = !(await llevaContabilidad(tx)) ? null : await insertarAsiento(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, fecha: c.fecha, origen: esNota ? "nota_credito_compra" : "compra",
     concepto: esNota ? `Nota de crédito ${ncf} de ${c.proveedor} (modifica ${modifica})` : `Compra ${ncf} a ${c.proveedor}`,
     referencia: ncf, lineas: lineasAsiento,
   });
   await tx`
-    UPDATE compras SET estado = 'registrada', ncf = ${ncf}, ncf_vence = ${ncfVence}, asiento_id = ${asiento.id},
+    UPDATE compras SET estado = 'registrada', ncf = ${ncf}, ncf_vence = ${ncfVence}, asiento_id = ${asiento?.id ?? null},
            registrada_por = ${d.usuarioId}, registrada_en = now()
      WHERE id = ${d.compraId}`;
   await bitacora(tx, d.empresaId, d.usuarioId, esNota ? "nota_credito_compra_registrada" : "compra_registrada", { ncf, total: c.total });
-  return { ncf, asiento: asiento.numero! };
+  return { ncf, asiento: asiento?.numero ?? null };
 }
 
 // Con comprobante propio (B11, B13, B17) el NCF es nuestro: va al formato 608 con su «Tipo de Anulación» (MOTIVOS_608).
 export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: string; compraId: string; motivo: string; motivo608?: string | null }) {
-  const [c] = await tx<{ ncf: string; estado: string; anulada: boolean; asiento_id: string; tipo_comprobante: string }[]>`
+  const [c] = await tx<{ ncf: string; estado: string; anulada: boolean; asiento_id: string | null; tipo_comprobante: string }[]>`
     SELECT ncf, estado, anulada, asiento_id, tipo_comprobante FROM compras WHERE id = ${d.compraId} FOR UPDATE`;
   if (!c) throw new ErrorContable("La compra no existe");
   if (c.estado !== "registrada") throw new ErrorContable("Un borrador no se anula; se descarta");
@@ -290,7 +292,7 @@ export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: st
            + (SELECT count(*) FROM compras WHERE compra_origen_id = ${d.compraId} AND estado = 'registrada' AND NOT anulada) AS n`;
     if (n > 0) throw new ErrorContable("La compra tiene pagos o notas de crédito vigentes; anúlalos primero");
   }
-  await anularAsientoDeDocumento(tx, c.asiento_id, d.usuarioId, `Anulación de la compra ${c.ncf}: ${d.motivo}`);
+  if (c.asiento_id) await anularAsientoDeDocumento(tx, c.asiento_id, d.usuarioId, `Anulación de la compra ${c.ncf}: ${d.motivo}`);
   await tx`UPDATE compras SET anulada = true, motivo_anulacion = ${d.motivo}, motivo_608 = ${motivo608}, anulada_por = ${d.usuarioId}, anulada_en = now() WHERE id = ${d.compraId}`;
   await bitacora(tx, d.empresaId, d.usuarioId, "compra_anulada", { ncf: c.ncf, motivo: d.motivo });
 }
@@ -301,7 +303,7 @@ export async function registrarPago(
   tx: Tx,
   d: {
     empresaId: string; usuarioId: string; proveedorId: string; fecha: string; moneda: "DOP" | "USD"; tasa: bigint;
-    cuentaOrigenId: string; formaPago: string; referencia: string | null; notas: string | null;
+    cuentaOrigenId: string | null; formaPago: string; referencia: string | null; notas: string | null;
     pagado: bigint; retenciones: { retencionId: string; monto: bigint }[]; aplicaciones: { compraId: string; monto: bigint }[];
   },
 ): Promise<number> {
@@ -317,9 +319,11 @@ export async function registrarPago(
   }
   const [prov] = await tx<{ nombre: string; del_exterior: boolean }[]>`SELECT nombre, del_exterior FROM proveedores WHERE id = ${d.proveedorId}`;
   if (!prov) throw new ErrorContable("El proveedor no existe");
-  const [origen] = await tx<{ tipo: string; de_detalle: boolean; activa: boolean }[]>`
-    SELECT tipo, de_detalle, activa FROM cuentas WHERE id = ${d.cuentaOrigenId}`;
-  if (!origen || origen.tipo !== "activo" || !origen.de_detalle || !origen.activa) {
+  // Sin contabilidad (n.º 9) no hay asiento: no hace falta la cuenta de banco; se guardan la forma, la fecha y las retenciones.
+  const conAsiento = await llevaContabilidad(tx);
+  const [origen] = d.cuentaOrigenId ? await tx<{ tipo: string; de_detalle: boolean; activa: boolean }[]>`
+    SELECT tipo, de_detalle, activa FROM cuentas WHERE id = ${d.cuentaOrigenId}` : [];
+  if (conAsiento && (!origen || origen.tipo !== "activo" || !origen.de_detalle || !origen.activa)) {
     throw new ErrorContable("Elige la cuenta de banco o caja de donde salió el dinero");
   }
   const vigentes = new Map((await listarRetenciones(tx, d.fecha)).map((r) => [r.id, r]));
@@ -352,13 +356,13 @@ export async function registrarPago(
 
   await tx`SELECT 1 FROM empresas WHERE id = ${d.empresaId} FOR UPDATE`;
   const [{ numero }] = await tx<{ numero: number }[]>`SELECT COALESCE(max(numero), 0) + 1 AS numero FROM pagos`;
-  const asiento = await insertarAsiento(tx, {
+  const asiento = !conAsiento ? null : await insertarAsiento(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, fecha: d.fecha, origen: "pago",
     concepto: `Pago ${numero} a ${prov.nombre} (${ncfs.join(", ")})`, referencia: d.referencia ?? `Pago ${numero}`,
     lineas: [
       { cuentaId: cxp, debe: cxpPesos, haber: 0n, descripcion: prov.nombre },
       { cuentaId: cuentas.perdida_cambiaria, debe: diferencia > 0n ? diferencia : 0n, haber: 0n },
-      { cuentaId: d.cuentaOrigenId, debe: 0n, haber: pagadoPesos },
+      { cuentaId: d.cuentaOrigenId!, debe: 0n, haber: pagadoPesos },
       ...detalle.map((r, i) => ({ cuentaId: r.conf.cuenta_a_terceros_id, debe: 0n, haber: retPesos[i], descripcion: r.conf.nombre })),
       { cuentaId: cuentas.ganancia_cambiaria, debe: 0n, haber: diferencia < 0n ? -diferencia : 0n },
     ],
@@ -369,7 +373,7 @@ export async function registrarPago(
                        pagado, retencion_itbis, retencion_isr, notas, asiento_id, creado_por)
     VALUES (${d.empresaId}, ${numero}, ${d.proveedorId}, ${d.fecha}, ${d.moneda}, ${tasaTexto(d.tasa)}, ${d.cuentaOrigenId},
             ${d.formaPago}, ${d.referencia}, ${deCentavos(d.pagado)}, ${deCentavos(suma("itbis"))}, ${deCentavos(suma("isr"))},
-            ${d.notas}, ${asiento.id}, ${d.usuarioId})
+            ${d.notas}, ${asiento?.id ?? null}, ${d.usuarioId})
     RETURNING id`;
   for (const a of aplicaciones) {
     await tx`INSERT INTO aplicaciones_pago (pago_id, compra_id, empresa_id, monto) VALUES (${id}, ${a.compraId}, ${d.empresaId}, ${deCentavos(a.monto)})`;
@@ -384,11 +388,11 @@ export async function registrarPago(
 }
 
 export async function anularPago(tx: Tx, d: { empresaId: string; usuarioId: string; numero: number; motivo: string }) {
-  const [p] = await tx<{ id: string; anulado: boolean; asiento_id: string }[]>`
+  const [p] = await tx<{ id: string; anulado: boolean; asiento_id: string | null }[]>`
     SELECT id, anulado, asiento_id FROM pagos WHERE numero = ${d.numero} FOR UPDATE`;
   if (!p) throw new ErrorContable("El pago no existe");
   if (p.anulado) throw new ErrorContable("El pago ya está anulado");
-  await anularAsientoDeDocumento(tx, p.asiento_id, d.usuarioId, `Anulación del pago ${d.numero}: ${d.motivo}`);
+  if (p.asiento_id) await anularAsientoDeDocumento(tx, p.asiento_id, d.usuarioId, `Anulación del pago ${d.numero}: ${d.motivo}`);
   await tx`UPDATE pagos SET anulado = true, motivo_anulacion = ${d.motivo}, anulado_por = ${d.usuarioId}, anulado_en = now() WHERE id = ${p.id}`;
   await bitacora(tx, d.empresaId, d.usuarioId, "pago_anulado", { numero: d.numero, motivo: d.motivo });
 }

@@ -81,7 +81,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
     ["Cobros y pagos", [{ cliente: "/cobros" }, { cliente: "/anticipos" }, { cliente: "/cxc" }, { cliente: "/pagos" }, { cliente: "/cxp" }]],
-    ["Contabilidad del cliente", PESTANAS_CONTABLES.map((r) => ({ cliente: r }))],
+    ["Contabilidad del cliente", PESTANAS_CONTABLES.filter((r) => !/^\/(cobros|anticipos|cxc|pagos|cxp)/.test(r)).map((r) => ({ cliente: r }))],
   ];
   // Lo de un cliente que no tenga su lugar arriba (una pestaña nueva) no se pierde: va en «Otros».
   const ubicadas = new Set(trabajos.flatMap(([, t]) => t.map((x) => ("cliente" in x ? x.cliente : ""))));

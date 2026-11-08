@@ -18,6 +18,9 @@ import { aplicarAnticipoAccion } from "../../propuestas-acciones";
 import { listarAnticipos } from "@/lib/anticipos";
 import { FRECUENCIAS } from "@/lib/igualas";
 import { correosDe, plantillaCorreo, prepararCorreo } from "@/lib/correo-facturas";
+import { anularCobroDeFactura, cobrarFactura } from "../../registro-pagos-acciones";
+import { PagoEnDocumento } from "../../pago-en-documento";
+import { listarRetenciones } from "@/lib/fiscal";
 import { enviarFacturaPorCorreo } from "../../correo-acciones";
 
 type Factura = {
@@ -32,7 +35,7 @@ const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "Am
 
 export default async function VerFactura({ params, searchParams }: {
   params: Promise<{ id: string; fid: string }>;
-  searchParams: Promise<{ emitida?: string; guardada?: string; anulada?: string }>;
+  searchParams: Promise<{ emitida?: string; guardada?: string; anulada?: string; cobrado?: string; cobro_anulado?: string }>;
 }) {
   const { id, fid } = await params;
   const sp = await searchParams;
@@ -64,21 +67,26 @@ export default async function VerFactura({ params, searchParams }: {
       SELECT i.id, i.nombre, il.tasa::text, sum(il.monto)::text AS monto
         FROM impuestos_linea_factura il JOIN impuestos i ON i.id = il.impuesto_id
        WHERE il.factura_id = ${fid} GROUP BY i.id, i.nombre, il.tasa ORDER BY sum(il.monto) DESC, i.nombre`;
-    const movimientos = await tx<{ tipo: string; documento: string; enlace: string; fecha: string; monto: string }[]>`
+    const movimientos = await tx<{ tipo: string; documento: string; enlace: string; fecha: string; monto: string; numero: number | null; detalle: string | null }[]>`
       SELECT 'Cobro' AS tipo, 'Recibo ' || c.numero AS documento, '/cobros/' || c.numero AS enlace,
-             to_char(c.fecha, 'YYYY-MM-DD') AS fecha, a.monto::text AS monto
+             to_char(c.fecha, 'YYYY-MM-DD') AS fecha, a.monto::text AS monto, c.numero,
+             concat_ws(' · ', c.forma_pago, CASE WHEN c.retencion_itbis > 0 THEN 'ITBIS retenido ' || c.retencion_itbis END,
+                       CASE WHEN c.retencion_isr > 0 THEN 'ISR retenido ' || c.retencion_isr END, c.referencia) AS detalle
         FROM aplicaciones_cobro a JOIN cobros c ON c.id = a.cobro_id WHERE a.factura_id = ${fid} AND NOT c.anulado
       UNION ALL
-      SELECT 'Nota de crédito', n.ncf, '/facturas/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text
+      SELECT 'Nota de crédito', n.ncf, '/facturas/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text, NULL, NULL
         FROM facturas n WHERE n.factura_origen_id = ${fid} AND n.estado = 'emitida' AND NOT n.anulada
       ORDER BY 4`;
+    const retenciones = (await listarRetenciones(tx, hoyISO())).map((r) => ({ id: r.id, nombre: r.nombre }));
     // Anticipos del cliente con saldo (bloque 2c), para aplicarlos a esta factura.
     const [{ cliente_id }] = await tx<{ cliente_id: string }[]>`SELECT cliente_id FROM facturas WHERE id = ${fid}`;
     const anticipos = (await listarAnticipos(tx, cliente_id)).filter((a) => !a.anulado && Number(a.saldo) > 0);
-    return { f, lineas, porImpuesto, movimientos, anticipos };
+    return { f, lineas, porImpuesto, movimientos, anticipos, retenciones };
   });
   if (!datos) notFound();
-  const { f, lineas, porImpuesto, movimientos, anticipos } = datos;
+  const { f, lineas, porImpuesto, movimientos, anticipos, retenciones } = datos;
+  // Cliente sin contabilidad (n.º 9): no hay pantalla de cobros; el cobro se anota aquí.
+  const conCobros = puedeVer(pestanas, "/cobros");
   const borrador = f.estado === "borrador";
   const esNota = f.tipo_ncf === "B04";
   const simbolo = f.moneda === "USD" ? "US$" : "RD$";
@@ -104,6 +112,8 @@ export default async function VerFactura({ params, searchParams }: {
         {sp.guardada && <p className="exito">Borrador guardado. No tiene NCF ni asiento hasta que se emita.</p>}
         {sp.emitida && !borrador && <p className="exito">{esNota ? "Nota de crédito emitida" : "Factura emitida"} con NCF {f.ncf}{f.asiento && <> y asiento n.º {f.asiento}</>}.</p>}
         {sp.anulada && <p className="exito">Comprobante anulado. Va en el formato 608 del mes.</p>}
+        {sp.cobrado && <p className="exito">Cobro (recibo n.º {sp.cobrado}) registrado: va al 607 y al IT-1 con su fecha, forma y retenciones.</p>}
+        {sp.cobro_anulado && <p className="exito">Recibo n.º {sp.cobro_anulado} anulado.</p>}
         {f.anulada && <p className="aviso">Anulado: {MOTIVOS_608[f.motivo_anulacion ?? ""] ?? f.motivo_anulacion}. El asiento también quedó anulado.</p>}
         <div className="entre" style={{ marginBottom: 12 }}>
           <div className="fila">
@@ -237,6 +247,11 @@ export default async function VerFactura({ params, searchParams }: {
         {f.notas && <p>{f.notas}</p>}
       </div>
 
+      {!conCobros && !esNota && !borrador && !f.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
+        <div className="no-imprimir">
+          <PagoEnDocumento tipo="cobro" accion={cobrarFactura.bind(null, id, f.id)} saldo={f.saldo ?? "0.00"} moneda={f.moneda} retenciones={retenciones} />
+        </div>
+      )}
       {!esNota && !borrador && (
         <div className="no-imprimir">
           <h2>Cobros y notas de crédito</h2>
@@ -246,7 +261,17 @@ export default async function VerFactura({ params, searchParams }: {
                 {movimientos.map((m, i) => (
                   <tr key={i}>
                     <td>{verFecha(m.fecha)}</td>
-                    <td>{m.tipo} <Link href={`/e/${id}${m.enlace}`}>{m.documento}</Link></td>
+                    <td>
+                      {m.tipo} {conCobros || m.numero === null ? <Link href={`/e/${id}${m.enlace}`}>{m.documento}</Link> : m.documento}
+                      {!conCobros && m.detalle && <div className="sub" style={{ margin: 0 }}>{m.detalle}</div>}
+                      {!conCobros && m.numero !== null && puede(permisos, "revertir") && (
+                        <details><summary className="sub">Anular este cobro</summary>
+                          <Formulario accion={anularCobroDeFactura.bind(null, id, f.id, m.numero)} boton="Anular el cobro" className="fila">
+                            <input name="motivo" required minLength={3} maxLength={300} placeholder="Motivo" aria-label="Motivo" />
+                          </Formulario>
+                        </details>
+                      )}
+                    </td>
                     <td className="num">{verMonto(m.monto)}</td>
                   </tr>
                 ))}

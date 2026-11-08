@@ -45,7 +45,9 @@ export const PESTANAS_SOLO_PROPIA = ["/igualas", "/recurrentes", "/propuestas", 
 
 // La contabilidad (rediseño R3, n.º 8): a los clientes no se les hacen asientos. Solo la ven la empresa propia y el cliente que tenga
 // marcada «lleva contabilidad» en su ficha. Lo que ya tenga guardado se conserva.
-export const PESTANAS_CONTABLES = ["/asientos", "/plantillas", "/cierres", "/diario", "/mayor", "/balanza", "/catalogo", "/configuracion", "/bancos"];
+export const PESTANAS_CONTABLES = ["/asientos", "/plantillas", "/cierres", "/diario", "/mayor", "/balanza", "/catalogo", "/configuracion", "/bancos",
+  // n.º 9: cobros, pagos, cuentas por cobrar y por pagar son del sistema del cliente. El cobro y el pago se anotan en la factura y la compra.
+  "/cobros", "/anticipos", "/cxc", "/cxc/estado", "/pagos", "/cxp", "/cxp/estado"];
 
 // Lo que ve un rol en una empresa según sea la propia o un cliente (y si ese cliente lleva contabilidad en el sistema).
 export const pestanasEn = (pestanas: string[] | null, propia: boolean, contabilidad = false): string[] | null =>

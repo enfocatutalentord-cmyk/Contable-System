@@ -44,7 +44,7 @@ before(async () => {
   [{ id: ana }] = await sql`INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${`ana-propuestas-${marca}@x.do`}, 'Ana', 'x') RETURNING id`;
   [{ id: firma }] = await sql`INSERT INTO firmas (nombre) VALUES (${`Firma propuestas ${marca}`}) RETURNING id`;
   await sql.begin(async (tx) => {
-    [{ id: empresa }] = await tx`INSERT INTO empresas (nombre, firma_id) VALUES ('Empire Propuestas SRL', ${firma}) RETURNING id`;
+    [{ id: empresa }] = await tx`INSERT INTO empresas (nombre, firma_id, lleva_contabilidad) VALUES ('Empire Propuestas SRL', ${firma}, true) RETURNING id`; // contabilidad completa (n.º 9)
     await tx`SELECT set_config('app.empresa_id', ${empresa}, true)`;
     const ids = new Map();
     for (const [codigo, n] of CATALOGO_RD) {

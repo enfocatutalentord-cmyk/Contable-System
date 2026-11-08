@@ -12,6 +12,10 @@ import { anularLaCompra, descartarCompra, registrarBorradorCompra } from "../../
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
 import { revisarCompraAccion } from "../../impuestos-acciones";
+import { anularPagoDeCompra, pagarCompra } from "../../registro-pagos-acciones";
+import { PagoEnDocumento } from "../../pago-en-documento";
+import { listarRetenciones } from "@/lib/fiscal";
+import { hoyISO } from "@/lib/montos";
 
 type Compra = {
   id: string; estado: "borrador" | "registrada"; tipo_comprobante: string; ncf: string | null; fecha: string; vence: string; moneda: string;
@@ -25,7 +29,7 @@ const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "Am
 
 export default async function VerCompra({ params, searchParams }: {
   params: Promise<{ id: string; cid: string }>;
-  searchParams: Promise<{ registrada?: string; guardada?: string; anulada?: string }>;
+  searchParams: Promise<{ registrada?: string; guardada?: string; anulada?: string; pagado?: string; pago_anulado?: string }>;
 }) {
   const { id, cid } = await params;
   const sp = await searchParams;
@@ -52,21 +56,26 @@ export default async function VerCompra({ params, searchParams }: {
                                 ORDER BY il.tipo <> 'itbis', i.nombre)
                 FROM impuestos_linea_compra il JOIN impuestos i ON i.id = il.impuesto_id WHERE il.linea_id = l.id) AS impuestos
         FROM lineas_compra l JOIN cuentas cu ON cu.id = l.cuenta_id WHERE l.compra_id = ${cid} ORDER BY l.orden`;
-    const movimientos = await tx<{ tipo: string; documento: string; enlace: string; fecha: string; monto: string }[]>`
-      SELECT 'Pago' AS tipo, 'Pago ' || p.numero AS documento, '/pagos/' || p.numero AS enlace, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, a.monto::text AS monto
+    const movimientos = await tx<{ tipo: string; documento: string; enlace: string; fecha: string; monto: string; numero: number | null; detalle: string | null }[]>`
+      SELECT 'Pago' AS tipo, 'n.º ' || p.numero AS documento, '/pagos/' || p.numero AS enlace, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, a.monto::text AS monto,
+             p.numero, concat_ws(' · ', 'forma ' || p.forma_pago, CASE WHEN p.retencion_itbis > 0 THEN 'ITBIS retenido ' || p.retencion_itbis END,
+                                 CASE WHEN p.retencion_isr > 0 THEN 'ISR retenido ' || p.retencion_isr END, p.referencia) AS detalle
         FROM aplicaciones_pago a JOIN pagos p ON p.id = a.pago_id WHERE a.compra_id = ${cid} AND NOT p.anulado
       UNION ALL
-      SELECT 'Nota de crédito', n.ncf, '/compras/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text
+      SELECT 'Nota de crédito', n.ncf, '/compras/' || n.id, to_char(n.fecha, 'YYYY-MM-DD'), n.total::text, NULL, NULL
         FROM compras n WHERE n.compra_origen_id = ${cid} AND n.estado = 'registrada' AND NOT n.anulada
       ORDER BY 4`;
+    const retenciones = (await listarRetenciones(tx, hoyISO())).map((r) => ({ id: r.id, nombre: r.nombre }));
     // Revisión de la compra (bloque 4a): quién la revisó o qué hay que corregir.
     const [revision] = await tx<{ estado: string; nota: string | null; quien: string | null; en: Date }[]>`
       SELECT r.estado, r.nota, u.nombre AS quien, r.revisada_en AS en FROM revisiones_compra r LEFT JOIN usuarios u ON u.id = r.revisada_por
        WHERE r.compra_id = ${cid}`;
-    return { c, lineas, movimientos, revision };
+    return { c, lineas, movimientos, revision, retenciones };
   });
   if (!datos) notFound();
-  const { c, lineas, movimientos, revision } = datos;
+  const { c, lineas, movimientos, revision, retenciones } = datos;
+  // Cliente sin contabilidad (n.º 9): no hay pantalla de pagos; el pago se anota aquí.
+  const conPagos = puedeVer(pestanas, "/pagos");
   const borrador = c.estado === "borrador";
   const esNota = esNotaProveedor(c.tipo_comprobante);
   const simbolo = c.moneda === "USD" ? "US$" : "RD$";
@@ -79,7 +88,9 @@ export default async function VerCompra({ params, searchParams }: {
       <p><Link href={`/e/${id}/compras${borrador ? "?estado=borradores&mes=" : ""}`}>← Compras</Link></p>
       {sp.guardada && <p className="exito">Borrador guardado. No tiene asiento hasta que se registre.</p>}
       {sp.registrada && !borrador && <p className="exito">{esNota ? "Nota de crédito registrada" : "Compra registrada"} con NCF {c.ncf}{c.asiento && <> y asiento n.º {c.asiento}</>}.</p>}
-      {sp.anulada && <p className="exito">Compra anulada; su asiento también.</p>}
+      {sp.anulada && <p className="exito">Compra anulada{c.asiento ? "; su asiento también" : ""}.</p>}
+      {sp.pagado && <p className="exito">Pago n.º {sp.pagado} registrado: va al 606 con su fecha, forma y retenciones.</p>}
+      {sp.pago_anulado && <p className="exito">Pago n.º {sp.pago_anulado} anulado.</p>}
       {c.anulada && <p className="aviso">Anulada: {c.motivo_anulacion}. El asiento también quedó anulado.</p>}
       <div className="entre" style={{ marginBottom: 12 }}>
         <div>
@@ -110,7 +121,7 @@ export default async function VerCompra({ params, searchParams }: {
         </div>
       )}
       <div className="fila" style={{ marginBottom: 16 }}>
-        {!esNota && !borrador && !c.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
+        {conPagos && !esNota && !borrador && !c.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
           <Link className="boton primario" href={`/e/${id}/pagos/nuevo?compra=${c.id}`}>Registrar pago</Link>
         )}
         {c.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
@@ -160,6 +171,9 @@ export default async function VerCompra({ params, searchParams }: {
       </div>
       {c.notas && <p>{c.notas}</p>}
 
+      {!conPagos && !esNota && !borrador && !c.anulada && saldo > 0 && puede(permisos, "contabilizar") && (
+        <PagoEnDocumento tipo="pago" accion={pagarCompra.bind(null, id, c.id)} saldo={c.saldo ?? "0.00"} moneda={c.moneda} retenciones={retenciones} />
+      )}
       {!esNota && !borrador && (
         <>
           <h2>Pagos y notas de crédito</h2>
@@ -169,7 +183,17 @@ export default async function VerCompra({ params, searchParams }: {
                 {movimientos.map((m, i) => (
                   <tr key={i}>
                     <td>{verFecha(m.fecha)}</td>
-                    <td>{m.tipo} <Link href={`/e/${id}${m.enlace}`}>{m.documento}</Link></td>
+                    <td>
+                      {m.tipo} {conPagos || m.numero === null ? <Link href={`/e/${id}${m.enlace}`}>{m.documento}</Link> : m.documento}
+                      {!conPagos && m.detalle && <div className="sub" style={{ margin: 0 }}>{m.detalle}</div>}
+                      {!conPagos && m.numero !== null && puede(permisos, "revertir") && (
+                        <details><summary className="sub">Anular este pago</summary>
+                          <Formulario accion={anularPagoDeCompra.bind(null, id, c.id, m.numero)} boton="Anular el pago" className="fila">
+                            <input name="motivo" required minLength={3} maxLength={300} placeholder="Motivo" aria-label="Motivo" />
+                          </Formulario>
+                        </details>
+                      )}
+                    </td>
                     <td className="num">{verMonto(m.monto)}</td>
                   </tr>
                 ))}

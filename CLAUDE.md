@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R5 en producción; siguen el n.º 9 y la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R5 en producción, n.º 9 en la rama esperando el «sí»; sigue la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -827,6 +827,21 @@ No se pasa a la siguiente sin su autorización expresa.
   `5d7be77`, con la migración 048). Ojo en producción: sin empresa propia elegida, todas las empresas cuentan como clientes (Goemhy
   incluida); si una lleva contabilidad completa, marcarla en su ficha. Siguen el n.º 9 (facturas y compras sin asiento, retenciones en
   el registro, quitar cobros y pagos) y la R6 (permisos por persona), con su «sí».
+  «sí» de Patricia del 7-nov a empezar el n.º 9. **N.º 9 · Facturas y compras sin asiento** (migración 049): en un cliente sin
+  contabilidad, `emitir`, `registrarCompra`, `registrarCobro` y `registrarPago` no hacen asiento (`llevaContabilidad`), los cobros y
+  pagos no piden cuenta de banco (`cuenta_destino_id`/`cuenta_origen_id` pueden ir vacías) y anular no toca asientos si no hay.
+  Las restricciones de emisión y registro ya no exigen asiento; el trigger `documento_sin_asiento` (con `lleva_contabilidad(eid)`,
+  SECURITY DEFINER) rechaza un documento sin asiento en una empresa que lleva contabilidad y no deja emitir, registrar, cobrar, pagar
+  ni anular con fecha en período cerrado (la regla que con asiento cuida el trigger de asientos). `PESTANAS_CONTABLES` suma cobros,
+  anticipos, CxC, pagos, CxP y sus estados de cuenta: el cliente sin la marca ya no los ve. El cobro y el pago se anotan dentro de la
+  factura o la compra (`app/e/[id]/pago-en-documento.tsx`, acciones `cobrarFactura`, `pagarCompra`, `anularCobroDeFactura`,
+  `anularPagoDeCompra` en `app/e/[id]/registro-pagos-acciones.ts`, permiso «contabilizar» y pestaña Facturas o Compras): fecha, forma
+  (cobro: efectivo, transferencia, cheque, tarjeta, permuta u otra; pago: códigos 01–07 del 606), monto que salda (sugerido: el
+  saldo), hasta dos retenciones vigentes y referencia; la lista de cobros o pagos muestra forma, retenciones y referencia con
+  «Anular». Así el 606, 607, IT-1 e IR-17 siguen saliendo igual. Las pruebas de ventas, compras y propuestas marcan sus empresas con
+  «lleva contabilidad»; nueva `pruebas/registro-sin-asiento.test.mjs` (235 en total). Probado en pantalla con Salón Rosa: compra
+  registrada sin asiento y pagada con ITBIS retenido 108 (el 606 de noviembre lo toma), factura cobrada en efectivo, menú sin cobros
+  ni pagos. En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

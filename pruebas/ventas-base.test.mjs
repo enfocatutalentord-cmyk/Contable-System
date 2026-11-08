@@ -28,7 +28,7 @@ const padre = (c) => (c.length === 1 ? null : c.length === 2 ? c[0] : c.slice(0,
 async function crearEmpresa(nombre) {
   return sql.begin(async (tx) => {
     const [{ id: firma }] = await tx`INSERT INTO firmas (nombre) VALUES (${`Firma ventas ${marca} ${nombre}`}) RETURNING id`;
-    const [{ id }] = await tx`INSERT INTO empresas (nombre, firma_id) VALUES (${nombre}, ${firma}) RETURNING id`;
+    const [{ id }] = await tx`INSERT INTO empresas (nombre, firma_id, lleva_contabilidad) VALUES (${nombre}, ${firma}, true) RETURNING id`; // contabilidad completa (n.º 9)
     await tx`SELECT set_config('app.empresa_id', ${id}, true)`;
     const ids = new Map();
     for (const [codigo, n] of CATALOGO_RD) {
