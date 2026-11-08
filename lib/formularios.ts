@@ -2,7 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { aCentavos, deCentavos, leerMonto } from "./montos.ts";
 import { db, type Tx } from "./db.ts";
 import { type Archivo, guardarArchivos } from "./expediente.ts";
-import { categoriaSugerida, ErrorFicha, guardarSocios, leerContactos, leerOperaciones, leerSociedad, leerSocios, ROLES_CONTACTO } from "./ficha.ts";
+import { categoriaSugerida, ErrorFicha, guardarEmpleados, guardarSocios, leerContactos, leerOperaciones, leerSociedad, leerSocios, ROLES_CONTACTO } from "./ficha.ts";
+import { camposLevantamiento, ErrorLevantamiento, filasDe, ANEXOS, leerLevantamiento } from "./levantamiento.ts";
 import { abrirConstitucion } from "./tramites.ts";
 
 // Bloque 6, entrega 6a: formularios en línea (Documento maestro, sección 6). El cliente los llena desde un enlace seguro sin
@@ -13,10 +14,11 @@ export const TIPOS_FORMULARIO: Record<string, { nombre: string; codigo: string; 
   ficha: { nombre: "Ficha de Registro", codigo: "EMP-F01", mensaje: "ficha_registro", carpeta: "01" },
   constitucion: { nombre: "Formulario de Constitución", codigo: "EMP-F03", mensaje: "constitucion", carpeta: "01" },
   solicitud: { nombre: "Solicitud de Servicio", codigo: "EMP-F04", mensaje: "solicitud_servicio", carpeta: "06" },
+  levantamiento: { nombre: "Levantamiento contable", codigo: "con anexos", mensaje: "levantamiento_contable", carpeta: "01" },
 };
 export const ESTADOS_FORMULARIO: Record<string, string> = { pendiente: "Enviado, sin respuesta", recibido: "Recibido, por revisar", aceptado: "Aceptado", descartado: "Descartado" };
 export const SECCIONES_FICHA: Record<string, string> = {
-  empresa: "Datos de la empresa", sociedad: "Sociedad", socios: "Socios", contactos: "Contactos", operaciones: "Operaciones", adjuntos: "Documentos adjuntos",
+  empresa: "Datos de la empresa", sociedad: "Sociedad", socios: "Socios", contactos: "Contactos", operaciones: "Operaciones", adjuntos: "Documentos adjuntos", empleados: "Empleados",
 };
 export const PRIORIDADES: Record<string, string> = { alta: "Alta", media: "Media", baja: "Baja" };
 export const ESTADOS_SOLICITUD: Record<string, string> = { recibida: "Recibida", cotizada: "Cotizada", en_proceso: "En proceso", entregada: "Entregada", descartada: "Descartada" };
@@ -39,6 +41,7 @@ export const CAMPOS_FORMULARIO: Record<string, string[]> = {
     "tiene_tss", "emite_ecf", "sistema_usa"],
   constitucion: ["n1", "n2", "n3", "actividad", "direccion", "capital_social", ...SOCIOS, ...CONTACTO("gerente"), "tiene_tss", "notas"],
   solicitud: ["servicio_id", "servicio", "descripcion", "para_que", "fecha_requerida", "prioridad"],
+  levantamiento: camposLevantamiento(),
 };
 
 const aFormData = (r: Record<string, string>) => { const fd = new FormData(); for (const [k, v] of Object.entries(r)) fd.set(k, v); return fd; };
@@ -48,6 +51,13 @@ const limpio = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim
 export function leerRespuestas(tipo: string, fd: FormData, servicios: Map<string, string> = new Map()): Record<string, string> {
   const campos = CAMPOS_FORMULARIO[tipo];
   if (!campos) throw new ErrorFormulario("Formulario no válido.");
+  if (tipo === "levantamiento") {
+    try {
+      return leerLevantamiento(fd);
+    } catch (e) {
+      throw e instanceof ErrorLevantamiento ? new ErrorFormulario(e.message) : e;
+    }
+  }
   const r: Record<string, string> = {};
   for (const k of campos) { const v = limpio(fd.get(k)); if (v) r[k] = v; }
   const x = aFormData(r);
@@ -194,6 +204,28 @@ export async function aceptarFormulario(tx: Tx, d: { formularioId: string; empre
       await tx`UPDATE pasos_constitucion SET nota = ${nota} WHERE empresa_id = ${d.empresaId} AND paso = 1 AND nota IS NULL`;
       await adjuntos();
       s.clear(); s.add("constitucion");
+    } else if (f.tipo === "levantamiento") {
+      if (s.has("empresa")) {
+        const datos = soloConValor({ nombre: r.nombre, nombre_comercial: r.nombre_comercial, rnc: r.rnc?.replace(/\D/g, ""), direccion: r.direccion, telefono: r.telefono, correo: r.correo });
+        if (Object.keys(datos).length) await tx`UPDATE empresas SET ${tx(datos)} WHERE id = ${d.empresaId}`;
+      }
+      if (s.has("sociedad")) {
+        const datos = soloConValor({ fecha_constitucion: r.fecha_constitucion, municipio: r.municipio, provincia: r.provincia });
+        if (Object.keys(datos).length) await tx`UPDATE empresas SET ${tx(datos)} WHERE id = ${d.empresaId}`;
+      }
+      if (s.has("operaciones")) {
+        const ventas = leerMonto(r.ventas_mes ?? "");
+        const empleados = r.empleados_fijos || r.empleados_servicio ? Number(r.empleados_fijos ?? 0) + Number(r.empleados_servicio ?? 0) : null;
+        const datos = soloConValor({ ventas_mes: r.ventas_mes ? ventas : null, facturas_mes: r.facturas_mes ? Number(r.facturas_mes) : null, empleados_mes: empleados,
+          tiene_tss: r.en_tss ? r.en_tss !== "No" : null, sistema_usa: r.sistema_usa });
+        if (Object.keys(datos).length) await tx`UPDATE empresas SET ${tx(datos)} WHERE id = ${d.empresaId}`;
+      }
+      if (s.has("empleados")) {
+        const filas = filasDe(r, ANEXOS[0]).filter((x) => x.nombre);
+        if (filas.length) await guardarEmpleados(tx, d.empresaId, filas.map((x) => ({ nombre: x.nombre, cedula: null, cargo: x.cargo ?? null, fecha_ingreso: x.ingreso ?? null,
+          sueldo: x.bruto ? leerMonto(x.bruto) : null })));
+      }
+      if (s.has("adjuntos")) await adjuntos();
     }
   } catch (e) {
     if (e instanceof ErrorFicha) throw new ErrorFormulario(e.message);

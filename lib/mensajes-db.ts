@@ -93,7 +93,7 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
     const [f] = await tx<{ tipo: string; estado: string }[]>`SELECT tipo, estado FROM formularios WHERE id = ${ref.id}`;
     if (!f || f.estado !== "pendiente") throw new ErrorMensaje("Ese formulario ya se respondió o se cerró.");
     const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
-    const titulo = ({ ficha: "Ficha de Registro", constitucion: "Formulario de Constitución", solicitud: "Solicitud de Servicio" } as Record<string, string>)[f.tipo];
+    const titulo = ({ ficha: "Ficha de Registro", constitucion: "Formulario de Constitución", solicitud: "Solicitud de Servicio", levantamiento: "Levantamiento contable" } as Record<string, string>)[f.tipo];
     return { destinatario, datos: {}, enlace: { tipo: "formulario", refId: ref.id, titulo } };
   }
   if (ref.tipo === "expediente") {

@@ -78,7 +78,10 @@ export default async function Solicitudes({ params, searchParams }: { params: Pr
         </div>
       )}
 
-      {porRevisar.map((f) => {
+      {porRevisar.filter((f) => f.tipo === "levantamiento").map((f) => (
+        <p key={f.id} className="aviso"><strong>Levantamiento contable por revisar:</strong> recibido el {fechaHora(f.recibido_en)}. <Link href={`/e/${id}/solicitudes/levantamiento/${f.id}`}>Abrir la revisión</Link></p>
+      ))}
+      {porRevisar.filter((f) => f.tipo !== "levantamiento").map((f) => {
         const r = f.respuestas ?? {};
         const sugerida = f.tipo === "ficha" ? categoriaDe(r) : null;
         const socios = Array.from({ length: MAX_SOCIOS_FORMULARIO }, (_, i) => i).filter((i) => r[`s${i}_nombre`]);
@@ -144,7 +147,7 @@ export default async function Solicitudes({ params, searchParams }: { params: Pr
           <tbody>
             {datos.formularios.map((f) => (
               <tr key={f.id} style={["aceptado", "descartado"].includes(f.estado) ? { opacity: 0.65 } : undefined}>
-                <td>{TIPOS_FORMULARIO[f.tipo].nombre}</td>
+                <td>{f.tipo === "levantamiento" && f.estado !== "pendiente" && f.estado !== "descartado" ? <Link href={`/e/${id}/solicitudes/levantamiento/${f.id}`}>{TIPOS_FORMULARIO[f.tipo].nombre}</Link> : TIPOS_FORMULARIO[f.tipo].nombre}</td>
                 <td>{fechaHora(f.creado)}{f.creado_por && <div className="sub" style={{ margin: 0 }}>{f.creado_por}</div>}</td>
                 <td>{ESTADOS_FORMULARIO[f.estado]}{f.estado === "pendiente" && f.vence && <div className="sub" style={{ margin: 0 }}>enlace hasta el {verFecha(f.vence.toISOString().slice(0, 10))}</div>}
                   {f.revisado_por && <div className="sub" style={{ margin: 0 }}>por {f.revisado_por}</div>}</td>

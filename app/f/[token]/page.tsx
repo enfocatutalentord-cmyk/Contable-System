@@ -3,6 +3,8 @@ import { LogoCompleto } from "../../marca";
 import { CAPITAL_MINIMO, formularioPorToken, PRIORIDADES, serviciosDeLaFirma, TIPOS_FORMULARIO } from "@/lib/formularios";
 import { GRUPOS_SERVICIO } from "@/lib/precios";
 import { verMonto } from "@/lib/montos";
+import { conEmpresa } from "@/lib/db";
+import { CamposLevantamiento } from "./levantamiento";
 import { enviarFormularioPublico } from "../acciones";
 
 export const metadata = { title: "Formulario · Empire Tax’N Legal", robots: { index: false } };
@@ -63,6 +65,13 @@ export default async function FormularioEnLinea({ params }: { params: Promise<{ 
   const def = f ? TIPOS_FORMULARIO[f.tipo] : null;
   const servicios = f?.tipo === "solicitud" ? await serviciosDeLaFirma(f.propia) : [];
   const grupos = [...new Set(servicios.map((s) => s.grupo))];
+  // El levantamiento viene lleno con lo que ya está en la ficha; el cliente solo lo confirma.
+  const iniciales = f?.tipo === "levantamiento" && f.estado === "pendiente" ? await conEmpresa(f.empresa_id, async (tx) => {
+    const [e] = await tx<Record<string, string | null>[]>`
+      SELECT e.nombre, e.nombre_comercial, e.rnc, to_char(e.fecha_constitucion, 'YYYY-MM-DD') AS fecha_constitucion, e.direccion, e.municipio, e.provincia, e.telefono, e.correo,
+             c.nombre AS contacto, c.cargo FROM empresas e LEFT JOIN contactos_empresa c ON c.empresa_id = e.id AND c.rol = 'principal' WHERE e.id = ${f.empresa_id}`;
+    return Object.fromEntries(Object.entries(e ?? {}).filter(([, v]) => v)) as Record<string, string>;
+  }) : {};
 
   return (
     <main className="formulario-publico">
@@ -137,6 +146,7 @@ export default async function FormularioEnLinea({ params }: { params: Promise<{ 
                   <Adjuntos texto="Cédulas de los accionistas (ambos lados), certificado de ONAPI y recibo del impuesto sobre el capital si ya los tiene" />
                 </>
               )}
+              {f.tipo === "levantamiento" && <CamposLevantamiento clave={token.slice(0, 12)} iniciales={iniciales} />}
               {f.tipo === "solicitud" && (
                 <>
                   <fieldset className="tarjeta">

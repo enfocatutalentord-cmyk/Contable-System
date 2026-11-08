@@ -106,7 +106,12 @@ export async function listarExpediente(tx: Tx, empresaId: string, retirados = fa
       fecha: n.fecha, anio: Number(n.periodo.slice(0, 4)), enlace: n.doc ? `${base}/documentos/${n.doc}` : `${base}/notificaciones`, origen: "sistema",
       quien: null, documentoId: n.doc, tipo: null });
   }
-  // 05: reportes mensuales aprobados y proyecciones preparadas.
+  // 05: estados iniciales aprobados del levantamiento (6b.2), reportes mensuales aprobados y proyecciones preparadas.
+  for (const l of await tx<{ id: string; fecha: string }[]>`
+      SELECT id, to_char(aprobado_en, 'YYYY-MM-DD') AS fecha FROM formularios WHERE tipo = 'levantamiento' AND aprobado_en IS NOT NULL ORDER BY aprobado_en DESC`) {
+    lista.push({ id: `levantamiento-${l.id}`, carpeta: "05", titulo: "Estado de situación financiera inicial", detalle: "Levantamiento contable aprobado", fecha: l.fecha,
+      anio: Number(l.fecha.slice(0, 4)), enlace: `${base}/solicitudes/levantamiento/${l.id}`, origen: "sistema", quien: null, documentoId: null, tipo: null });
+  }
   for (const r of await tx<{ periodo: string; estado: string; fecha: string }[]>`
       SELECT periodo, estado, to_char(aprobado_en, 'YYYY-MM-DD') AS fecha FROM reportes_mensuales WHERE estado IN ('aprobado', 'enviado') ORDER BY periodo DESC`) {
     lista.push({ id: `rep-${r.periodo}`, carpeta: "05", titulo: `Reporte mensual de ${nombrePeriodo(r.periodo)}`, detalle: r.estado === "enviado" ? "Enviado" : "Aprobado",

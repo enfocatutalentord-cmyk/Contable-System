@@ -9,6 +9,7 @@ import {
   PRIORIDADES, SECCIONES_FICHA, TIPOS_FORMULARIO,
 } from "@/lib/formularios";
 import { aCentavos, hoyISO } from "@/lib/montos";
+import { puede } from "@/lib/permisos";
 import { precioPara, preciosVigentes } from "@/lib/precios";
 import { guardarPropuesta } from "@/lib/propuestas";
 import type { Estado } from "../../acciones-cuenta";
@@ -28,7 +29,7 @@ export async function crearFormulario(empresaId: string, _: Estado, fd: FormData
     return { error: mensaje(e) };
   }
   volver(empresaId);
-  return { ok: `${TIPOS_FORMULARIO[tipo].nombre} lista: envíala por WhatsApp o copia su enlace.` };
+  return { ok: `${TIPOS_FORMULARIO[tipo].nombre}: ya se puede enviar por WhatsApp o copiar su enlace.` };
 }
 
 // Enlace para copiar y mandarlo por otro medio. Reemplaza el anterior (el que se haya mandado antes deja de funcionar).
@@ -46,9 +47,9 @@ export async function enlaceParaCopiar(empresaId: string, formularioId: string):
 }
 
 export async function aceptarFormularioAccion(empresaId: string, formularioId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar", "/solicitudes");
+  const { usuario, permisos } = await exigirPermiso(empresaId, "registrar", "/solicitudes");
   if (!esUuid(formularioId)) return { error: "Ese formulario no existe." };
-  const secciones = Object.keys(SECCIONES_FICHA).filter((s) => fd.get(`sec_${s}`) === "on");
+  const secciones = Object.keys(SECCIONES_FICHA).filter((s) => fd.get(`sec_${s}`) === "on" && (s !== "empleados" || puede(permisos, "empresa")));
   try {
     await conEmpresa(empresaId, (tx) => aceptarFormulario(tx, { formularioId, empresaId, secciones, usuarioId: usuario.id }));
   } catch (e) {

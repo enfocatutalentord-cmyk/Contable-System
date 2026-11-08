@@ -35,11 +35,12 @@ import { A1, anexoA1, anexoJ, B1 } from "@/lib/ir2";
 import { CONTACTO, datosSociedad, TABLAS_H } from "@/lib/ir2-sociedad";
 import { ejercicios } from "@/lib/cierre-ejercicio";
 import { esUuid } from "@/lib/acceso";
+import { estadoInicial } from "@/lib/levantamiento";
 import { leerPeriodo } from "../../periodo";
 import { cuentasDeSocia, esTipoSalida, listarSalidas, TIPOS_SALIDA } from "@/lib/salidas";
 import { estadoDeCuenta, tablaEstadoSocia } from "@/lib/socia";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-inicial|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -457,6 +458,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (reporte === "propuesta" && esUuid(sp.id ?? "")) {
       // Propuesta de servicios (bloque 2c): precio de lista, descuento y precio final a la vista, con requisitos y anticipo.
       return conEmpresa(id, (tx) => tablaPropuesta(tx, sp.id, base));
+    }
+    if (reporte === "estado-inicial" && esUuid(sp.id ?? "")) {
+      // Estado de situación financiera inicial del levantamiento (6b.2): solo el aprobado.
+      const [f] = await conEmpresa(id, (tx) => tx<{ respuestas: Record<string, string>; aprobado_en: Date | null; aprobador: string | null }[]>`
+        SELECT f.respuestas, f.aprobado_en, u.nombre AS aprobador FROM formularios f LEFT JOIN usuarios u ON u.id = f.aprobado_por WHERE f.id = ${sp.id} AND f.tipo = 'levantamiento'`);
+      if (!f?.aprobado_en) return null;
+      const e = estadoInicial(f.respuestas);
+      const ver = (v: bigint | null) => (v === null ? "" : v < 0n ? `-${deCentavos(-v)}` : deCentavos(v));
+      const lineas = [...e.lineas, { concepto: "Referencia operativa mensual", monto: null, ref: "", negrita: true }, ...e.operativa, ...(e.margen ? [{ concepto: "Margen de ganancia", monto: null, ref: e.margen }] : [])];
+      const tabla: Tabla = { ...base, titulo: "Estado de situación financiera inicial", detalle: `Levantamiento contable · aprobado el ${verFecha(f.aprobado_en)}`,
+        columnas: [col("Concepto", false, 60), col("Monto (RD$)", true, 22), col("Referencia", false, 22)],
+        filas: lineas.map((l) => [l.concepto, ver(l.monto), l.ref]), negritas: lineas.flatMap((l, i) => (l.negrita ? [i] : [])),
+        firmas: [{ rol: "Aprobado por", nombre: f.aprobador ?? "" }] };
+      return ["Estado_inicial", tabla] as [string, Tabla];
     }
     if (reporte === "reporte-mensual" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes ?? "")) {
       // Reporte mensual al cliente (bloque 4b): lo aprobado tal cual; si no está aprobado, lo de hoy.

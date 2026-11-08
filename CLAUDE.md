@@ -632,6 +632,16 @@ No se pasa a la siguiente sin su autorización expresa.
   tres criterios distintos = Mediana. `igualaBajoMinimo` (aviso al guardar el acuerdo) y `descuentoAEmprendedor` (aviso en la propuesta). Pruebas
   `pruebas/lista-p01.test.mjs` (246 en total). Probado en pantalla la carga (37 y luego 37 iguales), que no sale en un cliente y el aviso de iguala; el aviso de
   emprendedor solo con prueba automática. En `main` y producción el 8-nov-2026 («sí» de Patricia, `4614dc2`). Para usarla en producción hay que elegir antes a Empire como empresa propia. Sigue la 6b.2 con su «sí».
+  «sí» de Patricia del 8-nov a la 6b.2 con las respuestas recomendadas. **Entrega 6b.2 · Levantamiento y estado inicial** (migración 052, `lib/levantamiento.ts` puro,
+  `app/f/[token]/levantamiento.tsx`, `app/e/[id]/levantamiento-acciones.ts`, pantalla `/e/[id]/solicitudes/levantamiento/[fid]`, descarga `/exportar/estado-inicial?id=`): formulario
+  tipo `levantamiento` con el mismo enlace de 30 días (mensaje `levantamiento_contable`, para que Patricia lo revise); Formulario + Ficha de Levantamiento en un cuestionario
+  (`SECCIONES_LEV`, se agregó «Facturas al mes» porque la categoría la necesita) y anexos con filas que se agregan (`ANEXOS`: nómina, gastos fijos y variables, activos corrientes y
+  no corrientes, pasivos; el anexo 4 se armó con las líneas de pasivos del anexo 5 porque no llegó). Viene lleno de la ficha; el borrador vive en sessionStorage (lleva salarios).
+  Confirma con nombre y cédula. `estadoInicial`: líneas del anexo 5 con su referencia, diferencia si no cuadra, utilidades que cuadrarían, referencia operativa; la nómina solo del
+  anexo 1 (si se escribe en gastos, aviso y no cuenta), costos directos a mano, margen en %, y aviso de que el anexo 5 no resta los gastos variables. La firma escribe el patrimonio
+  (capital de la ficha). Aceptar carga empresa, sociedad, operaciones, empleados (solo con permiso «empresa», igual que ver los salarios) y adjuntos. Patricia aprueba (permiso
+  «empresa», solo si cuadra; `formularios.aprobado_*`): entonces hay PDF/Excel, sale en el expediente 05 y se puede «Pasar a los Saldos del balance» (R5). Pruebas
+  `pruebas/levantamiento.test.mjs` (250 en total). Probado en pantalla en tamaño celular y el flujo completo con Salón Rosa. Esperando el «sí» para pasar a `main`.
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,

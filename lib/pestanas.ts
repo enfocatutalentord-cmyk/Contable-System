@@ -70,7 +70,7 @@ export function pestanasAGuardar(marcadas: string[]): string[] | null {
 // Descargas de Excel y PDF: cada reporte pertenece a la pestaña donde se ve.
 const REPORTES: Record<string, string> = {
   diario: "/diario", mayor: "/mayor", balanza: "/balanza", asientos: "/asientos", historial: "/historial",
-  antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
+  "estado-inicial": "/solicitudes", antiguedad: "/cxc", "estado-cuenta": "/cxc/estado", "antiguedad-cxp": "/cxp", "estado-cuenta-proveedor": "/cxp/estado",
   "dgii-606": "/dgii", "dgii-607": "/dgii", "dgii-608": "/dgii", it1: "/dgii", ir17: "/dgii", ir6: "/dgii",
   facturas: "/facturas", factura: "/facturas", "reporte-mensual": "/bitacora", proyeccion: "/dgii", cobros: "/cobros", bitacora: "/bitacora", "lista-precios": "/servicios", socia: "/socia", salidas: "/salidas", propuesta: "/propuestas", "recibo-anticipo": "/anticipos", compras: "/compras", pagos: "/pagos", catalogo: "/catalogo", "conciliacion-banco": "/bancos", "estado-financiero": "/estados", ir2: "/dgii", "ir2-a1": "/dgii", "ir2-b1": "/dgii", "ir2-j": "/dgii", "ir2-h": "/dgii",
 };
