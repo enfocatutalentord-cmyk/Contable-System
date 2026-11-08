@@ -5,6 +5,10 @@ import { aCentavos, deCentavos, verFecha, verMonto } from "./montos.ts";
 // con fecha, cuota de un acuerdo especial, 10 % de descuento por fidelidad el mes del aniversario y avisos (aniversario a 60
 // días, fin de tarifa especial o de acuerdo a 30 días, aumento de 10 % por confirmar).
 
+// Lista de Precios EMP-P01: iguala mínima de RD$4,000, salvo precios de emprendedor y declaraciones en cero.
+export const IGUALA_MINIMA = 400000n; // centavos
+export const igualaBajoMinimo = (monto: bigint, tipo: string, categoria: string | null) => tipo !== "cero" && categoria !== "emprendedor" && monto < IGUALA_MINIMA;
+
 export const TIPOS_ACUERDO: Record<string, string> = {
   normal: "Normal", arranque: "Plan de Arranque", ajuste: "Ajuste gradual", especial: "Acuerdo especial", cero: "Declaración en cero",
 };

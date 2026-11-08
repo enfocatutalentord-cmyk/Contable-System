@@ -6,10 +6,11 @@ import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso } from "@/lib/acceso";
+import { esUuid, exigirPermiso, misFirmas } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc } from "@/lib/empresas";
+import { cargarListaP01 } from "@/lib/lista-p01";
 import { aCentavos, hoyISO, leerMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
@@ -139,6 +140,23 @@ export async function guardarServicio(empresaId: string, _: Estado, fd: FormData
   revalidatePath(`/e/${empresaId}/servicios`);
   if (id) redirect(`/e/${empresaId}/servicios`);
   return { ok: `${nombre} guardado.` };
+}
+
+// Entrega 6b.1: carga la Lista de Precios EMP-P01 en la empresa propia. Los precios los decide Patricia: pide el permiso «empresa».
+export async function cargarLista(empresaId: string): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "empresa", "/servicios");
+  if (!(await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === empresaId)) return { error: "La lista de precios de Empire se carga en Contabilidad Empire." };
+  try {
+    const r = await conEmpresa(empresaId, async (tx) => {
+      const res = await cargarListaP01(tx, empresaId, hoyISO());
+      await bitacora(tx, empresaId, usuario.id, "lista_precios_cargada", res);
+      return res;
+    });
+    revalidatePath(`/e/${empresaId}/servicios`);
+    return { ok: `Lista EMP-P01: ${r.creados} servicios nuevos, ${r.actualizados} con precios puestos al día y ${r.sinCambios} que ya estaban iguales.` };
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
 }
 
 // ───── Facturas ─────

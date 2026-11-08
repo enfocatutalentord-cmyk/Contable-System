@@ -20,7 +20,8 @@ test("categoría por dos de tres criterios (ventas, facturas y empleados al mes)
   assert.equal(categoriaSugerida({ ventas: P(500000), facturas: 50, empleados: 30 }), "pequena", "500,000 y 50 todavía son pequeña");
   assert.equal(categoriaSugerida({ ventas: P(500001), facturas: 120, empleados: 3 }), "mediana", "dos de tres en mediana");
   assert.equal(categoriaSugerida({ ventas: P(3000000), facturas: 250, empleados: 10 }), "grande");
-  assert.equal(categoriaSugerida({ ventas: P(100000), facturas: 100, empleados: 30 }), null, "los tres distintos: no se sugiere");
+  assert.equal(categoriaSugerida({ ventas: P(100000), facturas: 100, empleados: 30 }), "mediana", "los tres distintos: Mediana (manual, sección 7)");
+  assert.equal(categoriaSugerida({ ventas: P(100000), facturas: 100, empleados: null }), null, "dos datos distintos: no se sugiere");
   assert.equal(categoriaSugerida({ ventas: P(100000), facturas: null, empleados: null }), null, "con un solo dato no alcanza");
   assert.equal(categoriaSugerida({ ventas: null, facturas: 300, empleados: 25 }), "grande", "dos datos que coinciden bastan");
 });

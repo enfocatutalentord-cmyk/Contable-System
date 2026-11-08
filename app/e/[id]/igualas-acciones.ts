@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError, type Tx } from "@/lib/db";
-import { esPeriodo, FRECUENCIAS, nombrePeriodo, SERVICIOS_INCLUIDOS, TIPOS_ACUERDO } from "@/lib/igualas";
+import { esPeriodo, FRECUENCIAS, igualaBajoMinimo, nombrePeriodo, SERVICIOS_INCLUIDOS, TIPOS_ACUERDO } from "@/lib/igualas";
 import {
   confirmarAumento, crearRecurrenteDesdeFactura, prepararIgualas, prepararRecurrenteAhora, prepararRecurrentes, type Preparacion,
 } from "@/lib/igualas-db";
@@ -45,6 +45,7 @@ function resumen(r: Preparacion, que: string): Estado {
 export async function guardarAcuerdo(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "registrar", "/igualas");
   const id = texto(fd, "id");
+  let bajoMinimo = false;
   try {
     const cliente = texto(fd, "cliente");
     const servicio = texto(fd, "servicio");
@@ -71,7 +72,8 @@ export async function guardarAcuerdo(empresaId: string, _: Estado, fd: FormData)
       deuda: montoOpcional(fd, "deuda", "Deuda"), cuota, deuda_hasta: deudaHasta, inicio, dia_facturacion: dia,
       servicios_incluidos: incluidos, notas: texto(fd, "notas") || null,
     };
-    await conEmpresa(empresaId, async (tx) => {
+    bajoMinimo = await conEmpresa(empresaId, async (tx) => {
+      const [c] = await tx<{ categoria: string | null }[]>`SELECT categoria FROM clientes WHERE id = ${cliente}`;
       if (id) {
         if (!esUuid(id)) throw new ErrorContable("El acuerdo no existe");
         const r = await tx`UPDATE acuerdos_cliente SET ${tx({ ...datos, activo: fd.get("activo") === "on" })} WHERE id = ${id}`;
@@ -80,13 +82,15 @@ export async function guardarAcuerdo(empresaId: string, _: Estado, fd: FormData)
         await tx`INSERT INTO acuerdos_cliente ${tx({ ...datos, empresa_id: empresaId })}`;
       }
       await bitacora(tx, empresaId, usuario.id, id ? "acuerdo_editado" : "acuerdo_creado", { tipo, monto });
+      return igualaBajoMinimo(aCentavos(monto), tipo, c?.categoria ?? null);
     });
   } catch (e) {
     const err = e as { code?: string };
     return { error: err.code === "23505" ? "Ese cliente ya tiene un acuerdo activo: edítalo." : e instanceof ErrorContable ? e.message : mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}/igualas`);
-  return { ok: id ? "Acuerdo guardado." : "Acuerdo creado." };
+  const aviso = bajoMinimo ? " Ojo: esta iguala está por debajo del mínimo de RD$4,000 de la lista de precios." : "";
+  return { ok: (id ? "Acuerdo guardado." : "Acuerdo creado.") + aviso };
 }
 
 // ───── El mes ─────

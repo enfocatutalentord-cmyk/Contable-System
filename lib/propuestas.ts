@@ -94,6 +94,10 @@ type Fila = {
   servicio_id: string | null; descripcion: string; cantidad: string; precio_lista: string; descuento: string;
   impuesto_id: string; impuesto_adicional_id: string | null; unidad_id: string | null;
 };
+// EMP-P01: el precio de emprendedor es fijo, sin negociación caso por caso.
+export const descuentoAEmprendedor = (categoria: string | null, lineas: { descuento: string }[]) =>
+  categoria === "emprendedor" && lineas.some((l) => aCentavos(l.descuento) > 0n);
+
 export const lineasDe = (tx: Tx, propuestaId: string) => tx<Fila[]>`
   SELECT servicio_id, descripcion, cantidad::text, precio_lista::text, descuento::text, impuesto_id, impuesto_adicional_id, unidad_id
     FROM lineas_propuesta WHERE propuesta_id = ${propuestaId} ORDER BY orden`;

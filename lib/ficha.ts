@@ -17,7 +17,8 @@ export const ROLES_CONTACTO: [string, string][] = [
 ];
 
 // Categoría por la regla de dos de tres criterios (tabla del Documento maestro, sección 4): ventas al mes, facturas al mes
-// (compras + ventas) y empleados. Emprendedor se marca a mano. Sin dos criterios que coincidan, no se sugiere nada.
+// (compras + ventas) y empleados. Emprendedor se marca a mano. Si cada uno de los tres cae en una categoría distinta, Mediana (Manual
+// Operativo, sección 7). Con menos de tres datos y sin dos que coincidan, no se sugiere nada.
 const LIMITES = { ventas: [50_000_000n, 200_000_000n], facturas: [50, 200], empleados: [5, 20] }; // ventas en centavos
 const nivel = (x: bigint | number, [a, b]: (bigint | number)[]) => (x <= a ? "pequena" : x <= b ? "mediana" : "grande");
 export function categoriaSugerida(o: { ventas: bigint | null; facturas: number | null; empleados: number | null }): string | null {
@@ -27,7 +28,7 @@ export function categoriaSugerida(o: { ventas: bigint | null; facturas: number |
     o.empleados === null ? null : nivel(o.empleados, LIMITES.empleados),
   ].filter((v): v is string => v !== null);
   for (const c of ["pequena", "mediana", "grande"]) if (votos.filter((v) => v === c).length >= 2) return c;
-  return null;
+  return votos.length === 3 ? "mediana" : null;
 }
 
 const MAX = 200;

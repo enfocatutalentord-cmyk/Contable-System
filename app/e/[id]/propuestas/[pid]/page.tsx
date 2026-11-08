@@ -10,7 +10,7 @@ import { conEmpresa } from "@/lib/db";
 import { listarImpuestos } from "@/lib/fiscal";
 import { deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { aLinea, ESTADOS_PROPUESTA, lineasDe, montoAnticipo, totalesPropuesta } from "@/lib/propuestas";
+import { aLinea, descuentoAEmprendedor, ESTADOS_PROPUESTA, lineasDe, montoAnticipo, totalesPropuesta } from "@/lib/propuestas";
 import { datosFormulario } from "../../facturas/datos-formulario";
 import { cambiarEstadoPropuesta, guardarPropuestaAccion, propuestaAFactura, propuestaAIguala } from "../../propuestas-acciones";
 import { FormularioPropuesta } from "../formulario-propuesta";
@@ -26,10 +26,10 @@ export default async function Propuesta({ params, searchParams }: {
   const hoy = hoyISO();
   const r = await conEmpresa(id, async (tx) => {
     const [p] = await tx<{
-      numero: number; cliente_id: string; cliente: string; rnc: string | null; fecha: string; valida_hasta: string; estado: string; requisitos: string | null;
+      numero: number; cliente_id: string; cliente: string; categoria: string | null; rnc: string | null; fecha: string; valida_hasta: string; estado: string; requisitos: string | null;
       anticipo_pct: string; forma_pago: string | null; entrega: string | null; notas: string | null; factura_id: string | null; acuerdo_id: string | null;
     }[]>`
-      SELECT p.numero, p.cliente_id, c.nombre AS cliente, c.rnc, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, to_char(p.valida_hasta, 'YYYY-MM-DD') AS valida_hasta,
+      SELECT p.numero, p.cliente_id, c.nombre AS cliente, c.categoria, c.rnc, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, to_char(p.valida_hasta, 'YYYY-MM-DD') AS valida_hasta,
              p.estado, p.requisitos, p.anticipo_pct::text, p.forma_pago, to_char(p.entrega, 'YYYY-MM-DD') AS entrega, p.notas, p.factura_id, p.acuerdo_id
         FROM propuestas p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ${pid}`;
     if (!p) return null;
@@ -69,6 +69,9 @@ export default async function Propuesta({ params, searchParams }: {
   return (
     <>
       <p><Link href={`/e/${id}/propuestas`}>← Propuestas</Link></p>
+      {descuentoAEmprendedor(p.categoria, lineas) && (
+        <p className="aviso">Este cliente es Emprendedor: la lista de precios dice que su precio es fijo, sin negociación. Esta propuesta tiene descuento.</p>
+      )}
       <div className="entre">
         <div>
           <h1>Propuesta n.º {p.numero}</h1>

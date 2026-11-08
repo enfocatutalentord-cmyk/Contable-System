@@ -626,6 +626,12 @@ No se pasa a la siguiente sin su autorización expresa.
   Coordinadora v2.0 (no trae las plantillas de la 5b). Propuesta de la 6b en 3 partes (6b.1 lista de precios, 6b.2 levantamiento y estado inicial, 6b.3
   diagnóstico y propuesta) en https://claude.ai/artifact/2Px23rimYxGZb6LShBcCpD, esperando su «sí». Reglas por aplicar: empate de categorías = Mediana, iguala
   mínima RD$4,000, emprendedor sin descuento. La lista no trae precio de iguala.
+  «sí» de Patricia del 8-nov a empezar la 6b.1. **Entrega 6b.1 · Lista de precios** (sin migración; `lib/lista-p01.ts`, acción `cargarLista`, botón en Productos y
+  servicios solo en la empresa propia, permiso «empresa»): los 37 servicios de EMP-P01 (leídos del PDF en el orden real de sus filas) con precios por categoría y fecha
+  2026-10-01, ITBIS 18 %, unidad «Firma contable» si existe y precio general 0. Se puede repetir: no duplica y un precio cambiado después se queda. `categoriaSugerida`:
+  tres criterios distintos = Mediana. `igualaBajoMinimo` (aviso al guardar el acuerdo) y `descuentoAEmprendedor` (aviso en la propuesta). Pruebas
+  `pruebas/lista-p01.test.mjs` (246 en total). Probado en pantalla la carga (37 y luego 37 iguales), que no sale en un cliente y el aviso de iguala; el aviso de
+  emprendedor solo con prueba automática. Esperando el «sí» para pasar a `main`. En producción hay que elegir antes a Empire como empresa propia.
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,

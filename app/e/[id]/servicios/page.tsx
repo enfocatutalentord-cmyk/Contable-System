@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
-import { accesoEmpresa } from "@/lib/acceso";
+import { accesoEmpresa, misFirmas } from "@/lib/acceso";
 import { listarCuentas } from "@/lib/cuentas";
 import { conEmpresa } from "@/lib/db";
 import { listarUnidades } from "@/lib/empresa-propia";
@@ -10,7 +10,8 @@ import { listarImpuestos } from "@/lib/fiscal";
 import { hoyISO, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
-import { guardarServicio } from "../ventas-acciones";
+import { LISTA_P01 } from "@/lib/lista-p01";
+import { cargarLista, guardarServicio } from "../ventas-acciones";
 
 type Servicio = {
   id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null;
@@ -26,7 +27,9 @@ export default async function Servicios({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { editar, grupo } = await searchParams;
-  const { permisos } = await accesoEmpresa(id);
+  const { permisos, usuario } = await accesoEmpresa(id);
+  const puedeCargar = puede(permisos, "empresa") && (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
+  const totalP01 = Object.values(LISTA_P01).flat().length;
   const hoy = hoyISO();
   const { servicios, ingresos, impuestos, precios, unidades } = await conEmpresa(id, async (tx) => ({
     impuestos: (await listarImpuestos(tx)).filter((i) => i.activo),
@@ -60,6 +63,16 @@ export default async function Servicios({ params, searchParams }: {
         </div>
         {puede(permisos, "exportar") && <Descargar href={`/e/${id}/exportar/lista-precios`} />}
       </div>
+      {puedeCargar && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Lista de Precios EMP-P01 · edición octubre 2026</h2>
+          <p className="sub">
+            Carga los {totalP01} servicios con sus precios por categoría, sin ITBIS. Se puede repetir: no duplica nada y lo que hayas cambiado después
+            de la edición se queda como está. El precio general queda en 0, para que a un cliente sin categoría no se le cobre otra columna por error.
+          </p>
+          <Formulario accion={cargarLista.bind(null, id)} boton="Cargar la lista EMP-P01" className="fila"><span /></Formulario>
+        </div>
+      )}
       {editable && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
           <h2 style={{ marginTop: 0 }}>{enEdicion ? `Editar ${enEdicion.nombre}` : "Nuevo producto o servicio"}</h2>
