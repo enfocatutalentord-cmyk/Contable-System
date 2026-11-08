@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R4 en producción, R5 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R5 en producción; siguen el n.º 9 y la R6; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -823,7 +823,10 @@ No se pasa a la siguiente sin su autorización expresa.
   saldos de facturas y compras, notas, cortes guardados, borrar; permiso «registrar»). Excel/PDF con «preparado por <firma>» y, sin
   firma escrita, la firma como «Preparado por». Las pruebas de estados, IR-2 y proyección marcan sus empresas con «lleva
   contabilidad»; nueva `pruebas/estados-registro.test.mjs` (231 en total). Probado en pantalla con Salón Rosa (balance de 6,180 que
-  cuadra, descarga, IR-2 A-1, proyección; Empire sigue con asientos y flujo). En la rama, esperando el «sí» de Patricia.
+  cuadra, descarga, IR-2 A-1, proyección; Empire sigue con asientos y flujo). En `main` y producción el 7-nov-2026 («sí» de Patricia,
+  `5d7be77`, con la migración 048). Ojo en producción: sin empresa propia elegida, todas las empresas cuentan como clientes (Goemhy
+  incluida); si una lleva contabilidad completa, marcarla en su ficha. Siguen el n.º 9 (facturas y compras sin asiento, retenciones en
+  el registro, quitar cobros y pagos) y la R6 (permisos por persona), con su «sí».
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
