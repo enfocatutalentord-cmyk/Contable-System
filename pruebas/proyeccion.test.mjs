@@ -30,7 +30,7 @@ before(async () => {
   [{ id: ana }] = await sql`INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${`ana-proy-${marca}@x.do`}, 'Ana', 'x') RETURNING id`;
   await sql.begin(async (tx) => {
     [{ id: firma }] = await tx`INSERT INTO firmas (nombre) VALUES (${`Firma proyeccion ${marca}`}) RETURNING id`;
-    [{ id: empresa }] = await tx`INSERT INTO empresas (nombre, rnc, firma_id) VALUES ('Servicios Proyección SRL', '130000032', ${firma}) RETURNING id`;
+    [{ id: empresa }] = await tx`INSERT INTO empresas (nombre, rnc, firma_id, lleva_contabilidad) VALUES ('Servicios Proyección SRL', '130000032', ${firma}, true) RETURNING id`; // lleva contabilidad con asientos (R5)
     await tx`SELECT set_config('app.empresa_id', ${empresa}, true)`;
     const m = new Map();
     for (const [codigo, n] of CATALOGO_RD) {

@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (rediseño: R1–R4 en producción, sigue la R5; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 7-nov-2026 (rediseño: R1–R4 en producción, R5 en la rama esperando el «sí»; todo lo demás en pausa); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -807,6 +807,23 @@ No se pasa a la siguiente sin su autorización expresa.
   procesan en el cliente. 227 pruebas. Probado en pantalla (menú, tablero → IT-1 y vuelta, facturas del cliente, documento → borrador
   de compra B0100000777 con su archivo). En `main` y producción el 7-nov-2026 («sí» de Patricia, `9031dac`). Sigue la R5 (estados
   financieros sin asientos) con su «sí»; después, el n.º 9 (facturas y compras sin asiento, retenciones en el registro) y la R6.
+  «sí» de Patricia del 7-nov a empezar la R5. **R5 · Estados financieros sin asientos** (migración 048): `empresa_lleva_contabilidad()`
+  (SECURITY DEFINER: la propia o la marca de la ficha; una firma sin propia elegida cuenta a todas sus empresas como clientes, igual que
+  el menú de la R3). `saldosPorCuenta` (`lib/reportes.ts`), en un cliente sin contabilidad, no lee asientos: `saldosDeRegistro` arma
+  los mismos saldos con `movimientosDeRegistro` (facturas emitidas al haber de su cuenta de ingreso, nota B04/E34 al debe; compras
+  registradas al debe de su cuenta con otros impuestos e ITBIS al costo, nota al haber; en pesos; desde el inicio del ejercicio porque
+  los años anteriores vienen en el formulario) y el balance de `saldos_registro` (cortes por fecha, RLS e historial; 14 conceptos en
+  `CONCEPTOS_BALANCE` de `lib/saldos-registro.ts`, cada uno a su cuenta del catálogo: efectivo 110101, CxC 110201, inventario 110301,
+  impuestos a favor 110402, otros 110405, activos fijos 120103, otros 120201, CxP 210101, impuestos 210201, préstamos 210401/220101,
+  otros pasivos 210502, capital 310101, años anteriores 310301; vale el último corte ≤ la fecha). Así el estado de resultados, el de
+  situación (cuadra con el resultado del ejercicio), el IR-2 (A-1, B-1) y la proyección (`lib/proyeccion.ts` usa `movimientos`)
+  funcionan sin asientos; los asientos que tenga el cliente se ignoran, no se borran. Pantalla de estados: «de sus facturas emitidas,
+  sus compras registradas y los saldos del balance · preparados por <firma>», solo resultados y situación (flujo y cambios en el
+  patrimonio necesitan asientos), recuadro «Saldos del balance» (fecha de corte, conceptos por grupo, CxC y CxP sugeridas de los
+  saldos de facturas y compras, notas, cortes guardados, borrar; permiso «registrar»). Excel/PDF con «preparado por <firma>» y, sin
+  firma escrita, la firma como «Preparado por». Las pruebas de estados, IR-2 y proyección marcan sus empresas con «lleva
+  contabilidad»; nueva `pruebas/estados-registro.test.mjs` (231 en total). Probado en pantalla con Salón Rosa (balance de 6,180 que
+  cuadra, descarga, IR-2 A-1, proyección; Empire sigue con asientos y flujo). En la rama, esperando el «sí» de Patricia.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

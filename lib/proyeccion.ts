@@ -6,6 +6,7 @@ import { finEjercicio } from "./cierre-ejercicio.ts";
 import { nombrePeriodo } from "./igualas.ts";
 import { UMBRAL_30 } from "./ir2-liquidacion.ts";
 import { aCentavos, deCentavos, verMonto } from "./montos.ts";
+import { llevaContabilidad, movimientosDeRegistro, type Movimiento } from "./reportes.ts";
 
 // Bloque 4, entrega 4c: proyección del cierre fiscal (Documento maestro, sección 8). Lo acumulado del ejercicio mes a mes, el
 // resultado proyectado al cierre ((utilidad acumulada ÷ meses con datos) × 12), el ISR estimado según el régimen y alertas
@@ -35,15 +36,31 @@ const SIN_FACTURA = /deprecia|amortiza|sueldo|salario|n[óo]mina|tss|seguridad s
 const porc = (a: bigint, b: bigint) => (b === 0n ? 0 : Number((a * 10000n) / b) / 100);
 const mesSiguiente = (p: string) => { const a = Number(p.slice(0, 4)), m = Number(p.slice(4)); return m === 12 ? `${a + 1}01` : `${a}${String(m + 1).padStart(2, "0")}`; };
 
-async function resultadoPorMes(tx: Tx, desde: string, hasta: string) {
-  return tx<{ mes: string; ingresos: string; costos: string; gastos: string }[]>`
-    SELECT to_char(a.fecha, 'YYYYMM') AS mes,
-           COALESCE(sum(l.haber - l.debe) FILTER (WHERE c.codigo LIKE '4%'), 0)::text AS ingresos,
-           COALESCE(sum(l.debe - l.haber) FILTER (WHERE c.codigo LIKE '5%'), 0)::text AS costos,
-           COALESCE(sum(l.debe - l.haber) FILTER (WHERE c.codigo LIKE '6%' AND c.codigo NOT LIKE '63%'), 0)::text AS gastos
+// Movimientos de resultados del período: de los asientos contabilizados (sin los de cierre) o, en un cliente sin contabilidad
+// (rediseño R5), de sus facturas emitidas y compras registradas.
+async function movimientos(tx: Tx, desde: string, hasta: string): Promise<Movimiento[]> {
+  if (!(await llevaContabilidad(tx))) return movimientosDeRegistro(tx, desde, hasta);
+  const filas = await tx<{ cuenta_id: string; codigo: string; fecha: string; debe: string; haber: string; origen: string; unidad_id: string | null }[]>`
+    SELECT c.id AS cuenta_id, c.codigo, to_char(a.fecha, 'YYYY-MM-DD') AS fecha, l.debe::text, l.haber::text, a.origen, l.unidad_id
       FROM lineas_asiento l JOIN asientos a ON a.id = l.asiento_id JOIN cuentas c ON c.id = l.cuenta_id
      WHERE a.estado = 'contabilizado' AND a.origen <> 'cierre' AND a.fecha BETWEEN ${desde} AND ${hasta}
-     GROUP BY 1 ORDER BY 1`;
+       AND (c.codigo LIKE '4%' OR c.codigo LIKE '5%' OR c.codigo LIKE '6%')`;
+  return filas.map((f) => ({ ...f, debe: aCentavos(f.debe), haber: aCentavos(f.haber) }));
+}
+const esCostoOGasto = (codigo: string) => codigo.startsWith("5") || (codigo.startsWith("6") && !codigo.startsWith("63"));
+
+async function resultadoPorMes(tx: Tx, desde: string, hasta: string) {
+  const porMes = new Map<string, { mes: string; ingresos: bigint; costos: bigint; gastos: bigint }>();
+  for (const m of await movimientos(tx, desde, hasta)) {
+    const k = m.fecha.slice(0, 4) + m.fecha.slice(5, 7);
+    const x = porMes.get(k) ?? { mes: k, ingresos: 0n, costos: 0n, gastos: 0n };
+    if (m.codigo.startsWith("4")) x.ingresos += m.haber - m.debe;
+    else if (m.codigo.startsWith("5")) x.costos += m.debe - m.haber;
+    else if (m.codigo.startsWith("6") && !m.codigo.startsWith("63")) x.gastos += m.debe - m.haber;
+    porMes.set(k, x);
+  }
+  return [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes))
+    .map((x) => ({ mes: x.mes, ingresos: deCentavos(x.ingresos), costos: deCentavos(x.costos), gastos: deCentavos(x.gastos) }));
 }
 
 // Corre en conEmpresa. «periodo» = AAAAMM del último mes que se acumula.
@@ -75,25 +92,20 @@ export async function proyeccionDe(tx: Tx, periodo: string, hoy: string): Promis
     SELECT COALESCE(sum(round(retencion_isr * tasa, 2)), 0)::text AS ret FROM cobros WHERE NOT anulado AND fecha BETWEEN ${inicio} AND ${finMes}`;
   const retenciones = aCentavos(ret);
 
-  const categorias = (await tx<{ codigo: string; nombre: string; monto: string }[]>`
-    SELECT left(c.codigo, 4) AS codigo, COALESCE(p.nombre, left(c.codigo, 4)) AS nombre, sum(l.debe - l.haber)::text AS monto
-      FROM lineas_asiento l JOIN asientos a ON a.id = l.asiento_id JOIN cuentas c ON c.id = l.cuenta_id
-      LEFT JOIN cuentas p ON p.codigo = left(c.codigo, 4) AND p.empresa_id = c.empresa_id
-     WHERE a.estado = 'contabilizado' AND a.origen <> 'cierre' AND a.fecha BETWEEN ${inicio} AND ${finMes}
-       AND (c.codigo LIKE '5%' OR (c.codigo LIKE '6%' AND c.codigo NOT LIKE '63%'))
-     GROUP BY 1, 2 HAVING sum(l.debe - l.haber) <> 0 ORDER BY 1`);
+  const delEjercicio = (await movimientos(tx, inicio, finMes)).filter((m) => esCostoOGasto(m.codigo));
+  const nombres = new Map((await tx<{ codigo: string; nombre: string }[]>`SELECT codigo, nombre FROM cuentas WHERE length(codigo) <= 4`).map((c) => [c.codigo, c.nombre]));
+  const porSubgrupo = new Map<string, bigint>();
+  for (const m of delEjercicio) porSubgrupo.set(m.codigo.slice(0, 4), (porSubgrupo.get(m.codigo.slice(0, 4)) ?? 0n) + m.debe - m.haber);
+  const categorias = [...porSubgrupo].filter(([, v]) => v !== 0n).sort(([a], [b]) => a.localeCompare(b))
+    .map(([codigo, v]) => ({ codigo, nombre: nombres.get(codigo) ?? codigo, monto: deCentavos(v) }));
   const comprobantes = (await tx<{ tipo: string; monto: string }[]>`
     SELECT tipo_gasto AS tipo, sum(CASE WHEN tipo_comprobante IN ('B04', 'E34') THEN -1 ELSE 1 END * round(subtotal * tasa, 2))::text AS monto
       FROM compras WHERE estado = 'registrada' AND NOT anulada AND fecha BETWEEN ${inicio} AND ${finMes} GROUP BY 1 ORDER BY 1`)
     .map((c) => ({ ...c, nombre: TIPOS_GASTO[c.tipo] ?? c.tipo }));
   // Gastos registrados a mano o desde el banco (sin compra con comprobante), salvo los que no llevan factura.
-  const sinDoc = (await tx<{ nombre: string; monto: string }[]>`
-    SELECT c.nombre, sum(l.debe - l.haber)::text AS monto
-      FROM lineas_asiento l JOIN asientos a ON a.id = l.asiento_id JOIN cuentas c ON c.id = l.cuenta_id
-     WHERE a.estado = 'contabilizado' AND a.origen IN ('manual', 'banco') AND a.fecha BETWEEN ${inicio} AND ${finMes}
-       AND (c.codigo LIKE '5%' OR (c.codigo LIKE '6%' AND c.codigo NOT LIKE '63%'))
-     GROUP BY c.id, c.nombre`)
-    .filter((x) => !SIN_FACTURA.test(x.nombre)).reduce((s, x) => s + aCentavos(x.monto), 0n);
+  const nombreCuenta = new Map((await tx<{ id: string; nombre: string }[]>`SELECT id, nombre FROM cuentas`).map((c) => [c.id, c.nombre]));
+  const sinDoc = delEjercicio.filter((m) => (m.origen === "manual" || m.origen === "banco") && !SIN_FACTURA.test(nombreCuenta.get(m.cuenta_id) ?? ""))
+    .reduce((s, m) => s + m.debe - m.haber, 0n);
 
   // Ejercicio anterior completo, para comparar.
   const finAnterior = new Date(Date.UTC(Number(inicio.slice(0, 4)), Number(inicio.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10);
