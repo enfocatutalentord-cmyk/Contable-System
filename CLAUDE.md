@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 7-nov-2026 (entrega B · Normas y tasas en producción; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 8-nov-2026 (6b.1 · Lista de precios en producción; antes, entrega B · Normas y tasas; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -631,7 +631,7 @@ No se pasa a la siguiente sin su autorización expresa.
   2026-10-01, ITBIS 18 %, unidad «Firma contable» si existe y precio general 0. Se puede repetir: no duplica y un precio cambiado después se queda. `categoriaSugerida`:
   tres criterios distintos = Mediana. `igualaBajoMinimo` (aviso al guardar el acuerdo) y `descuentoAEmprendedor` (aviso en la propuesta). Pruebas
   `pruebas/lista-p01.test.mjs` (246 en total). Probado en pantalla la carga (37 y luego 37 iguales), que no sale en un cliente y el aviso de iguala; el aviso de
-  emprendedor solo con prueba automática. Esperando el «sí» para pasar a `main`. En producción hay que elegir antes a Empire como empresa propia.
+  emprendedor solo con prueba automática. En `main` y producción el 8-nov-2026 («sí» de Patricia, `4614dc2`). Para usarla en producción hay que elegir antes a Empire como empresa propia. Sigue la 6b.2 con su «sí».
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,
