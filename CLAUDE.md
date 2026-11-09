@@ -3,7 +3,7 @@
 Este archivo es el punto de partida para seguir el trabajo desde cualquier sesión o plataforma.
 Actualízalo al terminar cada bloque de trabajo (qué se hizo, qué quedó pendiente, qué decidió Joannie).
 
-Última actualización: 8-nov-2026 (6b.1 · Lista de precios en producción; antes, entrega B · Normas y tasas; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
+Última actualización: 8-nov-2026 (6b.1 y 6b.2 en producción: lista de precios, levantamiento y estado inicial; antes, entrega B · Normas y tasas; antes, rediseño completo en producción: R1–R6 y n.º 9); antes 4-nov-2026 (desde hoy aprueba **Patricia**; se trabaja con los documentos «Sistema Empire» en 8 bloques; bloque 1 en estructura; e-CF para después; respaldos sin activar).
 
 ## Con quién y cómo
 
@@ -641,7 +641,7 @@ No se pasa a la siguiente sin su autorización expresa.
   anexo 1 (si se escribe en gastos, aviso y no cuenta), costos directos a mano, margen en %, y aviso de que el anexo 5 no resta los gastos variables. La firma escribe el patrimonio
   (capital de la ficha). Aceptar carga empresa, sociedad, operaciones, empleados (solo con permiso «empresa», igual que ver los salarios) y adjuntos. Patricia aprueba (permiso
   «empresa», solo si cuadra; `formularios.aprobado_*`): entonces hay PDF/Excel, sale en el expediente 05 y se puede «Pasar a los Saldos del balance» (R5). Pruebas
-  `pruebas/levantamiento.test.mjs` (250 en total). Probado en pantalla en tamaño celular y el flujo completo con Salón Rosa. Esperando el «sí» para pasar a `main`.
+  `pruebas/levantamiento.test.mjs` (250 en total). Probado en pantalla en tamaño celular y el flujo completo con Salón Rosa. En `main` y producción el 8-nov-2026 («sí» de Patricia, `21e0853`, con la migración 052). Sigue la 6b.3 (diagnóstico y propuesta) con su «sí».
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,
