@@ -1,6 +1,7 @@
 import { conEmpresa } from "@/lib/db";
 import { aPdf } from "@/lib/exportar";
 import { enlaceVigente } from "@/lib/mensajes-db";
+import { pdfDiagnostico } from "@/lib/pdf-diagnostico";
 import { tablaFactura, tablaPropuesta } from "@/lib/pdf-documentos";
 import { tablaReporte, type DatosReporte } from "@/lib/reporte-mensual";
 import { tablaProyeccion, type Proyeccion } from "@/lib/proyeccion";
@@ -29,6 +30,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
       const [d] = await tx<{ nombre: string; tipo: string; contenido: Buffer }[]>`
         SELECT nombre, tipo, contenido FROM documentos WHERE id = ${e.ref_id} AND NOT eliminado`;
       return d ? { nombre: d.nombre, tipo: d.tipo, datos: new Uint8Array(d.contenido) } : null;
+    }
+    if (e.tipo === "diagnostico") {
+      const d = await pdfDiagnostico(tx, e.ref_id);
+      return d ? { nombre: d.nombre, tipo: "application/pdf", datos: d.datos } : null;
     }
     const [{ nombre, rnc }] = await tx<{ nombre: string; rnc: string | null }[]>`SELECT nombre, rnc FROM empresas WHERE id = ${e.empresa_id}`;
     const ahora = new Date().toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });

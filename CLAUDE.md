@@ -642,6 +642,15 @@ No se pasa a la siguiente sin su autorización expresa.
   (capital de la ficha). Aceptar carga empresa, sociedad, operaciones, empleados (solo con permiso «empresa», igual que ver los salarios) y adjuntos. Patricia aprueba (permiso
   «empresa», solo si cuadra; `formularios.aprobado_*`): entonces hay PDF/Excel, sale en el expediente 05 y se puede «Pasar a los Saldos del balance» (R5). Pruebas
   `pruebas/levantamiento.test.mjs` (250 en total). Probado en pantalla en tamaño celular y el flujo completo con Salón Rosa. En `main` y producción el 8-nov-2026 («sí» de Patricia, `21e0853`, con la migración 052). Sigue la 6b.3 (diagnóstico y propuesta) con su «sí».
+  «sí» de Patricia del 8-nov a la 6b.3. **Entrega 6b.3 · Diagnóstico y propuesta** (migración 053, `lib/diagnostico.ts` puro, `lib/pdf-diagnostico.ts`, `armarPdf` en `lib/exportar.ts`,
+  `app/e/[id]/diagnostico-acciones.ts`, pantalla `/e/[id]/solicitudes/levantamiento/[fid]/diagnostico` y su `/pdf`): `hallazgosDe` sugiere hallazgos por área con la tabla de la propuesta; la
+  firma cambia, quita o agrega, elige categoría (se sugiere) y escribe la iguala (referencia: suma de lo mensual que le toca, mínimo RD$4,000 salvo emprendedor). Lo guardado va en
+  `formularios.diagnostico`. Patricia aprueba (permiso «empresa», estado inicial aprobado antes): se fija la categoría en la ficha y nacen en la empresa propia hasta dos propuestas en borrador
+  (servicios iniciales de una vez con el levantamiento primero si se cobra, y aparte la iguala con la línea «Iguala mensual» de «Registros contables mensuales (virtual)», para que
+  «Convertir en iguala» dé el monto correcto; los servicios `MENSUALES` no van en la primera). Quitar la aprobación y aprobar de nuevo actualiza las mismas propuestas. PDF con portada verde y dorada en
+  texto (sin el logo), resumen, cifras del estado inicial, hallazgos por área y propuesta; WhatsApp «Informe de diagnóstico» con enlace seguro tipo 'diagnostico' (texto para que Patricia lo
+  revise) y expediente 06. Auditoría y lo que el cliente no precisó quedan sin servicio para que Patricia elija. Pruebas `pruebas/diagnostico.test.mjs` (255 en total). Probado en pantalla con
+  Salón Rosa. Esperando el «sí» para pasar a `main`. Con esto termina el bloque 6.
 - **Bloque 7 · Presupuesto y cuenta de la socia** (propuesta del 5-nov-2026 en https://claude.ai/artifact/HV8vbyEbxv8CdNW1MHAjHc,
   esperando el «sí» de Patricia; documento maestro, sección 3; referentes Xero Budget Variance, QuickBooks Budget vs. Actuals y
   transacciones recurrentes, YNAB metas; 3 entregas: 7a «Registrar salida» con los 5 tipos (oficina, personal, deuda personal,

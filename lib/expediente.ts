@@ -106,6 +106,12 @@ export async function listarExpediente(tx: Tx, empresaId: string, retirados = fa
       fecha: n.fecha, anio: Number(n.periodo.slice(0, 4)), enlace: n.doc ? `${base}/documentos/${n.doc}` : `${base}/notificaciones`, origen: "sistema",
       quien: null, documentoId: n.doc, tipo: null });
   }
+  // 06: informes de diagnóstico aprobados (6b.3).
+  for (const l of await tx<{ id: string; fecha: string }[]>`
+      SELECT id, to_char(diagnostico_aprobado_en, 'YYYY-MM-DD') AS fecha FROM formularios WHERE tipo = 'levantamiento' AND diagnostico_aprobado_en IS NOT NULL ORDER BY diagnostico_aprobado_en DESC`) {
+    lista.push({ id: `diagnostico-${l.id}`, carpeta: "06", titulo: "Informe de diagnóstico y propuesta", detalle: "Levantamiento contable", fecha: l.fecha,
+      anio: Number(l.fecha.slice(0, 4)), enlace: `${base}/solicitudes/levantamiento/${l.id}/diagnostico`, origen: "sistema", quien: null, documentoId: null, tipo: null });
+  }
   // 05: estados iniciales aprobados del levantamiento (6b.2), reportes mensuales aprobados y proyecciones preparadas.
   for (const l of await tx<{ id: string; fecha: string }[]>`
       SELECT id, to_char(aprobado_en, 'YYYY-MM-DD') AS fecha FROM formularios WHERE tipo = 'levantamiento' AND aprobado_en IS NOT NULL ORDER BY aprobado_en DESC`) {

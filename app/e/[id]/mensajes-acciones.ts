@@ -12,7 +12,7 @@ import {
 // Bloque 3, entrega 3c: «Enviar por WhatsApp». Se arma el mensaje, la persona lo revisa y abre WhatsApp; al abrirlo queda en la
 // bitácora (con un deshacer). Pide el permiso «exportar» (comparte un PDF) y no lo usan los usuarios de los clientes.
 
-const TIPOS_REF = ["factura", "cobro", "propuesta", "notificacion", "reporte", "proyeccion", "expediente", "formulario"];
+const TIPOS_REF = ["factura", "cobro", "propuesta", "notificacion", "reporte", "proyeccion", "expediente", "formulario", "diagnostico"];
 
 async function acceso(empresaId: string) {
   const a = await exigirPermiso(empresaId, "exportar");

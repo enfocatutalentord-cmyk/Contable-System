@@ -12,7 +12,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario" | "diagnostico"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -46,7 +46,7 @@ async function deCliente(tx: Tx, clienteId: string): Promise<Destinatario> {
   return { nombre: null, empresa: c?.nombre ?? "", telefono: telefonoWa(c?.telefono), grupo: null };
 }
 
-export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "formulario"; refId: string; titulo: string } | null };
+export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "formulario" | "diagnostico"; refId: string; titulo: string } | null };
 
 // Datos del documento para llenar el mensaje y, si lleva PDF, qué se comparte por el enlace seguro. Corre en conEmpresa.
 export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promise<Preparado> {
@@ -104,6 +104,13 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
     const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
     const titulo = (d.descripcion || d.nombre).slice(0, 190);
     return { destinatario, datos: { documento: titulo } as Datos, enlace: { tipo: "documento", refId: ref.id, titulo } };
+  }
+  if (ref.tipo === "diagnostico") {
+    // Informe de diagnóstico (6b.3): solo el aprobado.
+    const [d] = await tx<{ ok: boolean }[]>`SELECT diagnostico_aprobado_en IS NOT NULL AS ok FROM formularios WHERE id = ${ref.id} AND tipo = 'levantamiento'`;
+    if (!d?.ok) throw new ErrorMensaje("El informe se envía cuando está aprobado.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    return { destinatario, datos: {}, enlace: { tipo: "diagnostico", refId: ref.id, titulo: "Informe de diagnóstico" } };
   }
   if (ref.tipo === "proyeccion") {
     // Proyección de cierre fiscal (bloque 4c): la que se preparó para el cliente.
@@ -198,7 +205,7 @@ export async function quitarEnlace(tx: Tx, enlaceId: string, usuarioId: string) 
 // Para la descarga sin sesión: el enlace vigente que corresponde al token (se busca por su hash) y cuenta la descarga.
 export async function enlaceVigente(token: string) {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
-  const [e] = await db()<{ id: string; empresa_id: string; tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion"; ref_id: string; titulo: string }[]>`
+  const [e] = await db()<{ id: string; empresa_id: string; tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "diagnostico"; ref_id: string; titulo: string }[]>`
     UPDATE enlaces_documento SET descargas = descargas + 1, ultima_descarga = now()
      WHERE token_hash = ${hashToken(token)} AND revocado_en IS NULL AND vence > now()
      RETURNING id, empresa_id, tipo, ref_id, titulo`;

@@ -67,6 +67,7 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
         {puede(permisos, "exportar") && f.aprobado_en && <Descargar href={`/e/${id}/exportar/estado-inicial?id=${fid}`} />}
       </div>
 
+      {f.estado === "aceptado" && <p><Link className="boton primario" href={`/e/${id}/solicitudes/levantamiento/${fid}/diagnostico`}>Informe de diagnóstico y propuesta</Link></p>}
       <section className="tarjeta" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Estado de situación financiera inicial</h2>
         {est.avisos.map((a, i) => <p key={i} className="aviso">{a}</p>)}

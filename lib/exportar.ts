@@ -75,7 +75,8 @@ type PdfMake = {
   createPdf(d: unknown): { getBuffer(): Promise<Buffer> };
 };
 
-export async function aPdf(t: Tabla): Promise<Buffer> {
+// Crea el PDF con fuentes estándar y sin acceso a recursos externos.
+export async function armarPdf(doc: unknown): Promise<Buffer> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const pdfmake: PdfMake = require("pdfmake");
   // Fuentes estándar del PDF (no se incrustan archivos) y sin acceso a recursos externos.
@@ -84,6 +85,10 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
   pdfmake.setUrlAccessPolicy(() => false);
   // Solo los nombres de las fuentes estándar; ningún otro archivo local.
   pdfmake.setLocalAccessPolicy((ruta) => (Object.values(fuentes) as string[]).includes(ruta));
+  return pdfmake.createPdf(doc).getBuffer();
+}
+
+export async function aPdf(t: Tabla): Promise<Buffer> {
   const celda = (v: Celda, i: number, negrita = false) => ({
     text: v === null ? "" : t.columnas[i]?.num ? (v === "" ? "" : verMonto(String(v))) : String(v),
     alignment: t.columnas[i]?.num ? "right" : "left",
@@ -131,7 +136,7 @@ export async function aPdf(t: Tabla): Promise<Buffer> {
       margin: [32, 10, 32, 0], fontSize: 7,
     }),
   };
-  return pdfmake.createPdf(doc).getBuffer();
+  return armarPdf(doc);
 }
 
 export function aCsv(t: Tabla): string {
