@@ -387,7 +387,9 @@ No se pasa a la siguiente sin su autorización expresa.
   como la B11. El IT-1 ya contaba las series E y el 607/608 ya las dejaban fuera. Facturas subidas: un ingreso E queda como e-CF
   emitida fuera. Alerta de la firma «Factura electrónica» (`FECHA_ECF` 2026-11-15, en `lib/alertas.ts`): sin la marca de emisor, aviso
   30 días antes y urgente desde el plazo. Pruebas `pruebas/ecf.test.mjs` (271 en total). Probado en pantalla con Salón Rosa (perfil,
-  B02 → E32, nota E34, alerta, compra E41). Sin probar con una e-CF real. Falta confirmar con la contadora cómo van en el 606.
+  B02 → E32, nota E34, alerta, compra E41). En `main` y producción el 11-nov-2026 («sí» de Patricia, `c85f784`, migración 054 aplicada).
+  Sin probar con una e-CF real. Falta confirmar con la contadora cómo van en el 606. Sigue la E2 (emitir por la API de un PSFE) cuando
+  Patricia elija proveedor.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
