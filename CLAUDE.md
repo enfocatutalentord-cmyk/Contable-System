@@ -389,7 +389,9 @@ No se pasa a la siguiente sin su autorización expresa.
   30 días antes y urgente desde el plazo. Pruebas `pruebas/ecf.test.mjs` (271 en total). Probado en pantalla con Salón Rosa (perfil,
   B02 → E32, nota E34, alerta, compra E41). En `main` y producción el 11-nov-2026 («sí» de Patricia, `c85f784`, migración 054 aplicada).
   Sin probar con una e-CF real. Falta confirmar con la contadora cómo van en el 606. Sigue la E2 (emitir por la API de un PSFE) cuando
-  Patricia elija proveedor.
+  Patricia elija proveedor. 11-nov-2026: el certificado .p12 (DigiFirma, Cámara de Comercio de Santo Domingo, «procedimientos
+  tributarios») está a nombre de Patricia Paulino como persona física, vigente del 11-nov-2026 al 11-nov-2027. Se compartió en el chat:
+  no se guardó en el sistema ni en el repositorio y no se debe guardar. Cada cliente necesita el certificado de su propio representante.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
