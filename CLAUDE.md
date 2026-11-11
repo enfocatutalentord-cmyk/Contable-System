@@ -368,6 +368,11 @@ No se pasa a la siguiente sin su autorización expresa.
   guardan en la base). La app corre en `iad1` (Washington): confirmar que Neon esté en AWS US East.
 - **Factura electrónica (e-CF):** el 4-nov-2026 se pidió dejarla para después. Obligatoria por etapas en 2026 (Ley 32-23). Recomendado: conectarse a un proveedor ya
   certificado por la DGII (PSFE) en vez de certificarse. Joannie aún no lo ha confirmado.
+  11-nov-2026: plazo confirmado en avisos oficiales de la DGII (14-25 y 06-26): micro, pequeños y no clasificados, **15-nov-2026**, sin
+  otra prórroga (Diario Libre, 10-sep). Llegó el manual de la Cámara de Comercio (DigiFirma/Uanataca) para instalar el certificado .p12.
+  Propuesta en https://claude.ai/artifact/1nVm8JgPsoJASDjNAVbWZ6, esperando el «sí» de Patricia: esta semana Facturador Gratuito
+  (≈150 facturas/mes) o PSFE fuera del sistema; E1 registrar e-CF emitidas fuera (`emisor_ecf`/`ecf_desde` ya existen); E2 emitir por la
+  API de un PSFE (el .p12 se carga en el proveedor, nunca aquí). Preguntas: a nombre de quién está el certificado, proveedores a cotizar.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
