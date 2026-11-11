@@ -398,6 +398,27 @@ No se pasa a la siguiente sin su autorización expresa.
   TesteCF; E2b demás tipos, RFCE (< RD$250,000), anulación, factura impresa con QR, servicios propios /fe/recepcion/api/ecf y
   /fe/aprobacioncomercial/api/ecf; E2c set de pruebas en CerteCF y declaración jurada; E2d proveedor para clientes (después). Documentos
   técnicos oficiales en la sección «Documentación sobre e-CF» de dgii.gov.do (se bajan con curl y se leen con pypdf).
+  **Bloqueo encontrado el 11-nov:** ecf.dgii.gov.do rechaza conexiones desde fuera del país (desde esta computadora, que sale por Brasil,
+  y desde un servidor en EE. UU.; un caso igual en la Comunidad de Ayuda de la DGII con servidor en Europa). Vercel (iad1) probablemente
+  tampoco llega. Opciones dadas a Patricia: pedir a facturacionelectronica@dgii.gov.do que autorice la dirección; un servidor pequeño con
+  dirección fija que reenvíe a la DGII; o un PSFE. «sí» a seguir con lo que no depende de eso. **Entrega E2a · certificado, XML y firma**
+  (migración 055; paquetes `node-forge` 1.4.2, `xml-crypto` 6.4.0, `@xmldom/xmldom` 0.8.15; las alertas de node-forge ≤1.4.2 son de
+  Ed25519, TLS y forge.http, que no se usan): `certificados_ecf` (el .p12 y su contraseña cifrados con AES-256-GCM, `lib/ecf-cifrado.ts`,
+  llave `ECF_LLAVE` de 32 bytes en base64 en Vercel, que pone Joannie o Manaury; uno activo por empresa; no se descarga; sin trigger de
+  historial para no copiar el archivo; bitácora `certificado_ecf_guardado`), `empresas.ecf_ambiente` (testecf/certecf; producción se
+  bloquea hasta la E2c) y `ecf_envios` (XML firmado, e-NCF, código de seguridad, fecha de firma, estado; `prueba`). `lib/ecf-certificado.ts`
+  (`leerP12`: titular CN, identificación SN, vigencia), `lib/ecf-xml.ts` (puro: `armarXml` de E31, E32 ≥ RD$250,000 y E34 en el orden de los
+  XSD v1.0, sin etiquetas vacías, escapado, ITBIS sobre el total de cada tasa, `enlaceQr`; E32 menor va con RFCE en la E2b),
+  `lib/ecf-firma.ts` (XMLDSig envuelta al final, C14N 2001, RSA-SHA256, X509Certificate; código de seguridad = 6 primeros caracteres del
+  SignatureValue), `lib/ecf-dgii.ts` (semilla → validarsemilla → token Bearer, recepción → TrackId, consulta de resultado con estados
+  0–4; error claro cuando la DGII no acepta la conexión) y `lib/ecf-emision.ts` (`datosDeFactura`: DOP, sin otros impuestos, ITBIS 18/16/0
+  o exento, crédito si vence > fecha, E34 con referencia y código 1 si anula todo o 2; avisa si el ITBIS por línea no da el de la DGII;
+  `xmlDePrueba` usa el siguiente número del rango E sin tomarlo). Pantalla Perfil fiscal › «Factura electrónica · emisión propia»
+  (`/fiscal/ecf`: subir el certificado, ambiente, «Probar la conexión con la DGII», permiso «empresa») y en la factura «XML de prueba» con
+  descarga del XML firmado (`/facturas/[fid]/ecf/[eid]`). Los XSD oficiales traen un tipo sin definir (`IndicadorServicioTodoIncluidoType`
+  en e-CF 31): para validar se usa una copia local con ese tipo como entero. Pruebas `pruebas/ecf-firma.test.mjs` (282 en total) con un
+  certificado de prueba generado ahí. Probado en pantalla: certificado de prueba guardado, conexión real rechazada con el mensaje claro y
+  XML E31 de una iguala válido contra el XSD. Falta: el envío real (depende de la conexión) y probarlo con el certificado de Patricia.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`

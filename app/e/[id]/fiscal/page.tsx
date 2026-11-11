@@ -68,7 +68,8 @@ export default async function PerfilFiscal({ params }: { params: Promise<{ id: s
             </div>
             <p className="sub" style={{ margin: 0 }}>
               Obligatoria para micro y pequeñas empresas desde el 15-nov-2026 (Avisos DGII 14-25 y 06-26). Las e-CF se emiten fuera del sistema
-              y aquí se registran con su e-NCF desde la factura en borrador.
+              y aquí se registran con su e-NCF desde la factura en borrador. Para emitir desde el sistema:{" "}
+              <Link href={`/e/${id}/fiscal/ecf`}>Factura electrónica · emisión propia</Link>.
             </p>
           </fieldset>
         </Formulario>
