@@ -117,7 +117,7 @@ export async function crearRecurrenteDesdeFactura(tx: Tx, d: {
 }): Promise<string> {
   const [f] = await tx<{ cliente_id: string; tipo_ncf: string; notas: string | null; moneda: string }[]>`
     SELECT cliente_id, tipo_ncf, notas, moneda FROM facturas WHERE id = ${d.facturaId}`;
-  if (!f || f.tipo_ncf === "B04") throw new ErrorContable("La factura no existe");
+  if (!f || f.tipo_ncf === "B04" || f.tipo_ncf === "E34") throw new ErrorContable("La factura no existe");
   if (f.moneda !== "DOP") throw new ErrorContable("Por ahora las facturas recurrentes son en pesos");
   const lineas = await tx<LineaPlantilla[]>`
     SELECT l.servicio_id AS "servicioId", l.descripcion, l.cantidad::text AS cantidad, l.precio::text AS precio, l.unidad_id AS "unidadId",

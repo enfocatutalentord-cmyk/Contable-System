@@ -16,7 +16,7 @@ import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import {
   anularCobro, anularFactura, CLAVES_CUENTAS, descartarBorradorFactura, emitir, emitirNotaCredito, esTipoFactura, guardarBorradorFactura,
-  leerCantidad, leerTasa, MOTIVOS_608, registrarCobro, type LineaEntrada,
+  leerCantidad, leerCodigoEcf, leerTasa, MOTIVOS_608, registrarCobro, registrarEcfEmitida, type LineaEntrada,
 } from "@/lib/ventas";
 import type { Estado } from "../../acciones-cuenta";
 
@@ -237,6 +237,29 @@ export async function emitirBorrador(empresaId: string, facturaId: string): Prom
   redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1`);
 }
 
+// Fecha y hora de firma de la e-CF (opcional): «AAAA-MM-DDTHH:MM» del navegador.
+function firmaEcf(fd: FormData): string | null | false {
+  const v = texto(fd, "ecf_firmada");
+  if (!v) return null;
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v) && fechaValida(v.slice(0, 10)) ? v.replace("T", " ") : false;
+}
+
+// Entrega E1: el borrador se emitió fuera como e-CF (Facturador Gratuito o proveedor): se registra con su e-NCF.
+export async function registrarEcf(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/facturas");
+  const codigo = leerCodigoEcf(texto(fd, "ecf_codigo"));
+  const firmada = firmaEcf(fd);
+  if (codigo === false) return { error: "El código de seguridad lleva solo letras y números, como sale en la factura." };
+  if (firmada === false) return { error: "La fecha de firma no es válida." };
+  try {
+    await conEmpresa(empresaId, (tx) => registrarEcfEmitida(tx, { empresaId, usuarioId: usuario.id, facturaId, encf: texto(fd, "encf"), codigo, firmada }));
+  } catch (e) {
+    return { error: mensajeError(e) };
+  }
+  revalidatePath(`/e/${empresaId}`, "layout");
+  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1`);
+}
+
 export async function descartarFactura(empresaId: string, facturaId: string): Promise<Estado> {
   const { usuario } = await exigirPermiso(empresaId, "registrar", "/facturas");
   try {
@@ -261,9 +284,17 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
   if (subtotal === null || subtotal <= 0n) return { error: "Escribe el monto sin impuestos." };
   if (!esUuid(impuestoId)) return { error: "Elige el impuesto." };
   if (!motivo) return { error: "Escribe el motivo." };
+  // Nota emitida fuera como e-CF (E34): su e-NCF, código y fecha de firma.
+  const encf = texto(fd, "encf") || null;
+  const ecfCodigo = leerCodigoEcf(texto(fd, "ecf_codigo"));
+  const ecfFirmada = firmaEcf(fd);
+  if (ecfCodigo === false) return { error: "El código de seguridad lleva solo letras y números, como sale en la nota." };
+  if (ecfFirmada === false) return { error: "La fecha de firma no es válida." };
   let id: string;
   try {
-    id = await conEmpresa(empresaId, (tx) => emitirNotaCredito(tx, { empresaId, usuarioId: usuario.id, facturaId, fecha, subtotal, impuestoId, motivo }));
+    id = await conEmpresa(empresaId, (tx) => emitirNotaCredito(tx, {
+      empresaId, usuarioId: usuario.id, facturaId, fecha, subtotal, impuestoId, motivo, encf, ecfCodigo, ecfFirmada,
+    }));
   } catch (e) {
     return { error: mensajeError(e) };
   }

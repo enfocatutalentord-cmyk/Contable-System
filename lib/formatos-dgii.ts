@@ -176,7 +176,7 @@ export async function formato606(tx: Tx, p: Periodo, empresa: Empresa): Promise<
     const delMes = suyos.filter((m) => m.fecha >= p.inicio);
     // B13 (gastos menores) y B17 (pagos al exterior): van con el RNC o cédula de la propia empresa (instructivo del 606
     // y validación de la herramienta de la DGII).
-    const b17 = c.tipo === "B17" || c.tipo === "B13";
+    const b17 = ["B17", "B13", "E47", "E43"].includes(c.tipo);
     const rnc = b17 ? empresa.rnc ?? "" : c.rnc ?? "";
     const tipoId = tipoIdentificacion(b17 ? null : c.tipo_identificacion, rnc);
     if (!tipoId || tipoId === "3") avisos.push({ nivel: "error", texto: `${c.ncf} (${c.proveedor}): el 606 pide RNC (9 dígitos) o cédula (11 dígitos) ${b17 ? "de la empresa" : "del proveedor"}.`, enlace: b17 ? "/empresa" : "/proveedores" });
@@ -282,7 +282,7 @@ export async function formato607(tx: Tx, p: Periodo): Promise<{ filas: Detalle60
     const delMes = suyos.filter((m) => m.fecha >= p.inicio);
     // Formas de cobro hasta el cierre del mes (con impuestos); lo que falta por cobrar es venta a crédito. Deben sumar el total.
     const formas = { efectivo: 0n, cheque: 0n, tarjeta: 0n, credito: 0n, bonos: 0n, permuta: 0n, otrasFormas: 0n };
-    const nota = f.tipo === "B04";
+    const nota = f.tipo === "B04" || f.tipo === "E34";
     if (nota) {
       notas = true;
       formas.credito = total;

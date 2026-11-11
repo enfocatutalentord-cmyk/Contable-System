@@ -17,7 +17,7 @@ export default async function EditarFactura({ params }: { params: Promise<{ id: 
     const [f] = await tx<{ estado: string; tipo_ncf: string; cliente_id: string; fecha: string; vence: string; moneda: string; tasa: string; notas: string | null; creado_por: string; tipo_ingreso: string }[]>`
       SELECT estado, tipo_ncf, cliente_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, to_char(vence, 'YYYY-MM-DD') AS vence, moneda,
              tasa::text, notas, creado_por, tipo_ingreso FROM facturas WHERE id = ${fid}`;
-    if (!f || f.estado !== "borrador" || f.tipo_ncf === "B04") return null;
+    if (!f || f.estado !== "borrador" || f.tipo_ncf === "B04" || f.tipo_ncf === "E34") return null;
     const lineas = await tx<{ servicio_id: string | null; descripcion: string; cantidad: string; precio: string; principal: string | null; adicional: string | null; unidad_id: string | null }[]>`
       SELECT l.servicio_id, l.descripcion, l.cantidad::text, l.precio::text, l.unidad_id,
              (SELECT il.impuesto_id FROM impuestos_linea_factura il WHERE il.linea_id = l.id AND il.tipo IN ('itbis', 'exento') LIMIT 1) AS principal,

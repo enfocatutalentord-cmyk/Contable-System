@@ -9,16 +9,33 @@ import { llevaContabilidad } from "./reportes.ts";
 
 export { aPesos, calcularLinea, cantidadTexto, leerCantidad, leerTasa, redondearDiv, tasaDeTexto, tasaTexto } from "./calculos.ts";
 
-// Comprobantes que se emiten desde ventas (los electrónicos llegan con la fase fiscal, por un proveedor certificado).
+// Comprobantes que se emiten desde ventas con el rango del sistema.
 export const TIPOS_FACTURA = ["B01", "B02", "B14", "B15", "B16"] as const;
-export type TipoFactura = (typeof TIPOS_FACTURA)[number];
-export type TipoNcf = TipoFactura | "B04";
+// Sus equivalentes electrónicos (e-CF, entrega E1): se emiten fuera (Facturador Gratuito o proveedor) y aquí se registran con su e-NCF.
+export const TIPOS_FACTURA_ECF = ["E31", "E32", "E44", "E45", "E46"] as const;
+export type TipoFactura = (typeof TIPOS_FACTURA)[number] | (typeof TIPOS_FACTURA_ECF)[number];
+export const NOTAS_VENTA = ["B04", "E34"] as const;
+export type TipoNcf = TipoFactura | (typeof NOTAS_VENTA)[number];
 export const NOMBRE_NCF: Record<TipoNcf, string> = Object.fromEntries(
-  [...TIPOS_FACTURA, "B04"].map((t) => [t, COMPROBANTES[t].nombre]),
+  [...TIPOS_FACTURA, ...TIPOS_FACTURA_ECF, ...NOTAS_VENTA].map((t) => [t, COMPROBANTES[t].nombre + (t.startsWith("E") ? " electrónica" : "")]),
 ) as Record<TipoNcf, string>;
 // Tipos que exigen RNC o cédula del cliente.
-export const NCF_CON_RNC: TipoNcf[] = ["B01", "B14", "B15"];
+export const NCF_CON_RNC: TipoNcf[] = ["B01", "B14", "B15", "E31", "E44", "E45"];
 export const esTipoFactura = (t: string): t is TipoFactura => (TIPOS_FACTURA as readonly string[]).includes(t);
+export const esTipoVenta = (t: string): t is TipoFactura => esTipoFactura(t) || (TIPOS_FACTURA_ECF as readonly string[]).includes(t);
+export const esNotaVenta = (t: string) => (NOTAS_VENTA as readonly string[]).includes(t);
+export const esEcf = (t: string) => t.startsWith("E");
+// e-NCF: tipo + 10 dígitos (13 posiciones), como lo da el Facturador Gratuito o el proveedor.
+export const leerEncf = (v: string): string | null => {
+  const n = v.toUpperCase().replace(/[\s-]/g, "");
+  return /^E\d{12}$/.test(n) ? n : null;
+};
+// Código de seguridad de la e-CF, como sale en la representación impresa. Vacío = null; con otra forma = false.
+export const leerCodigoEcf = (v: string): string | null | false => {
+  const c = v.trim();
+  if (!c) return null;
+  return /^[A-Za-z0-9]{4,20}$/.test(c) ? c : false;
+};
 
 // Códigos de anulación del formato 608 de la DGII.
 export const MOTIVOS_608: Record<string, string> = {
@@ -161,7 +178,7 @@ export type DatosFactura = {
 export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { facturaId?: string | null }): Promise<string> {
   const [cliente] = await tx<{ activo: boolean }[]>`SELECT activo FROM clientes WHERE id = ${d.clienteId}`;
   if (!cliente?.activo) throw new ErrorContable("El cliente no existe o está inactivo");
-  if (!esTipoFactura(d.tipo)) throw new ErrorContable("Elige el tipo de comprobante");
+  if (!esTipoVenta(d.tipo)) throw new ErrorContable("Elige el tipo de comprobante");
   if (d.vence < d.fecha) throw new ErrorContable("El vencimiento no puede ser antes de la fecha de la factura");
   const tipoIngreso = d.tipoIngreso ?? "01";
   if (!(tipoIngreso in TIPOS_INGRESO)) throw new ErrorContable("Elige el tipo de ingreso");
@@ -176,7 +193,7 @@ export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { factura
   let id = d.facturaId ?? null;
   if (id) {
     const [f] = await tx<{ estado: string; tipo_ncf: string }[]>`SELECT estado, tipo_ncf FROM facturas WHERE id = ${id} FOR UPDATE`;
-    if (!f || f.tipo_ncf === "B04") throw new ErrorContable("La factura no existe");
+    if (!f || esNotaVenta(f.tipo_ncf)) throw new ErrorContable("La factura no existe");
     if (f.estado !== "borrador") throw new ErrorContable("Solo los borradores se pueden editar");
     await tx`UPDATE facturas SET ${tx({ ...cabecera, modificado_por: d.usuarioId, modificado_en: new Date() })} WHERE id = ${id}`;
     await tx`DELETE FROM lineas_factura WHERE factura_id = ${id}`;
@@ -218,7 +235,7 @@ export async function emitir(
   if (NCF_CON_RNC.includes(f.tipo_ncf) && !f.rnc) {
     throw new ErrorContable(`Para un comprobante ${f.tipo_ncf} (${NOMBRE_NCF[f.tipo_ncf]}) el cliente necesita RNC o cédula`);
   }
-  const esNota = f.tipo_ncf === "B04";
+  const esNota = esNotaVenta(f.tipo_ncf);
   let modifica = "";
   if (esNota) {
     const [o] = await tx<{ ncf: string; estado: string; anulada: boolean; fecha: string }[]>`
@@ -256,8 +273,15 @@ export async function emitir(
   const totalPesos = lineasAsiento.reduce((s, l) => s + l.debe + l.haber, 0n);
   lineasAsiento.unshift({ cuentaId: cuentas.cxc, debe: esNota ? 0n : totalPesos, haber: esNota ? totalPesos : 0n, descripcion: f.cliente });
 
-  // Venta que el cliente hizo fuera del sistema (bloque 8b): conserva su NCF y no toma número del rango.
+  // Venta que el cliente hizo fuera del sistema (bloque 8b) o e-CF emitida fuera (entrega E1): conserva su NCF y no toma del rango.
   if (f.ncf_externo && !f.ncf_externo.startsWith(f.tipo_ncf)) throw new ErrorContable(`El NCF ${f.ncf_externo} no es un ${f.tipo_ncf}`);
+  if (esEcf(f.tipo_ncf) && !f.ncf_externo) {
+    throw new ErrorContable(`Una ${f.tipo_ncf} se emite en el Facturador Gratuito o con el proveedor; aquí se registra con su e-NCF («Registrar como e-CF emitida»)`);
+  }
+  if (f.ncf_externo) {
+    const [otro] = await tx<{ id: string }[]>`SELECT id FROM facturas WHERE ncf = ${f.ncf_externo} AND id <> ${d.facturaId}`;
+    if (otro) throw new ErrorContable(`El comprobante ${f.ncf_externo} ya está registrado en esta empresa`);
+  }
   const { ncf, vence } = f.ncf_externo ? { ncf: f.ncf_externo, vence: null } : await tomarNcf(tx, f.tipo_ncf, f.fecha);
   const asiento = conAsiento ? await insertarAsiento(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, fecha: f.fecha, origen: esNota ? "nota_credito" : "factura",
@@ -272,14 +296,49 @@ export async function emitir(
   return { ncf, asiento: asiento?.numero ?? null };
 }
 
+// e-CF emitida fuera (entrega E1): el borrador (de una iguala, una recurrente o hecho a mano) pasa a su tipo electrónico con el
+// e-NCF, el código de seguridad y la fecha de firma que dio el Facturador Gratuito o el proveedor, y se emite sin tomar del rango.
+export const ECF_DE: Record<string, string> = { B01: "E31", B02: "E32", B14: "E44", B15: "E45", B16: "E46" };
+
+export async function registrarEcfEmitida(
+  tx: Tx, d: { empresaId: string; usuarioId: string; facturaId: string; encf: string; codigo: string | null; firmada: string | null },
+): Promise<{ ncf: string; asiento: number | null }> {
+  const encf = leerEncf(d.encf);
+  if (!encf) throw new ErrorContable("El e-NCF es E seguido de 12 dígitos (por ejemplo, E310000000001)");
+  const tipo = encf.slice(0, 3);
+  if (!(TIPOS_FACTURA_ECF as readonly string[]).includes(tipo)) {
+    throw new ErrorContable(`Un ${tipo} no es una factura de venta (E31, E32, E44, E45 o E46). Las notas de crédito E34 se registran desde la factura que modifican`);
+  }
+  const [f] = await tx<{ estado: string; tipo_ncf: string }[]>`SELECT estado, tipo_ncf FROM facturas WHERE id = ${d.facturaId} FOR UPDATE`;
+  if (!f || esNotaVenta(f.tipo_ncf)) throw new ErrorContable("La factura no existe");
+  if (f.estado !== "borrador") throw new ErrorContable("La factura ya fue emitida");
+  if (ECF_DE[f.tipo_ncf] && ECF_DE[f.tipo_ncf] !== tipo) {
+    throw new ErrorContable(`El borrador es ${f.tipo_ncf}: su equivalente electrónico es ${ECF_DE[f.tipo_ncf]}, no ${tipo}. Cambia el tipo del borrador si hace falta`);
+  }
+  await tx`UPDATE facturas SET tipo_ncf = ${tipo}, ncf_externo = ${encf}, ecf_codigo = ${d.codigo}, ecf_firmada = ${d.firmada}::text::timestamp,
+                              modificado_por = ${d.usuarioId}, modificado_en = now()
+            WHERE id = ${d.facturaId}`;
+  return emitir(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, facturaId: d.facturaId });
+}
+
 // Nota de crédito (B04) sobre una factura emitida, con uno de los impuestos de esa factura. Se emite al momento.
+// Si se emitió fuera como e-CF (E34, entrega E1), se registra con su e-NCF; la de una factura electrónica siempre es E34.
 export async function emitirNotaCredito(
   tx: Tx,
-  d: { empresaId: string; usuarioId: string; facturaId: string; fecha: string; subtotal: bigint; impuestoId: string; motivo: string },
+  d: {
+    empresaId: string; usuarioId: string; facturaId: string; fecha: string; subtotal: bigint; impuestoId: string; motivo: string;
+    encf?: string | null; ecfCodigo?: string | null; ecfFirmada?: string | null;
+  },
 ): Promise<string> {
   const [f] = await tx<{ cliente_id: string; moneda: "DOP" | "USD"; tasa: string; anulada: boolean; estado: string; tipo_ncf: string; tipo_ingreso: string }[]>`
     SELECT cliente_id, moneda, tasa::text, anulada, estado, tipo_ncf, tipo_ingreso FROM facturas WHERE id = ${d.facturaId}`;
-  if (!f || f.tipo_ncf === "B04" || f.estado !== "emitida") throw new ErrorContable("La factura no existe o no está emitida");
+  if (!f || esNotaVenta(f.tipo_ncf) || f.estado !== "emitida") throw new ErrorContable("La factura no existe o no está emitida");
+  const encf = d.encf ? leerEncf(d.encf) : null;
+  if (d.encf && (!encf || !encf.startsWith("E34"))) throw new ErrorContable("El e-NCF de la nota debe ser E34 seguido de 10 dígitos");
+  if (esEcf(f.tipo_ncf) && !encf) {
+    throw new ErrorContable("La nota de una factura electrónica es una E34: emítela en el Facturador Gratuito o con el proveedor y escribe aquí su e-NCF");
+  }
+  const tipoNota = encf ? "E34" : "B04";
   if (f.anulada) throw new ErrorContable("La factura está anulada");
   const [usado] = await tx`SELECT 1 FROM impuestos_linea_factura WHERE factura_id = ${d.facturaId} AND impuesto_id = ${d.impuestoId} LIMIT 1`;
   if (!usado) throw new ErrorContable("Usa uno de los impuestos de la factura original");
@@ -298,7 +357,7 @@ export async function emitirNotaCredito(
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO facturas (empresa_id, estado, tipo_ncf, cliente_id, factura_origen_id, fecha, vence, moneda, tasa,
                           subtotal, itbis, otros_impuestos, total, notas, creado_por, tipo_ingreso)
-    VALUES (${d.empresaId}, 'borrador', 'B04', ${f.cliente_id}, ${d.facturaId}, ${d.fecha}, ${d.fecha}, ${f.moneda}, ${f.tasa},
+    VALUES (${d.empresaId}, 'borrador', ${tipoNota}, ${f.cliente_id}, ${d.facturaId}, ${d.fecha}, ${d.fecha}, ${f.moneda}, ${f.tasa},
             ${deCentavos(d.subtotal)}, ${deCentavos(itbis)}, ${deCentavos(otros)}, ${deCentavos(d.subtotal + monto)}, ${d.motivo}, ${d.usuarioId},
             ${f.tipo_ingreso})
     RETURNING id`;
@@ -310,6 +369,7 @@ export async function emitirNotaCredito(
   await tx`
     INSERT INTO impuestos_linea_factura (linea_id, factura_id, empresa_id, impuesto_id, tipo, tasa, monto)
     VALUES (${lineaId}, ${id}, ${d.empresaId}, ${d.impuestoId}, ${imp.tipo}, ${imp.tasa}, ${deCentavos(monto)})`;
+  if (encf) await tx`UPDATE facturas SET ncf_externo = ${encf}, ecf_codigo = ${d.ecfCodigo ?? null}, ecf_firmada = ${d.ecfFirmada ?? null}::text::timestamp WHERE id = ${id}`;
   // Quien tiene permiso de revertir emite la nota en el mismo paso (no pasa por la aprobación de borradores).
   await emitir(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, facturaId: id }, { autorizada: true });
   return id;
@@ -321,7 +381,7 @@ export async function anularFactura(tx: Tx, d: { empresaId: string; usuarioId: s
   if (!f) throw new ErrorContable("El comprobante no existe");
   if (f.estado !== "emitida") throw new ErrorContable("Un borrador no se anula; se descarta");
   if (f.anulada) throw new ErrorContable("El comprobante ya está anulado");
-  if (f.tipo_ncf !== "B04") {
+  if (!esNotaVenta(f.tipo_ncf)) {
     const [{ n }] = await tx<{ n: number }[]>`
       SELECT (SELECT count(*) FROM aplicaciones_cobro a JOIN cobros c ON c.id = a.cobro_id WHERE a.factura_id = ${d.facturaId} AND NOT c.anulado)
            + (SELECT count(*) FROM facturas WHERE factura_origen_id = ${d.facturaId} AND estado = 'emitida' AND NOT anulada) AS n`;
@@ -397,7 +457,7 @@ export async function registrarCobro(
   for (const a of aplicaciones) {
     const [f] = await tx<{ ncf: string; cliente_id: string; moneda: string; tasa: string; anulada: boolean; estado: string; tipo_ncf: string }[]>`
       SELECT ncf, cliente_id, moneda, tasa::text, anulada, estado, tipo_ncf FROM facturas WHERE id = ${a.facturaId} FOR UPDATE`;
-    if (!f || f.tipo_ncf === "B04" || f.estado !== "emitida" || f.cliente_id !== d.clienteId) {
+    if (!f || esNotaVenta(f.tipo_ncf) || f.estado !== "emitida" || f.cliente_id !== d.clienteId) {
       throw new ErrorContable("Una de las facturas no es de este cliente o no está emitida");
     }
     if (f.anulada) throw new ErrorContable(`La factura ${f.ncf} está anulada`);

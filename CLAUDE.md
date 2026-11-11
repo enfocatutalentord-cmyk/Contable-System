@@ -373,6 +373,21 @@ No se pasa a la siguiente sin su autorización expresa.
   Propuesta en https://claude.ai/artifact/1nVm8JgPsoJASDjNAVbWZ6, esperando el «sí» de Patricia: esta semana Facturador Gratuito
   (≈150 facturas/mes) o PSFE fuera del sistema; E1 registrar e-CF emitidas fuera (`emisor_ecf`/`ecf_desde` ya existen); E2 emitir por la
   API de un PSFE (el .p12 se carga en el proveedor, nunca aquí). Preguntas: a nombre de quién está el certificado, proveedores a cotizar.
+  «sí» de Patricia del 11-nov a la E1. **Entrega E1 · e-CF emitidas fuera** (migración 054): `empresas.ecf_via` (gratuito/proveedor) y
+  `ecf_proveedor` en el perfil fiscal. Facturas: tipos E31, E32, E44, E45, E46 y nota E34 (`TIPOS_FACTURA_ECF`, `NOTAS_VENTA`,
+  `esNotaVenta`, `esTipoVenta` en `lib/ventas.ts`; `TIPOS_FACTURA` sigue solo B para formularios y comprobante habitual); número E +
+  12 dígitos; `facturas.ecf_codigo` (4–20 letras y números) y `ecf_firmada`. `registrarEcfEmitida` (acción `registrarEcf`, permiso
+  «contabilizar»): el borrador (de iguala, recurrente o a mano) pasa a su equivalente (`ECF_DE`: B01→E31…) con el e-NCF y se emite sin
+  tomar del rango; una E sin e-NCF no se emite (`facturas_ecf_externa_check`); e-NCF repetido, de otro tipo o mal escrito se rechaza.
+  La nota de una e-CF es E34 con su e-NCF (`emitirNotaCredito` con `encf`); desde la fecha de emisor, la de una B puede ser E34 o B04.
+  Todo lo que decía `tipo_ncf = 'B04'` en ventas, CxC, listas, reporte mensual, firma, PDF, vista `saldos_factura` y la bitácora cuenta
+  también la E34. Pantalla de la factura: aviso «emítela en …» en borradores B desde la fecha de emisor, recuadro «Registrar como e-CF
+  emitida», cabecera con e-NCF, código y firma, y texto de anulación (la e-CF no va al 608). Compras: propios electrónicos E41, E43,
+  E47 con el e-NCF escrito (E41 cédula, E47 exterior, E43 sin crédito); el 606 lleva E43/E47 con el RNC de la empresa y el IT-1 la E41
+  como la B11. El IT-1 ya contaba las series E y el 607/608 ya las dejaban fuera. Facturas subidas: un ingreso E queda como e-CF
+  emitida fuera. Alerta de la firma «Factura electrónica» (`FECHA_ECF` 2026-11-15, en `lib/alertas.ts`): sin la marca de emisor, aviso
+  30 días antes y urgente desde el plazo. Pruebas `pruebas/ecf.test.mjs` (271 en total). Probado en pantalla con Salón Rosa (perfil,
+  B02 → E32, nota E34, alerta, compra E41). Sin probar con una e-CF real. Falta confirmar con la contadora cómo van en el 606.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`

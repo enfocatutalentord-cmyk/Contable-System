@@ -97,7 +97,7 @@ export const numeroComprobante = (tipo: string, n: bigint | number | string) => 
 
 export type PerfilFiscal = {
   tipo_persona: "juridica" | "fisica"; regimen: string; contribuye_itbis: boolean; agente_retencion: boolean;
-  emisor_ecf: boolean; ecf_desde: string | null;
+  emisor_ecf: boolean; ecf_desde: string | null; ecf_via?: "gratuito" | "proveedor" | null; ecf_proveedor?: string | null;
 };
 
 export type Obligacion = {
@@ -217,7 +217,8 @@ export function vigenciaTexto(desde: string, hasta: string | null, verFecha: (f:
 
 export async function perfilFiscal(tx: Tx): Promise<PerfilFiscal> {
   const [p] = await tx<PerfilFiscal[]>`
-    SELECT tipo_persona, regimen, contribuye_itbis, agente_retencion, emisor_ecf, to_char(ecf_desde, 'YYYY-MM-DD') AS ecf_desde
+    SELECT tipo_persona, regimen, contribuye_itbis, agente_retencion, emisor_ecf, to_char(ecf_desde, 'YYYY-MM-DD') AS ecf_desde,
+           ecf_via, ecf_proveedor
       FROM empresas WHERE id = empresa_actual()`;
   return p;
 }

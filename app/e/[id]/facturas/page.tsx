@@ -16,7 +16,7 @@ export default async function Facturas({ params, searchParams }: {
   const filtros = leerFiltrosDocumentos(sp, ESTADOS);
   const { mes, estado, q, hoy } = filtros;
   const filas = await conEmpresa(id, (tx) => listarFacturas(tx, filtros));
-  const vigentes = filas.filter((f) => f.estado === "emitida" && !f.anulada && f.tipo_ncf !== "B04" && f.moneda === "DOP");
+  const vigentes = filas.filter((f) => f.estado === "emitida" && !f.anulada && f.tipo_ncf !== "B04" && f.tipo_ncf !== "E34" && f.moneda === "DOP");
 
   return (
     <>
@@ -47,7 +47,7 @@ export default async function Facturas({ params, searchParams }: {
           <thead><tr><th>NCF</th><th>Fecha</th><th>Cliente</th><th>Vence</th><th className="num">Total</th><th className="num">Saldo</th><th>Estado</th></tr></thead>
           <tbody>
             {filas.map((f) => {
-              const esNota = f.tipo_ncf === "B04";
+              const esNota = f.tipo_ncf === "B04" || f.tipo_ncf === "E34";
               const borrador = f.estado === "borrador";
               const estadoTexto = estadoFactura(f, hoy);
               return (

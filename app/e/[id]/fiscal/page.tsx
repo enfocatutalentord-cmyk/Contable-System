@@ -55,7 +55,21 @@ export default async function PerfilFiscal({ params }: { params: Promise<{ id: s
               <label className="casilla"><input type="checkbox" name="agente_retencion" defaultChecked={perfil.agente_retencion} /> Agente de retención (retiene ITBIS o ISR a sus proveedores)</label>
               <label className="casilla"><input type="checkbox" name="emisor_ecf" defaultChecked={perfil.emisor_ecf} /> Emisor de facturación electrónica (e-CF)</label>
             </div>
-            <label style={{ maxWidth: 260 }}>Emite e-CF desde (si aplica)<input type="date" name="ecf_desde" defaultValue={perfil.ecf_desde ?? ""} /></label>
+            <div className="fila">
+              <label style={{ maxWidth: 260 }}>Emite e-CF desde (si aplica)<input type="date" name="ecf_desde" defaultValue={perfil.ecf_desde ?? ""} /></label>
+              <label>Emite por
+                <select name="ecf_via" defaultValue={perfil.ecf_via ?? ""}>
+                  <option value="">Sin indicar</option>
+                  <option value="gratuito">Facturador Gratuito de la DGII</option>
+                  <option value="proveedor">Un proveedor autorizado (PSFE)</option>
+                </select>
+              </label>
+              <label style={{ flex: "1 1 200px" }}>Nombre del proveedor<input name="ecf_proveedor" defaultValue={perfil.ecf_proveedor ?? ""} maxLength={120} placeholder="Si emite con un proveedor" /></label>
+            </div>
+            <p className="sub" style={{ margin: 0 }}>
+              Obligatoria para micro y pequeñas empresas desde el 15-nov-2026 (Avisos DGII 14-25 y 06-26). Las e-CF se emiten fuera del sistema
+              y aquí se registran con su e-NCF desde la factura en borrador.
+            </p>
           </fieldset>
         </Formulario>
       </div>

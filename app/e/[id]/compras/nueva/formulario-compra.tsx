@@ -25,7 +25,10 @@ const DEL_PROVEEDOR: [string, string][] = [
   ["E45", "E45 · Gubernamental electrónica"],
 ];
 const PROPIOS: [string, string][] = [["B11", "B11 · Compras (proveedor informal)"], ["B13", "B13 · Gastos menores"], ["B17", "B17 · Pagos al exterior"]];
-const SIN_CREDITO = ["B02", "E32", "B13"];
+// Entrega E1: los propios electrónicos se emiten fuera (Facturador Gratuito o proveedor); aquí se escribe su e-NCF.
+const PROPIOS_ECF: [string, string][] = [["E41", "E41 · Compras electrónica"], ["E43", "E43 · Gastos menores electrónica"], ["E47", "E47 · Pagos al exterior electrónica"]];
+const SIN_CREDITO = ["B02", "E32", "B13", "E43"];
+const esPropioEcf = (t: string) => PROPIOS_ECF.some(([k]) => k === t);
 const esPropio = (t: string) => PROPIOS.some(([k]) => k === t);
 
 function num(v: string): number {
@@ -116,13 +119,14 @@ export function FormularioCompra({ accion, proveedores, cuentas, impuestos, impu
             <select name="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
               <optgroup label="Lo entrega el proveedor">{DEL_PROVEEDOR.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</optgroup>
               <optgroup label="Lo emites tú">{PROPIOS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</optgroup>
+              <optgroup label="Lo emitiste como e-CF (fuera del sistema)">{PROPIOS_ECF.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</optgroup>
             </select>
           )}
         </label>
         {esPropio(tipo) ? (
           <div style={{ flex: "1 1 180px" }} className="sub">NCF: se asigna de tu rango {tipo} al registrar</div>
         ) : (
-          <label style={{ flex: "1 1 180px" }}>NCF del proveedor<input name="ncf" defaultValue={inicial?.ncf} placeholder={tipo.startsWith("E") ? `${tipo}0000000001` : `${tipo}00000001`} style={{ textTransform: "uppercase" }} /></label>
+          <label style={{ flex: "1 1 180px" }}>{esPropioEcf(tipo) ? "e-NCF que emitiste" : "NCF del proveedor"}<input name="ncf" defaultValue={inicial?.ncf} placeholder={tipo.startsWith("E") ? `${tipo}0000000001` : `${tipo}00000001`} style={{ textTransform: "uppercase" }} /></label>
         )}
         <label>Fecha<input type="date" name="fecha" value={fecha} onChange={(e) => { setFecha(e.target.value); if (proveedor) setVence(sumarDias(e.target.value, proveedor.dias_credito)); }} required /></label>
         <label>Vence<input type="date" name="vence" value={vence} min={fecha} onChange={(e) => setVence(e.target.value)} required /></label>

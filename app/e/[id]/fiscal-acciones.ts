@@ -36,10 +36,14 @@ export async function guardarPerfilFiscal(empresaId: string, _: Estado, fd: Form
   const emisor = fd.get("emisor_ecf") === "on";
   const ecfDesde = emisor ? texto(fd, "ecf_desde") || null : null;
   if (ecfDesde && !fechaValida(ecfDesde)) return { error: "La fecha de inicio de facturación electrónica no es válida." };
+  // Entrega E1: por dónde emite (Facturador Gratuito de la DGII o un proveedor autorizado).
+  const via = emisor && ["gratuito", "proveedor"].includes(texto(fd, "ecf_via")) ? texto(fd, "ecf_via") : null;
+  const proveedor = via === "proveedor" ? texto(fd, "ecf_proveedor").slice(0, 120) || null : null;
   try {
     await conEmpresa(empresaId, (tx) => tx`
       UPDATE empresas SET tipo_persona = ${tipoPersona}, contribuye_itbis = ${fd.get("contribuye_itbis") === "on"},
-             agente_retencion = ${fd.get("agente_retencion") === "on"}, emisor_ecf = ${emisor}, ecf_desde = ${ecfDesde}
+             agente_retencion = ${fd.get("agente_retencion") === "on"}, emisor_ecf = ${emisor}, ecf_desde = ${ecfDesde},
+             ecf_via = ${via}, ecf_proveedor = ${proveedor}
        WHERE id = ${empresaId}`);
   } catch (e) {
     return { error: mensajeError(e) };

@@ -35,6 +35,7 @@ const CAMPOS: Record<string, string> = {
   cliente_id: "Cliente", vence: "Vence", moneda: "Moneda", cantidad: "Cantidad", precio: "Precio", monto: "Monto", recibido: "Recibido",
   emitida_en: "Emitida", ncf_predeterminado: "Comprobante habitual", dias_credito: "Días de crédito", impuesto_id: "Impuesto",
   contribuye_itbis: "Contribuyente de ITBIS", agente_retencion: "Agente de retención", emisor_ecf: "Emisor e-CF", ecf_desde: "e-CF desde",
+  ecf_via: "Emite e-CF por", ecf_proveedor: "Proveedor de e-CF", ecf_codigo: "Código de seguridad", ecf_firmada: "Fecha de firma", ncf_externo: "NCF hecho fuera",
 };
 
 // Campos técnicos que no aportan al leer el historial.

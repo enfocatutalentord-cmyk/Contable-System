@@ -41,7 +41,7 @@ async function montos(tx: Tx, sql: "ventas" | "notas" | "compras", desde: string
     : await tx<{ cantidad: number; subtotal: string; itbis: string; total: string }[]>`
         SELECT count(*)::int AS cantidad, COALESCE(sum(subtotal * tasa), 0)::numeric(18,2)::text AS subtotal,
                COALESCE(sum(itbis * tasa), 0)::numeric(18,2)::text AS itbis, COALESCE(sum(total * tasa), 0)::numeric(18,2)::text AS total
-          FROM facturas WHERE estado = 'emitida' AND NOT anulada AND (tipo_ncf = 'B04') = ${sql === "notas"} AND fecha BETWEEN ${desde} AND ${hasta}`;
+          FROM facturas WHERE estado = 'emitida' AND NOT anulada AND (tipo_ncf IN ('B04', 'E34')) = ${sql === "notas"} AND fecha BETWEEN ${desde} AND ${hasta}`;
   return m;
 }
 
@@ -59,7 +59,7 @@ export async function cuentaConFirma(empresaId: string, periodo: string, hasta: 
              COALESCE((SELECT string_agg(l.descripcion, ' · ' ORDER BY l.orden) FROM lineas_factura l WHERE l.factura_id = f.id), '') AS detalle,
              (f.periodo = ${periodo} OR (f.periodo IS NULL AND to_char(f.fecha, 'YYYYMM') = ${periodo})) AS "delMes"
         FROM facturas f LEFT JOIN saldos_factura s ON s.factura_id = f.id
-       WHERE f.empresa_id = ${f.propia} AND f.cliente_id = ${c.id} AND f.estado = 'emitida' AND NOT f.anulada AND f.tipo_ncf <> 'B04'
+       WHERE f.empresa_id = ${f.propia} AND f.cliente_id = ${c.id} AND f.estado = 'emitida' AND NOT f.anulada AND f.tipo_ncf NOT IN ('B04', 'E34')
          AND f.fecha <= (${hasta}::date + 31)
        ORDER BY f.fecha`;
     const saldo = facturas.reduce((s, x) => s + BigInt(Math.round(Number(x.saldo) * 100)), 0n);

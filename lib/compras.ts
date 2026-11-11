@@ -39,14 +39,17 @@ export const FORMAS_PAGO: Record<string, string> = {
 export const COMPROBANTES_PROVEEDOR = ["B01", "B02", "B14", "B15", "E31", "E32", "E44", "E45"] as const;
 export const NOTAS_PROVEEDOR = ["B04", "E34"] as const;
 export const COMPROBANTES_PROPIOS = ["B11", "B13", "B17"] as const;
-export const TIPOS_COMPRA = [...COMPROBANTES_PROVEEDOR, ...COMPROBANTES_PROPIOS] as const;
+// Sus equivalentes electrónicos (entrega E1): la empresa los emite fuera (Facturador Gratuito o proveedor) y aquí se escribe el e-NCF.
+export const COMPROBANTES_PROPIOS_ECF = ["E41", "E43", "E47"] as const;
+export const TIPOS_COMPRA = [...COMPROBANTES_PROVEEDOR, ...COMPROBANTES_PROPIOS, ...COMPROBANTES_PROPIOS_ECF] as const;
 export type TipoCompra = (typeof TIPOS_COMPRA)[number] | (typeof NOTAS_PROVEEDOR)[number];
 
 export const esPropio = (t: string) => (COMPROBANTES_PROPIOS as readonly string[]).includes(t);
+export const esPropioEcf = (t: string) => (COMPROBANTES_PROPIOS_ECF as readonly string[]).includes(t);
 export const esNotaProveedor = (t: string) => (NOTAS_PROVEEDOR as readonly string[]).includes(t);
 export const esTipoCompra = (t: string): t is TipoCompra => (TIPOS_COMPRA as readonly string[]).includes(t) || esNotaProveedor(t);
 // Comprobantes que no dan derecho a crédito de ITBIS: consumo y gastos menores.
-export const SIN_CREDITO = ["B02", "E32", "B13"];
+export const SIN_CREDITO = ["B02", "E32", "B13", "E43"];
 export const nombreComprobante = (t: string) => COMPROBANTES[t]?.nombre ?? t;
 export const patronNcf = (t: string) => new RegExp(`^${t}\\d{${t.startsWith("E") ? 10 : 8}}$`);
 
@@ -205,12 +208,14 @@ export async function registrarCompra(
     throw new ErrorContable("En esta empresa otra persona debe aprobar y registrar lo que tú registraste");
   }
   const t = c.tipo_comprobante;
-  if (!esPropio(t) && !c.ncf) throw new ErrorContable("Escribe el NCF que aparece en la factura del proveedor");
+  if (!esPropio(t) && !c.ncf) {
+    throw new ErrorContable(esPropioEcf(t) ? `Escribe el e-NCF del ${t} que emitiste en el Facturador Gratuito o con el proveedor` : "Escribe el NCF que aparece en la factura del proveedor");
+  }
   if (["B01", "E31", "B14", "E44", "B15", "E45"].includes(t) && !c.rnc) {
     throw new ErrorContable(`Para un ${t} el proveedor debe tener RNC o cédula registrado`);
   }
-  if (t === "B11" && c.tipo_identificacion !== "cedula") throw new ErrorContable("El comprobante de compras (B11) es para personas físicas con cédula");
-  if (t === "B17" && !c.del_exterior) throw new ErrorContable("El comprobante de pagos al exterior (B17) es para proveedores del exterior");
+  if ((t === "B11" || t === "E41") && c.tipo_identificacion !== "cedula") throw new ErrorContable(`El comprobante de compras (${t}) es para personas físicas con cédula`);
+  if ((t === "B17" || t === "E47") && !c.del_exterior) throw new ErrorContable(`El comprobante de pagos al exterior (${t}) es para proveedores del exterior`);
   const esNota = esNotaProveedor(t);
   let modifica = "";
   if (esNota) {

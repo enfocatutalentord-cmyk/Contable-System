@@ -101,7 +101,7 @@ export function revisarFactura(d: {
   }
   const sinCredito = !!tipoNcf && SIN_CREDITO.includes(tipoNcf);
   if (sinCredito && d.tipo === "gasto") marcas.push({ nivel: "aviso", texto: `Es ${TIPOS_NCF[tipoNcf!].toLowerCase()} (${tipoNcf}): no da crédito fiscal; el ITBIS va al gasto.` });
-  if (d.tipo === "ingreso" && tipoNcf && tipoNcf.startsWith("E")) marcas.push({ nivel: "aviso", texto: "Es una factura electrónica: no va en el 607; se registra a mano." });
+  if (d.tipo === "ingreso" && tipoNcf && tipoNcf.startsWith("E")) marcas.push({ nivel: "aviso", texto: "Es una factura electrónica: no va en el 607. Al aprobarla queda registrada como e-CF emitida fuera, con su e-NCF." });
   if (d.tipo === "ingreso" && tipoNcf && !["B01", "B02", "B14", "B15", "B16", "E31", "E32", "E44", "E45", "E46"].includes(tipoNcf)) {
     marcas.push({ nivel: "aviso", texto: `Un ${tipoNcf} no es una factura de venta.` });
   }

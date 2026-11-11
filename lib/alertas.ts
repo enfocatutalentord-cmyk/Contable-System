@@ -13,8 +13,10 @@ export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
   prospecto: "Prospecto", facturas_subidas: "Facturas subidas", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
-  tramite: "Trámites", solicitud: "Solicitudes y formularios",
+  tramite: "Trámites", solicitud: "Solicitudes y formularios", ecf: "Factura electrónica",
 };
+// Último plazo de la factura electrónica para micro, pequeños y no clasificados (Aviso DGII 14-25 + prórroga del Aviso 06-26).
+export const FECHA_ECF = "2026-11-15";
 
 // Declaraciones mensuales que el sistema puede ver presentadas («Marcar como presentado» en Reportes DGII) y su día de vencimiento.
 const MENSUALES: Record<string, { formato: string; dia: number }> = {
@@ -71,6 +73,15 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
            to_char(vence_registro_mercantil, 'YYYY-MM-DD') AS vence_registro_mercantil, to_char(vence_nombre_comercial, 'YYYY-MM-DD') AS vence_nombre_comercial,
            to_char(fecha_asamblea, 'YYYY-MM-DD') AS fecha_asamblea, to_char(fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato, nombre
       FROM empresas WHERE id = ${id}`;
+  // Factura electrónica (entrega E1): sin la fecha de emisor electrónico en el perfil fiscal, avisa 30 días antes y urgente desde el plazo.
+  const [ef] = await tx<{ emisor_ecf: boolean }[]>`SELECT emisor_ecf FROM empresas WHERE id = ${id}`;
+  if (ef && !ef.emisor_ecf && e?.estado_cliente !== "prospecto" && e?.estado_cliente !== "retirado" && dias(hoy, FECHA_ECF) <= 30) {
+    poner("ecf", hoy >= FECHA_ECF ? "urgente" : "aviso",
+      hoy >= FECHA_ECF
+        ? "Factura electrónica obligatoria desde el 15-nov-2026: marca en el perfil fiscal desde cuándo emite y por dónde"
+        : `Factura electrónica obligatoria: ${faltan(hoy, FECHA_ECF)}. Marca en el perfil fiscal desde cuándo emite`,
+      `${base}/fiscal`, FECHA_ECF);
+  }
   if (obligaciones.includes("ir2") && e) {
     const mc = e.mes_cierre;
     const anioFin = Number(hoy.slice(5, 7)) > mc ? a : a - 1;

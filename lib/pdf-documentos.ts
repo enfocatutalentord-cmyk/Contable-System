@@ -60,7 +60,7 @@ export async function tablaFactura(tx: Tx, id: string, base: Base): Promise<[str
   if (Number(f.otros_impuestos)) filas.push(["Otros impuestos", "", "", f.otros_impuestos]);
   filas.push([`Total ${simbolo}`, "", "", f.total]);
   if (!f.anulada) filas.push([`Saldo pendiente ${simbolo}`, "", "", f.saldo ?? "0.00"]);
-  const titulo = f.tipo_ncf === "B04" ? "Nota de crédito" : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
+  const titulo = f.tipo_ncf === "B04" || f.tipo_ncf === "E34" ? `Nota de crédito${f.tipo_ncf === "E34" ? " electrónica" : ""}` : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
   return [`factura-${f.ncf ?? id.slice(0, 8)}`, {
     ...base, titulo: `${titulo}${f.anulada ? " (ANULADA)" : ""}`,
     detalle: [`NCF ${f.ncf}`, `Cliente ${f.cliente}${f.rnc ? ` (RNC ${f.rnc})` : ""}`, `fecha ${verFecha(f.fecha)}`, `vence ${verFecha(f.vence)}`,

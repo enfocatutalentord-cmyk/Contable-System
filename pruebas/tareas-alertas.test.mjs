@@ -83,5 +83,6 @@ test("alertas: comprobantes, declaración por vencer, registro mercantil, cumple
   assert.ok(!antes.some((t) => /IT-1/.test(t)), "la obligación desactivada no avisa");
   await leer(conTss, (tx) => tx`INSERT INTO envios_dgii (empresa_id, formato, periodo, huella, registros, enviado_por) VALUES (${conTss}, '606', '202610', 'x', 0, ${ana})`);
   assert.ok(!(await textos()).some((t) => /^606/.test(t)), "al marcarla presentada se va");
-  assert.equal((await leer(otra, (tx) => alertasDeEmpresa(tx, { empresaId: otra, hoy: "2026-11-05", propia: false }))).length, 1, "otro cliente: solo «sin formalizar»");
+  // La de factura electrónica (entrega E1) sale en noviembre a toda empresa sin fecha de emisor; aquí no cuenta.
+  assert.equal((await leer(otra, (tx) => alertasDeEmpresa(tx, { empresaId: otra, hoy: "2026-11-05", propia: false }))).filter((a) => a.tipo !== "ecf").length, 1, "otro cliente: solo «sin formalizar»");
 });

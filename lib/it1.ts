@@ -318,7 +318,7 @@ export async function calcularIt1(tx: Tx, p: Periodo, manuales: Record<string, s
     const parte = f.itbisFacturado > 0n ? (f.itbisRetenido * 100n) / f.itbisFacturado : 0n; // % retenido del ITBIS
     // Comprobante de compras (B11): bienes en la 47, servicios en la 39. Retención del 30 % del ITBIS (Normas 02-05 y
     // 07-07): casilla 43. Del 100 %: a personas físicas, 39; a sociedades, 42.
-    if (f.ncf.slice(1, 3) === "11") { sumar("I47", f.bienes); sumar("I39", f.servicios); }
+    if (["11", "41"].includes(f.ncf.slice(1, 3))) { sumar("I47", f.bienes); sumar("I39", f.servicios); }
     else if (parte <= 30n) sumar("I43", f.servicios + f.bienes);
     else if (f.tipoId === "2") sumar("I39", f.servicios + f.bienes);
     else sumar("I42", f.servicios + f.bienes);

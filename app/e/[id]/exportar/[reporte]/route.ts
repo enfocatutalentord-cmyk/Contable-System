@@ -203,7 +203,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const estados = ventas ? ESTADOS_FACTURA : ESTADOS_COMPRA;
       const f = leerFiltrosDocumentos(sp, estados);
       const lista = ventas
-        ? (await conEmpresa(id, (tx) => listarFacturas(tx, f))).map((d) => ({ ...d, tipo: d.tipo_ncf, nombre: d.cliente, nota: d.tipo_ncf === "B04", texto: estadoFactura(d, f.hoy) }))
+        ? (await conEmpresa(id, (tx) => listarFacturas(tx, f))).map((d) => ({ ...d, tipo: d.tipo_ncf, nombre: d.cliente, nota: d.tipo_ncf === "B04" || d.tipo_ncf === "E34", texto: estadoFactura(d, f.hoy) }))
         : (await conEmpresa(id, (tx) => listarCompras(tx, f))).map((d) => ({ ...d, tipo: d.tipo_comprobante, nombre: d.proveedor, nota: d.origen !== null, texto: estadoCompra(d, f.hoy) }));
       const filas: Celda[][] = [];
       const t = [0n, 0n, 0n, 0n, 0n];

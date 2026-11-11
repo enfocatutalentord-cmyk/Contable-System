@@ -103,7 +103,7 @@ function frase(eid: string, f: Fila): { texto: string; enlace: string | null } |
   const base = `/e/${eid}`;
   switch (f.tabla) {
     case "facturas": {
-      const nota = d.tipo_ncf === "B04";
+      const nota = d.tipo_ncf === "B04" || d.tipo_ncf === "E34";
       const que = nota ? "la nota de crédito" : "la factura";
       const enlace = `${base}/facturas/${f.registro_id}`;
       if (f.accion === "insert") return { texto: `creó un borrador de ${nota ? "nota de crédito" : "factura"}`, enlace };

@@ -36,7 +36,7 @@ export type FilaFactura = {
 export function estadoFactura(f: FilaFactura, hoy: string) {
   if (f.estado === "borrador") return "Borrador";
   if (f.anulada) return "Anulada";
-  if (f.tipo_ncf === "B04") return `Nota a ${f.origen}`;
+  if (f.tipo_ncf === "B04" || f.tipo_ncf === "E34") return `Nota a ${f.origen}`;
   return Number(f.saldo ?? 0) <= 0 ? "Pagada" : f.vence < hoy ? "Vencida" : "Pendiente";
 }
 
@@ -53,11 +53,11 @@ export function listarFacturas(tx: Tx, { mes, estado, q, hoy }: FiltrosDocumento
        AND (${estado} = 'todas' OR (${estado} = 'borradores') = (f.estado = 'borrador'))
        AND CASE ${estado}
              WHEN 'borradores' THEN true
-             WHEN 'pendientes' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo > 0
-             WHEN 'vencidas' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo > 0 AND f.vence < ${hoy}
-             WHEN 'pagadas' THEN NOT f.anulada AND f.tipo_ncf <> 'B04' AND s.saldo <= 0
+             WHEN 'pendientes' THEN NOT f.anulada AND f.tipo_ncf NOT IN ('B04', 'E34') AND s.saldo > 0
+             WHEN 'vencidas' THEN NOT f.anulada AND f.tipo_ncf NOT IN ('B04', 'E34') AND s.saldo > 0 AND f.vence < ${hoy}
+             WHEN 'pagadas' THEN NOT f.anulada AND f.tipo_ncf NOT IN ('B04', 'E34') AND s.saldo <= 0
              WHEN 'anuladas' THEN f.anulada
-             WHEN 'notas' THEN f.tipo_ncf = 'B04'
+             WHEN 'notas' THEN f.tipo_ncf IN ('B04', 'E34')
              ELSE true END
      ORDER BY f.estado = 'borrador' DESC, f.fecha DESC, f.ncf DESC NULLS FIRST`;
 }

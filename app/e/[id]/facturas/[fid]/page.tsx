@@ -9,10 +9,10 @@ import { verPorcentaje } from "@/lib/fiscal";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { puedeVer } from "@/lib/pestanas";
-import { MOTIVOS_608, NOMBRE_NCF, type TipoNcf } from "@/lib/ventas";
+import { ECF_DE, esEcf, MOTIVOS_608, NOMBRE_NCF, type TipoNcf } from "@/lib/ventas";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
-import { anularComprobante, crearNotaCredito, descartarFactura, emitirBorrador } from "../../ventas-acciones";
+import { anularComprobante, crearNotaCredito, descartarFactura, emitirBorrador, registrarEcf } from "../../ventas-acciones";
 import { crearRecurrente } from "../../igualas-acciones";
 import { aplicarAnticipoAccion } from "../../propuestas-acciones";
 import { listarAnticipos } from "@/lib/anticipos";
@@ -29,7 +29,9 @@ type Factura = {
   anulada: boolean; motivo_anulacion: string | null; asiento: number | null; asiento_id: string | null; cliente: string; rnc: string | null;
   direccion: string | null; origen_id: string | null; origen_ncf: string | null; creado_por_id: string; creado_por: string | null;
   emitida_por: string | null; emitida_en: Date | null; saldo: string | null; acuerdo_id: string | null;
+  ecf_codigo: string | null; ecf_firmada: string | null;
 };
+type EmisorEcf = { emisor_ecf: boolean; ecf_desde: string | null; ecf_via: string | null; ecf_proveedor: string | null };
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" }) ?? "";
 
@@ -47,7 +49,8 @@ export default async function VerFactura({ params, searchParams }: {
              to_char(f.vence, 'YYYY-MM-DD') AS vence, f.moneda, f.tasa::text, f.subtotal::text, f.itbis::text, f.otros_impuestos::text,
              f.total::text, f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, c.nombre AS cliente, c.rnc,
              c.direccion, o.id AS origen_id, o.ncf AS origen_ncf, f.creado_por AS creado_por_id, u.nombre AS creado_por,
-             ue.nombre AS emitida_por, f.emitida_en, s.saldo::text, f.acuerdo_id
+             ue.nombre AS emitida_por, f.emitida_en, s.saldo::text, f.acuerdo_id,
+             f.ecf_codigo, to_char(f.ecf_firmada, 'DD/MM/YYYY HH24:MI') AS ecf_firmada
         FROM facturas f JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN asientos a ON a.id = f.asiento_id
         LEFT JOIN facturas o ON o.id = f.factura_origen_id
@@ -81,19 +84,25 @@ export default async function VerFactura({ params, searchParams }: {
     // Anticipos del cliente con saldo (bloque 2c), para aplicarlos a esta factura.
     const [{ cliente_id }] = await tx<{ cliente_id: string }[]>`SELECT cliente_id FROM facturas WHERE id = ${fid}`;
     const anticipos = (await listarAnticipos(tx, cliente_id)).filter((a) => !a.anulado && Number(a.saldo) > 0);
-    return { f, lineas, porImpuesto, movimientos, anticipos, retenciones };
+    const [ecf] = await tx<EmisorEcf[]>`
+      SELECT emisor_ecf, to_char(ecf_desde, 'YYYY-MM-DD') AS ecf_desde, ecf_via, ecf_proveedor FROM empresas WHERE id = ${id}`;
+    return { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf };
   });
   if (!datos) notFound();
-  const { f, lineas, porImpuesto, movimientos, anticipos, retenciones } = datos;
+  const { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf } = datos;
   // Cliente sin contabilidad (n.º 9): no hay pantalla de cobros; el cobro se anota aquí.
   const conCobros = puedeVer(pestanas, "/cobros");
   const borrador = f.estado === "borrador";
-  const esNota = f.tipo_ncf === "B04";
+  const esNota = f.tipo_ncf === "B04" || f.tipo_ncf === "E34";
+  const electronica = esEcf(f.tipo_ncf);
+  // Entrega E1: la empresa emite e-CF fuera del sistema; el borrador se registra con su e-NCF.
+  const dondeEmite = ecf.ecf_via === "gratuito" ? "el Facturador Gratuito de la DGII" : ecf.ecf_proveedor || (ecf.ecf_via === "proveedor" ? "el proveedor" : "el Facturador Gratuito o con el proveedor");
+  const ecfVigente = ecf.emisor_ecf && (!ecf.ecf_desde || f.fecha >= ecf.ecf_desde);
   const simbolo = f.moneda === "USD" ? "US$" : "RD$";
   const saldo = Number(f.saldo ?? 0);
   const fueraDeCierre = !empresa.fecha_bloqueo || f.fecha > empresa.fecha_bloqueo;
   const propioConAprobacion = empresa.requiere_aprobacion && f.creado_por_id === usuario.id;
-  const titulo = esNota ? "Nota de crédito" : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
+  const titulo = esNota ? `Nota de crédito${electronica ? " electrónica" : ""}` : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
   // WhatsApp (bloque 3c): las facturas de la empresa propia a sus clientes (igualas y demás servicios).
   const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id);
   const whatsapp = propia && !borrador && !esNota && !f.anulada && puede(permisos, "exportar");
@@ -182,8 +191,8 @@ export default async function VerFactura({ params, searchParams }: {
           <div className="tarjeta" style={{ marginBottom: 16 }}>
             <div className="fila">
               {puede(permisos, "registrar") && <Link className="boton" href={`/e/${id}/facturas/${fid}/editar`}>Editar</Link>}
-              {puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (
-                <Formulario accion={emitirBorrador.bind(null, id, fid)} boton="Emitir factura" className="fila"><span /></Formulario>
+              {puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (!electronica || f.ncf_externo) && (
+                <Formulario accion={emitirBorrador.bind(null, id, fid)} boton={ecfVigente && !f.ncf_externo ? "Emitir con NCF de serie B" : "Emitir factura"} className="fila"><span /></Formulario>
               )}
               {puede(permisos, "registrar") && (
                 <Formulario accion={descartarFactura.bind(null, id, fid)} boton="Descartar borrador" className="fila"><span /></Formulario>
@@ -191,7 +200,26 @@ export default async function VerFactura({ params, searchParams }: {
             </div>
             {propioConAprobacion && <p className="sub" style={{ margin: "8px 0 0" }}>Este borrador lo registraste tú: en esta empresa debe emitirlo otra persona.</p>}
             {!fueraDeCierre && <p className="aviso" style={{ margin: "8px 0 0" }}>La fecha cae en un período cerrado: cámbiala para poder emitirla.</p>}
+            {ecfVigente && !electronica && !f.ncf_externo && (
+              <p className="aviso" style={{ margin: "8px 0 0" }}>
+                Esta empresa emite factura electrónica{ecf.ecf_desde ? ` desde el ${verFecha(ecf.ecf_desde)}` : ""}: emítela en {dondeEmite} y regístrala abajo con su e-NCF.
+              </p>
+            )}
           </div>
+        )}
+        {borrador && !f.ncf_externo && ECF_DE[f.tipo_ncf] && puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (
+          <details className="tarjeta" style={{ marginBottom: 16 }} open={ecfVigente || undefined}>
+            <summary><strong>Registrar como e-CF emitida</strong> · si la emitiste en {dondeEmite}</summary>
+            <p className="sub">
+              El sistema no envía nada a la DGII: guarda el e-NCF ({ECF_DE[f.tipo_ncf]}) para el IT-1, los reportes y los estados. La factura no va en el 607.
+              Después, adjunta abajo el PDF de la e-CF.
+            </p>
+            <Formulario accion={registrarEcf.bind(null, id, fid)} boton="Registrar e-CF emitida" className="fila">
+              <label style={{ flex: "1 1 200px" }}>e-NCF<input name="encf" required placeholder={`${ECF_DE[f.tipo_ncf]}0000000001`} maxLength={16} style={{ textTransform: "uppercase" }} /></label>
+              <label style={{ width: 170 }}>Código de seguridad<input name="ecf_codigo" maxLength={20} placeholder="Como sale en la factura" /></label>
+              <label>Fecha y hora de firma<input type="datetime-local" name="ecf_firmada" /></label>
+            </Formulario>
+          </details>
         )}
       </div>
 
@@ -203,7 +231,13 @@ export default async function VerFactura({ params, searchParams }: {
           </div>
           <div style={{ textAlign: "right" }}>
             <h2>{borrador ? `Borrador · ${titulo.toLowerCase()}` : titulo}{f.anulada && " (ANULADA)"}</h2>
-            {f.ncf ? <><div>NCF <strong>{f.ncf}</strong></div>{f.ncf_vence ? <div>Válido hasta {verFecha(f.ncf_vence)}</div> : <div className="sub" style={{ margin: 0 }}>NCF del talonario del cliente</div>}</>
+            {f.ncf && electronica ? <>
+                <div>e-NCF <strong>{f.ncf}</strong></div>
+                {f.ecf_codigo && <div>Código de seguridad {f.ecf_codigo}</div>}
+                {f.ecf_firmada && <div>Firmada el {f.ecf_firmada}</div>}
+                <div className="sub" style={{ margin: 0 }}>e-CF emitida fuera del sistema</div>
+              </>
+              : f.ncf ? <><div>NCF <strong>{f.ncf}</strong></div>{f.ncf_vence ? <div>Válido hasta {verFecha(f.ncf_vence)}</div> : <div className="sub" style={{ margin: 0 }}>NCF del talonario del cliente</div>}</>
               : f.ncf_externo ? <div className="sub" style={{ margin: 0 }}>Hecha fuera del sistema: al emitirla conserva el NCF {f.ncf_externo}</div>
               : <div className="sub" style={{ margin: 0 }}>Sin NCF: se asigna al emitir ({f.tipo_ncf})</div>}
           </div>
@@ -287,9 +321,13 @@ export default async function VerFactura({ params, searchParams }: {
         <div className="no-imprimir">
           {!esNota && saldo > 0 && (
             <>
-              <h2>Nota de crédito (B04)</h2>
-              <p className="sub">Para descuentos, devoluciones o corregir un monto. Rebaja el saldo de esta factura (hasta {simbolo} {verMonto(f.saldo)}) y usa la tasa de impuesto de la factura.</p>
-              <Formulario accion={crearNotaCredito.bind(null, id, f.id)} boton="Emitir nota de crédito" className="fila">
+              <h2>Nota de crédito ({electronica ? "E34" : ecfVigente ? "E34 o B04" : "B04"})</h2>
+              <p className="sub">
+                Para descuentos, devoluciones o corregir un monto. Rebaja el saldo de esta factura (hasta {simbolo} {verMonto(f.saldo)}) y usa la tasa de impuesto de la factura.
+                {electronica ? ` Por ser electrónica, la nota es una E34: emítela en ${dondeEmite} y escribe aquí su e-NCF.`
+                  : ecfVigente ? ` Si la emitiste como e-CF en ${dondeEmite}, escribe su e-NCF (E34); si lo dejas vacío, toma un B04 del rango.` : ""}
+              </p>
+              <Formulario accion={crearNotaCredito.bind(null, id, f.id)} boton={electronica ? "Registrar nota de crédito E34" : "Emitir nota de crédito"} className="fila">
                 <label>Fecha<input type="date" name="fecha" defaultValue={hoyISO() < f.fecha ? f.fecha : hoyISO()} min={f.fecha} required /></label>
                 <label style={{ width: 160 }}>Monto sin impuestos<input name="subtotal" inputMode="decimal" required /></label>
                 <label>Impuesto
@@ -298,13 +336,23 @@ export default async function VerFactura({ params, searchParams }: {
                   </select>
                 </label>
                 <label style={{ flex: "1 1 240px" }}>Motivo<input name="motivo" required placeholder="Descuento acordado, devolución…" /></label>
+                {(electronica || ecfVigente) && <>
+                  <label style={{ flex: "1 1 180px" }}>e-NCF de la nota{!electronica && " (si es E34)"}<input name="encf" required={electronica} placeholder="E340000000001" maxLength={16} style={{ textTransform: "uppercase" }} /></label>
+                  <label style={{ width: 160 }}>Código de seguridad<input name="ecf_codigo" maxLength={20} /></label>
+                  <label>Fecha y hora de firma<input type="datetime-local" name="ecf_firmada" /></label>
+                </>}
               </Formulario>
             </>
           )}
           <h2>Anular comprobante</h2>
           {fueraDeCierre ? (
             <>
-              <p className="sub">El NCF queda anulado (va en el 608) y su asiento también. {esNota ? "" : "Solo se puede si no tiene cobros ni notas de crédito vigentes."}</p>
+              <p className="sub">
+                {electronica
+                  ? `Una e-CF no se anula con el 608${esNota ? "" : ": ante la DGII se corrige con una nota de crédito E34 (o con la anulación del Facturador o del proveedor)"}. Anúlala aquí solo si se registró por error. `
+                  : "El NCF queda anulado (va en el 608) y su asiento también. "}
+                {esNota ? "" : "Solo se puede si no tiene cobros ni notas de crédito vigentes."}
+              </p>
               <Formulario accion={anularComprobante.bind(null, id, f.id)} boton="Anular comprobante" className="fila">
                 <label style={{ flex: "1 1 300px" }}>Motivo (608)
                   <select name="motivo" defaultValue="04">

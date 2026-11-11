@@ -28,7 +28,7 @@ export default async function NuevoCobro({ params, searchParams }: {
     cuentasPermuta: (await listarCuentas(tx)).filter((c) => c.de_detalle && c.activa && ["gasto", "costo", "activo"].includes(c.tipo) && !c.codigo.startsWith("1101") && !c.codigo.startsWith("1102")),
     // Bases de las retenciones: el ITBIS facturado y el monto sin impuestos de cada factura.
     bases: Object.fromEntries((await tx<{ id: string; itbis: string; subtotal: string }[]>`
-      SELECT id, itbis::text, subtotal::text FROM facturas WHERE tipo_ncf <> 'B04' AND estado = 'emitida'`).map((r) => [r.id, r])),
+      SELECT id, itbis::text, subtotal::text FROM facturas WHERE tipo_ncf NOT IN ('B04', 'E34') AND estado = 'emitida'`).map((r) => [r.id, r])),
     retenciones: (await listarRetenciones(tx)).filter((r) => r.activo)
       .map(({ id, nombre, impuesto, tasa, vigente_desde, vigente_hasta }) => ({ id, nombre, impuesto, tasa, vigente_desde, vigente_hasta })),
   }));

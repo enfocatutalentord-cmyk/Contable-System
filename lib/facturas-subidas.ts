@@ -5,7 +5,7 @@ import { huella, nombreSeguro } from "./documentos.ts";
 import { listarImpuestos } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
 import { leerNcf, revisarFactura, TIPOS_NCF, type DatosQr, type Marca } from "./validar-fiscal.ts";
-import { guardarBorradorFactura, TIPOS_FACTURA, type TipoFactura } from "./ventas.ts";
+import { esTipoVenta, guardarBorradorFactura, type TipoFactura } from "./ventas.ts";
 
 // Bloque 8, entrega 8b: facturas de ingresos y de gastos que el cliente sube desde la aplicación (documento «Sistema Empire ·
 // Fase 2», sección 3). Recibida → aprobada (pasa a borrador de compra o de venta), rechazada (la sube de nuevo) o desestimada.
@@ -146,16 +146,17 @@ export async function aprobarSubida(tx: Tx, d: {
       lineas: [{ descripcion: `Factura ${n.ncf}`, clase: d.clase, cantidad: 10000n, precio: d.subtotal, cuentaId: null, impuestoIds: [impuesto] }],
     });
   } else {
-    if (!(TIPOS_FACTURA as readonly string[]).includes(n.tipo)) throw new ErrorContable(`Un ${n.tipo} no se registra como venta desde aquí (las electrónicas, a mano en Facturas).`);
+    if (!esTipoVenta(n.tipo)) throw new ErrorContable(`Un ${n.tipo} no se registra como venta desde aquí (las notas de crédito, desde la factura que modifican).`);
     const tipo = n.tipo as TipoFactura;
     let cliente: { id: string } | undefined;
     if (d.rnc) [cliente] = await tx<{ id: string }[]>`SELECT id FROM clientes WHERE rnc = ${d.rnc} AND activo ORDER BY creado LIMIT 1`;
     else [cliente] = await tx<{ id: string }[]>`SELECT id FROM clientes WHERE rnc IS NULL AND lower(nombre) = 'consumidor final' AND activo LIMIT 1`;
     if (!cliente) {
-      if (!d.rnc && tipo !== "B02") throw new ErrorContable(`Para un ${tipo} escribe el RNC o la cédula del cliente.`);
+      if (!d.rnc && tipo !== "B02" && tipo !== "E32") throw new ErrorContable(`Para un ${tipo} escribe el RNC o la cédula del cliente.`);
       [cliente] = await tx<{ id: string }[]>`
         INSERT INTO clientes (empresa_id, nombre, rnc, tipo_identificacion, ncf_predeterminado)
-        VALUES (${d.empresaId}, ${d.rnc ? d.nombre || `Cliente ${d.rnc}` : "Consumidor final"}, ${d.rnc}, ${d.rnc ? (d.rnc.length === 9 ? "rnc" : "cedula") : null}, ${tipo})
+        VALUES (${d.empresaId}, ${d.rnc ? d.nombre || `Cliente ${d.rnc}` : "Consumidor final"}, ${d.rnc}, ${d.rnc ? (d.rnc.length === 9 ? "rnc" : "cedula") : null},
+                ${tipo.startsWith("E") ? `B${{ "31": "01", "32": "02", "44": "14", "45": "15", "46": "16" }[tipo.slice(1)]}` : tipo})
         RETURNING id`;
     }
     facturaId = await guardarBorradorFactura(tx, {
