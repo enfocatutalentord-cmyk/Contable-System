@@ -71,7 +71,7 @@ Notas de infraestructura que costaron tiempo:
   https://github.com/apps/claude/installations/select_target.
 - Las vistas previas de Vercel no sirven para entrar ni registrarse: su base no tiene las migraciones y `GMAIL_CLAVE_APP` y `GEMINI_API_KEY`
   están solo en Production. El 10-nov-2026 alguien intentó crear su cuenta y recuperar la contraseña en una; por eso `app/aviso-vista-previa.tsx`
-  pone una franja dorada con `VERCEL_ENV=preview` y el enlace al sistema real (`e4971e8`, en la rama de trabajo, esperando el «sí» de Patricia para `main`).
+  pone una franja dorada con `VERCEL_ENV=preview` y el enlace al sistema real (`e4971e8`; en `main` y producción el 10-nov-2026, «sí» de Patricia).
 
 ## Arquitectura
 
