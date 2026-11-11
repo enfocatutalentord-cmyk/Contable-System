@@ -6,6 +6,8 @@ import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
 import { CATEGORIAS, ESTADOS, listarRecepciones } from "@/lib/recepciones";
 import { descartarDocumento, procesarDocumento } from "../../documentos-acciones";
+import { iaDisponible } from "@/lib/lectura-ia";
+import { BotonLeerDocumento } from "./leer-ia";
 
 export const metadata = { title: "Documentos recibidos · Empire Tax’N Legal" };
 
@@ -68,6 +70,7 @@ export default async function DocumentosFirma({ params, searchParams }: {
               <details>
                 <summary>Completar y aprobar para el 606 o el 607</summary>
                 <Formulario accion={procesarDocumento.bind(null, fid, r.cliente.id, r.id)} boton="Aprobar">
+                  {iaDisponible() && <BotonLeerDocumento empresaId={r.cliente.id} recepcionId={r.id} />}
                   <div className="fila">
                     <label>Es
                       <select name="tipo" defaultValue="gasto">

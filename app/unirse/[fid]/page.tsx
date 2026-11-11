@@ -38,7 +38,7 @@ export default async function Unirse({ params }: { params: Promise<{ fid: string
                 <label>RNC o cédula (opcional)<input name="identificacion" inputMode="numeric" placeholder="9 u 11 dígitos" /></label>
                 <label style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                   <input type="checkbox" name="acepto" required style={{ minHeight: 0, marginTop: 4 }} />
-                  <span className="sub">Acepto que {f.nombre} guarde estos datos para atenderme y contactarme (Ley 172-13 de protección de datos).</span>
+                  <span className="sub">Acepto que {f.nombre} guarde estos datos para atenderme y contactarme, y que las facturas que suba puedan leerse con un servicio de inteligencia artificial de Google para registrarlas (Ley 172-13 de protección de datos).</span>
                 </label>
               </Formulario>
             </>

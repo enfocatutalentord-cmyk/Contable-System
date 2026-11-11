@@ -745,6 +745,11 @@ No se pasa a la siguiente sin su autorización expresa.
   aprobada y emitida con su NCF (B0200000077), aviso al cliente. En `main` el 6-nov-2026 («sí» de Patricia). Pendiente: probar el QR
   de una factura electrónica real; la 8c (lectura con IA, necesita la llave en Vercel).
   10-nov-2026: la llave `GEMINI_API_KEY` ya está en Vercel (dicho por quien la puso; no se ha probado). Propuesta de la 8c en https://claude.ai/artifact/NgB8mqfADe3maaNrtgaCMn, esperando el «sí» de Patricia y 20 facturas reales de muestra.
+  «sí» de Patricia del 10-nov a la 8c con las recomendadas (botón en la revisión, Gemini 3.5 Flash-Lite, aviso a los clientes). **Entrega 8c · Lectura de facturas con IA** (sin migración; `lib/lectura-ia.ts`,
+  `app/e/[id]/lectura-ia-acciones.ts`, `app/firma/[fid]/documentos/leer-ia.tsx`): `leerFactura` llama por REST a la Interactions API de Gemini (`GEMINI_API_KEY`, `MODELO_IA`, `response_format` con `ESQUEMA`, pensamiento «minimal», 45 s); `interpretar` descarta lo que no tiene forma;
+  `combinar` llena solo lo vacío (lo escrito o el QR se respeta y se avisa) y marca dudas, otra empresa y diferencias. «Leer con IA» y «Leer las pendientes con IA» (hasta 8) en Facturas subidas guardan en `facturas_subidas` y en `marcas` (`origen: 'ia'`, `campo`, en amarillo); en Documentos recibidos el
+  botón llena el formulario en pantalla. Permiso «registrar», no los clientes; cada lectura en `bitacora`. Los botones solo salen con la llave puesta. `/unirse` avisa de la lectura con IA (Patricia revisa el texto; falta en el contrato). `GEMINI_URL_PRUEBA` solo fuera de Vercel, para simular a Gemini.
+  Pruebas `pruebas/lectura-ia.test.mjs` (261 en total). Probado en pantalla con Gemini simulado; **falta la prueba real con 20 facturas en la vista previa**, antes del «sí» para pasar a `main`.
 - **Facturas por correo y normas y tasas** (documento Fase 2, sección 7; propuesta del 6-nov-2026 en
   https://claude.ai/artifact/WYEPeEVe9FffdXZtpUNZbC, esperando el «sí» de Patricia; referentes: «responder a» de la configuración de
   correo de Xero y el límite de Gmail de 500 correos al día). 2 entregas: A «Enviar por correo» en facturas y notas emitidas (correo de la

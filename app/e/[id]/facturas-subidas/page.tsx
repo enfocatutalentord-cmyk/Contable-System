@@ -9,6 +9,8 @@ import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { TIPOS_NCF } from "@/lib/validar-fiscal";
 import { aprobarSubidaAccion, rechazarSubidaAccion, subirFacturaAccion } from "../facturas-subidas-acciones";
+import { leerPendientesConIa, leerSubidaConIa } from "../lectura-ia-acciones";
+import { iaDisponible } from "@/lib/lectura-ia";
 import { SubirFactura } from "./subir";
 
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" });
@@ -28,6 +30,10 @@ export default async function FacturasSubidas({ params, searchParams }: { params
   const sube = puede(permisos, "adjuntar");
   const revisa = !paraClientes && puede(permisos, "registrar");
   const doc = (did: string) => `/e/${id}/documentos/${did}`;
+  const ia = revisa && iaDisponible();
+  // Amarillo: un dato que la IA marcó como dudoso o distinto de lo que había (8c).
+  const dudoso = (f: (typeof lista)[number], campo: string) =>
+    (f.marcas as { origen?: string; campo?: string }[]).some((m) => m.origen === "ia" && m.campo === campo) ? { background: "#FFF3C4" } : undefined;
 
   const resumen = (
     <div className="cifras">
@@ -96,6 +102,9 @@ export default async function FacturasSubidas({ params, searchParams }: { params
         </details>
       )}
 
+      {ia && filtro === "recibida" && lista.some((f) => f.documento) && (
+        <div style={{ marginBottom: 12 }}><Formulario accion={leerPendientesConIa.bind(null, id)} boton="Leer las pendientes con IA" className="fila"><span className="sub">Lee hasta 8 a la vez, solo las que tienen datos vacíos. Nada se aprueba solo.</span></Formulario></div>
+      )}
       {lista.length === 0 && <p className="sub">No hay facturas en «{FILTROS[filtro]}».</p>}
       {lista.map((f) => (
         <section key={f.id} className="tarjeta" style={{ marginBottom: 12 }}>
@@ -115,16 +124,17 @@ export default async function FacturasSubidas({ params, searchParams }: { params
           )}
           {f.estado === "recibida" && revisa ? (
             <>
-              <Formulario accion={aprobarSubidaAccion.bind(null, id, f.id)} boton="Aprobar">
+              {ia && f.documento && <div style={{ marginBottom: 8 }}><Formulario accion={leerSubidaConIa.bind(null, id, f.id)} boton="Leer con IA" className="fila"><span /></Formulario></div>}
+              <Formulario key={[f.rnc_contraparte, f.nombre_contraparte, f.ncf, f.fecha, f.subtotal, f.itbis].join("|")} accion={aprobarSubidaAccion.bind(null, id, f.id)} boton="Aprobar">
                 <div className="fila">
-                  <label style={{ flex: "1 1 150px" }}>{f.tipo === "gasto" ? "RNC del proveedor" : "RNC del cliente"}<input name="rnc" defaultValue={f.rnc_contraparte ?? ""} inputMode="numeric" /></label>
-                  <label style={{ flex: "2 1 200px" }}>Nombre<input name="nombre" defaultValue={f.nombre_contraparte ?? ""} maxLength={200} /></label>
-                  <label style={{ flex: "1 1 160px" }}>NCF<input name="ncf" defaultValue={f.ncf ?? ""} required /></label>
-                  <label>Fecha<input type="date" name="fecha" defaultValue={f.fecha ?? ""} required /></label>
+                  <label style={{ flex: "1 1 150px" }}>{f.tipo === "gasto" ? "RNC del proveedor" : "RNC del cliente"}<input name="rnc" defaultValue={f.rnc_contraparte ?? ""} inputMode="numeric" style={dudoso(f, "rnc")} /></label>
+                  <label style={{ flex: "2 1 200px" }}>Nombre<input name="nombre" defaultValue={f.nombre_contraparte ?? ""} maxLength={200} style={dudoso(f, "nombre")} /></label>
+                  <label style={{ flex: "1 1 160px" }}>NCF<input name="ncf" defaultValue={f.ncf ?? ""} required style={dudoso(f, "ncf")} /></label>
+                  <label>Fecha<input type="date" name="fecha" defaultValue={f.fecha ?? ""} required style={dudoso(f, "fecha")} /></label>
                 </div>
                 <div className="fila">
-                  <label style={{ width: 140 }}>Subtotal<input name="subtotal" inputMode="decimal" defaultValue={f.subtotal ?? ""} required /></label>
-                  <label style={{ width: 140 }}>ITBIS<input name="itbis" inputMode="decimal" defaultValue={f.itbis ?? "0.00"} /></label>
+                  <label style={{ width: 140 }}>Subtotal<input name="subtotal" inputMode="decimal" defaultValue={f.subtotal ?? ""} required style={dudoso(f, "subtotal")} /></label>
+                  <label style={{ width: 140 }}>ITBIS<input name="itbis" inputMode="decimal" defaultValue={f.itbis ?? "0.00"} style={dudoso(f, "itbis")} /></label>
                   {f.tipo === "gasto" && <>
                     <label style={{ flex: "2 1 240px" }}>Tipo de gasto del 606
                       <select name="tipo_gasto" defaultValue="02">{Object.entries(TIPOS_GASTO).map(([k, t]) => <option key={k} value={k}>{k} · {t}</option>)}</select>
