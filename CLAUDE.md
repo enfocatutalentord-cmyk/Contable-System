@@ -418,7 +418,9 @@ No se pasa a la siguiente sin su autorización expresa.
   descarga del XML firmado (`/facturas/[fid]/ecf/[eid]`). Los XSD oficiales traen un tipo sin definir (`IndicadorServicioTodoIncluidoType`
   en e-CF 31): para validar se usa una copia local con ese tipo como entero. Pruebas `pruebas/ecf-firma.test.mjs` (282 en total) con un
   certificado de prueba generado ahí. Probado en pantalla: certificado de prueba guardado, conexión real rechazada con el mensaje claro y
-  XML E31 de una iguala válido contra el XSD. Falta: el envío real (depende de la conexión) y probarlo con el certificado de Patricia.
+  XML E31 de una iguala válido contra el XSD. En `main` y producción el 11-nov-2026 («sí» de Patricia, `6effb25`, migración 055
+  aplicada). `ECF_LLAVE` todavía no está en Vercel (la pantalla lo avisa). Falta: la llave, el envío real (depende de la conexión) y
+  probarlo con el certificado de Patricia.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
