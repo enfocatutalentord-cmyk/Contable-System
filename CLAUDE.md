@@ -744,6 +744,7 @@ No se pasa a la siguiente sin su autorización expresa.
   total). Probado en pantalla: QR leído de una imagen de prueba, foto sola, lista de la firma, aprobar a compra, rechazar con motivo, venta
   aprobada y emitida con su NCF (B0200000077), aviso al cliente. En `main` el 6-nov-2026 («sí» de Patricia). Pendiente: probar el QR
   de una factura electrónica real; la 8c (lectura con IA, necesita la llave en Vercel).
+  10-nov-2026: la llave `GEMINI_API_KEY` ya está en Vercel (dicho por quien la puso; no se ha probado). Propuesta de la 8c en https://claude.ai/artifact/NgB8mqfADe3maaNrtgaCMn, esperando el «sí» de Patricia y 20 facturas reales de muestra.
 - **Facturas por correo y normas y tasas** (documento Fase 2, sección 7; propuesta del 6-nov-2026 en
   https://claude.ai/artifact/WYEPeEVe9FffdXZtpUNZbC, esperando el «sí» de Patricia; referentes: «responder a» de la configuración de
   correo de Xero y el límite de Gmail de 500 correos al día). 2 entregas: A «Enviar por correo» en facturas y notas emitidas (correo de la
