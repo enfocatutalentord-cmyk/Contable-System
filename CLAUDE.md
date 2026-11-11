@@ -392,6 +392,12 @@ No se pasa a la siguiente sin su autorización expresa.
   Patricia elija proveedor. 11-nov-2026: el certificado .p12 (DigiFirma, Cámara de Comercio de Santo Domingo, «procedimientos
   tributarios») está a nombre de Patricia Paulino como persona física, vigente del 11-nov-2026 al 11-nov-2027. Se compartió en el chat:
   no se guardó en el sistema ni en el repositorio y no se debe guardar. Cada cliente necesita el certificado de su propio representante.
+  11-nov-2026: Patricia decidió que **Empire sea su propio emisor** (software desarrollado internamente, sin PSFE externo) y pedirá el
+  cambio desde el Facturador Gratuito en la plataforma de la DGII. Propuesta E2 en https://claude.ai/artifact/QhSBZYs7YKycoRnzbHiHoY,
+  esperando su «sí»: E2a certificado cifrado (llave en Vercel) + XML E31/E32/E34 + firma XMLDSig RSA-SHA256 + semilla/token + envío a
+  TesteCF; E2b demás tipos, RFCE (< RD$250,000), anulación, factura impresa con QR, servicios propios /fe/recepcion/api/ecf y
+  /fe/aprobacioncomercial/api/ecf; E2c set de pruebas en CerteCF y declaración jurada; E2d proveedor para clientes (después). Documentos
+  técnicos oficiales en la sección «Documentación sobre e-CF» de dgii.gov.do (se bajan con curl y se leen con pypdf).
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
