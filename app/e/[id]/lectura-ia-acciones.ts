@@ -72,7 +72,7 @@ export async function leerPendientesConIa(empresaId: string): Promise<Estado> {
     if (!filas.length) return { ok: "No hay facturas por leer." };
     let bien = 0; const fallos: string[] = [];
     for (const f of filas.slice(0, MAX_LOTE)) {
-      try { await leerUna(empresaId, usuario.id, f.id); bien++; } catch (e) { fallos.push(mensaje(e)); if (e instanceof ErrorLectura && /cupo|llave|hablar/.test(e.message)) break; }
+      try { await leerUna(empresaId, usuario.id, f.id); bien++; } catch (e) { fallos.push(mensaje(e)); if (e instanceof ErrorLectura && /cupo|llave|hablar|saturado/.test(e.message)) break; }
     }
     revalidatePath(`/e/${empresaId}/facturas-subidas`);
     const quedan = filas.length - bien - fallos.length;
