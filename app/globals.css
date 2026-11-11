@@ -75,6 +75,9 @@ h3 { color: var(--titulo); }
 .menu .grupo.separada { margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 14px; }
 .etiqueta-prime { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--dorado); color: #fff;
   font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; vertical-align: middle; }
+/* Solo en las vistas previas de Vercel */
+.franja-vista-previa { position: sticky; top: 0; z-index: 1000; padding: 10px 16px; background: var(--dorado); color: #14110a; text-align: center; font-size: 0.95rem; line-height: 1.35; }
+.franja-vista-previa a { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }
 /* Secciones del menú con desplegable (rediseño R1) */
 .menu .seccion { border-top: 1px solid rgba(255, 255, 255, 0.16); }
 .menu .seccion:first-of-type { border-top: 0; }

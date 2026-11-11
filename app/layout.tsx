@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AvisoVistaPrevia } from "./aviso-vista-previa";
 import { PRODUCTO } from "./marca";
 import "./globals.css";
 
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body>{children}</body>
+      <body><AvisoVistaPrevia />{children}</body>
     </html>
   );
 }
