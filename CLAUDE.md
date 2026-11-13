@@ -421,6 +421,12 @@ No se pasa a la siguiente sin su autorización expresa.
   XML E31 de una iguala válido contra el XSD. En `main` y producción el 11-nov-2026 («sí» de Patricia, `6effb25`, migración 055
   aplicada). `ECF_LLAVE` todavía no está en Vercel (la pantalla lo avisa). Falta: la llave, el envío real (depende de la conexión) y
   probarlo con el certificado de Patricia.
+  13-nov-2026: Joannie mandó una nota de voz de un asesor (transcrita en local con faster-whisper): cada empresa que facture con el
+  sistema necesita su propio certificado; el sistema se «parametriza» por empresa (login, usuario, certificado y módulo de facturación).
+  Eso ya es el diseño de la E2a (un certificado activo por empresa, con RLS). Falta para que los clientes emitan: darles a sus usuarios
+  la pantalla de facturas y el permiso de emitir (hoy «Cliente · Con aplicación» no la tiene), y que cada cliente pase su propia
+  certificación ante la DGII con el sistema, o la versión corta cuando Empire sea proveedor certificado (E2d). Pedido de Joannie:
+  que cada usuario tenga su acceso para emitir; aclarado que el certificado es de la empresa y lo usan todos sus usuarios con permiso.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
