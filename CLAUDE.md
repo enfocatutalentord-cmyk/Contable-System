@@ -427,6 +427,11 @@ No se pasa a la siguiente sin su autorización expresa.
   la pantalla de facturas y el permiso de emitir (hoy «Cliente · Con aplicación» no la tiene), y que cada cliente pase su propia
   certificación ante la DGII con el sistema, o la versión corta cuando Empire sea proveedor certificado (E2d). Pedido de Joannie:
   que cada usuario tenga su acceso para emitir; aclarado que el certificado es de la empresa y lo usan todos sus usuarios con permiso.
+  Matiz del «Instructivo Delegaciones de Roles» de la DGII (v2.0, jun-2025): la empresa delega en personas físicas (representantes en su
+  RNC) los roles Administrador, Solicitante, Firmante y Aprobador comercial; cada firmante usa su propio certificado. Propuesta en
+  https://claude.ai/artifact/Q6TF4cexYp3gY6jackzKhh, esperando el «sí» de Patricia: E3a (sin DGII) rol «Cliente · Factura», certificado
+  por usuario («Mi certificado», cifrado, uno principal por empresa), registro de quién emitió y con qué certificado; E3b emisión real
+  para clientes tras E2b/E2c; E2d Empire proveedor.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
