@@ -11,41 +11,82 @@ import { aCentavos } from "./montos.ts";
 
 export const CERT_MAXIMO = 100 * 1024; // un .p12 pesa unos pocos KB
 
-export type CertificadoGuardado = { id: string; titular: string; identificacion: string | null; emisor: string | null; valido_desde: string; vence: string; subido_en: Date; subido_por: string | null };
+// Entrega E3a: cada persona que firma tiene su propio certificado en cada empresa (rol Firmante de la DGII). El principal es el que su
+// dueño deja usar a los demás usuarios de esa empresa que no tienen uno propio.
+export type CertificadoGuardado = {
+  id: string; usuario_id: string; usuario: string | null; principal: boolean; titular: string; identificacion: string | null; emisor: string | null;
+  valido_desde: string; vence: string; subido_en: Date; subido_por: string | null;
+};
 
-export async function certificadoActivo(tx: Tx): Promise<CertificadoGuardado | null> {
-  const [c] = await tx<CertificadoGuardado[]>`
-    SELECT c.id, c.titular, c.identificacion, c.emisor, to_char(c.valido_desde, 'YYYY-MM-DD') AS valido_desde, to_char(c.vence, 'YYYY-MM-DD') AS vence,
-           c.subido_en, u.nombre AS subido_por
-      FROM certificados_ecf c LEFT JOIN usuarios u ON u.id = c.subido_por WHERE c.activo`;
-  return c ?? null;
+// Certificados guardados en la empresa: el principal primero.
+export async function certificadosDeEmpresa(tx: Tx): Promise<CertificadoGuardado[]> {
+  return tx<CertificadoGuardado[]>`
+    SELECT c.id, c.usuario_id, du.nombre AS usuario, c.principal, c.titular, c.identificacion, c.emisor,
+           to_char(c.valido_desde, 'YYYY-MM-DD') AS valido_desde, to_char(c.vence, 'YYYY-MM-DD') AS vence, c.subido_en, u.nombre AS subido_por
+      FROM certificados_ecf c LEFT JOIN usuarios du ON du.id = c.usuario_id LEFT JOIN usuarios u ON u.id = c.subido_por
+     WHERE c.activo ORDER BY c.principal DESC, du.nombre`;
 }
 
-// Sube el .p12: se abre con su contraseña para comprobarlo y se guardan ambos cifrados. Reemplaza al anterior.
-export async function guardarCertificado(tx: Tx, d: { empresaId: string; usuarioId: string; bytes: Uint8Array; clave: string; hoy: string }): Promise<Certificado> {
+export async function miCertificado(tx: Tx, usuarioId: string): Promise<CertificadoGuardado | null> {
+  return (await certificadosDeEmpresa(tx)).find((c) => c.usuario_id === usuarioId) ?? null;
+}
+
+// El principal de la empresa (el que firma por quien no tiene uno propio).
+export async function certificadoActivo(tx: Tx): Promise<CertificadoGuardado | null> {
+  return (await certificadosDeEmpresa(tx)).find((c) => c.principal) ?? null;
+}
+
+async function otroPrincipal(tx: Tx, usuarioId: string) {
+  const [o] = await tx<{ titular: string }[]>`SELECT titular FROM certificados_ecf WHERE activo AND principal AND usuario_id <> ${usuarioId}`;
+  if (o) throw new ErrorContable(`El certificado principal de esta empresa ya es el de ${o.titular}; su dueño tiene que dejar de compartirlo primero`);
+}
+
+// Sube el .p12 de quien lo sube: se abre con su contraseña para comprobarlo y se guardan ambos cifrados. Reemplaza el suyo anterior
+// (si ese era el principal, el nuevo lo sigue siendo). «principal»: además lo deja usar a los demás usuarios de la empresa.
+export async function guardarCertificado(tx: Tx, d: { empresaId: string; usuarioId: string; bytes: Uint8Array; clave: string; hoy: string; principal?: boolean }): Promise<Certificado> {
   if (!d.bytes.length) throw new ErrorContable("Elige el archivo .p12 del certificado");
   if (d.bytes.length > CERT_MAXIMO) throw new ErrorContable("El archivo es demasiado grande para ser un certificado .p12");
   const c = leerP12(d.bytes, d.clave);
   if (!vigente(c, d.hoy)) throw new ErrorContable(`El certificado no está vigente (válido del ${c.desde} al ${c.vence})`);
-  await tx`UPDATE certificados_ecf SET activo = false, retirado_por = ${d.usuarioId}, retirado_en = now() WHERE activo`;
+  const [antes] = await tx<{ principal: boolean }[]>`
+    UPDATE certificados_ecf SET activo = false, retirado_por = ${d.usuarioId}, retirado_en = now()
+     WHERE activo AND usuario_id = ${d.usuarioId} RETURNING principal`;
+  const principal = !!antes?.principal || !!d.principal;
+  if (principal) await otroPrincipal(tx, d.usuarioId);
   await tx`
-    INSERT INTO certificados_ecf (empresa_id, archivo, clave, titular, identificacion, emisor, valido_desde, vence, subido_por)
-    VALUES (${d.empresaId}, ${cifrar(d.bytes)}, ${cifrar(Buffer.from(d.clave, "utf8"))}, ${c.titular}, ${c.identificacion}, ${c.emisor},
-            ${c.desde}, ${c.vence}, ${d.usuarioId})`;
-  await bitacora(tx, d.empresaId, d.usuarioId, "certificado_ecf_guardado", { titular: c.titular, vence: c.vence });
+    INSERT INTO certificados_ecf (empresa_id, usuario_id, principal, archivo, clave, titular, identificacion, emisor, valido_desde, vence, subido_por)
+    VALUES (${d.empresaId}, ${d.usuarioId}, ${principal}, ${cifrar(d.bytes)}, ${cifrar(Buffer.from(d.clave, "utf8"))}, ${c.titular}, ${c.identificacion},
+            ${c.emisor}, ${c.desde}, ${c.vence}, ${d.usuarioId})`;
+  await bitacora(tx, d.empresaId, d.usuarioId, "certificado_ecf_guardado", { titular: c.titular, vence: c.vence, principal });
   return c;
 }
 
-export async function retirarCertificado(tx: Tx, d: { empresaId: string; usuarioId: string }) {
-  const r = await tx`UPDATE certificados_ecf SET activo = false, retirado_por = ${d.usuarioId}, retirado_en = now() WHERE activo`;
-  if (!r.count) throw new ErrorContable("No hay certificado guardado");
-  await bitacora(tx, d.empresaId, d.usuarioId, "certificado_ecf_retirado", {});
+// Solo el dueño del certificado lo comparte o deja de compartirlo.
+export async function compartirCertificado(tx: Tx, d: { empresaId: string; usuarioId: string; principal: boolean }) {
+  if (d.principal) await otroPrincipal(tx, d.usuarioId);
+  const r = await tx`UPDATE certificados_ecf SET principal = ${d.principal} WHERE activo AND usuario_id = ${d.usuarioId}`;
+  if (!r.count) throw new ErrorContable("No tienes un certificado guardado en esta empresa");
+  await bitacora(tx, d.empresaId, d.usuarioId, "certificado_ecf_principal", { principal: d.principal });
 }
 
-export async function abrirCertificado(tx: Tx): Promise<Certificado> {
-  const [c] = await tx<{ archivo: Buffer; clave: Buffer }[]>`SELECT archivo, clave FROM certificados_ecf WHERE activo`;
-  if (!c) throw new ErrorContable("Sube primero el certificado en Perfil fiscal › Factura electrónica");
-  return leerP12(descifrar(c.archivo), descifrar(c.clave).toString("utf8"));
+// Retira un certificado: el suyo, o el de otra persona con el permiso «empresa» (por ejemplo, alguien que ya no está en la empresa).
+export async function retirarCertificado(tx: Tx, d: { empresaId: string; usuarioId: string; certificadoId?: string; deOtros?: boolean }) {
+  const r = await tx<{ titular: string }[]>`
+    UPDATE certificados_ecf SET activo = false, principal = false, retirado_por = ${d.usuarioId}, retirado_en = now()
+     WHERE activo AND ${d.certificadoId ? tx`id = ${d.certificadoId}` : tx`usuario_id = ${d.usuarioId}`}
+       AND (${!!d.deOtros}::boolean OR usuario_id = ${d.usuarioId}) RETURNING titular`;
+  if (!r.length) throw new ErrorContable(d.certificadoId ? "Ese certificado no está guardado o no es tuyo" : "No tienes un certificado guardado");
+  await bitacora(tx, d.empresaId, d.usuarioId, "certificado_ecf_retirado", { titular: r[0].titular });
+}
+
+// Certificado con el que firma una persona: el suyo; si no tiene, el principal de la empresa.
+export type CertificadoParaFirmar = { id: string; titular: string; propio: boolean; cert: Certificado };
+export async function abrirCertificado(tx: Tx, usuarioId: string): Promise<CertificadoParaFirmar> {
+  const [c] = await tx<{ id: string; titular: string; usuario_id: string; archivo: Buffer; clave: Buffer }[]>`
+    SELECT id, titular, usuario_id, archivo, clave FROM certificados_ecf
+     WHERE activo AND (usuario_id = ${usuarioId} OR principal) ORDER BY (usuario_id = ${usuarioId}) DESC LIMIT 1`;
+  if (!c) throw new ErrorContable("No tienes certificado para firmar: súbelo en «Mi certificado», o pide al dueño del certificado principal de la empresa que lo comparta");
+  return { id: c.id, titular: c.titular, propio: c.usuario_id === usuarioId, cert: leerP12(descifrar(c.archivo), descifrar(c.clave).toString("utf8")) };
 }
 
 export async function guardarAmbiente(tx: Tx, d: { empresaId: string; usuarioId: string; ambiente: string | null }) {
@@ -131,8 +172,9 @@ export async function xmlDePrueba(tx: Tx, d: { empresaId: string; usuarioId: str
   if (!tipo) throw new ErrorContable(`El ${tipo_ncf} llega en la entrega E2b`);
   const { encf, vence } = await encfDePrueba(tx, tipo);
   const datos = await datosDeFactura(tx, d.facturaId, encf, vence);
-  const cert = await abrirCertificado(tx);
-  if (!vigente(cert, d.ahora.toISOString().slice(0, 10))) throw new ErrorContable(`El certificado venció el ${cert.vence}`);
+  const firmante = await abrirCertificado(tx, d.usuarioId);
+  const cert = firmante.cert;
+  if (!vigente(cert, d.ahora.toISOString().slice(0, 10))) throw new ErrorContable(`El certificado de ${firmante.titular} venció el ${cert.vence}`);
   const firma = fechaHoraFirma(d.ahora);
   let xml: string;
   try {
@@ -144,24 +186,25 @@ export async function xmlDePrueba(tx: Tx, d: { empresaId: string; usuarioId: str
   if (!firmaValida(xml, cert.certPem)) throw new ErrorContable("La firma del XML no se pudo verificar");
   const codigo = codigoSeguridad(xml);
   const [{ id }] = await tx<{ id: string }[]>`
-    INSERT INTO ecf_envios (empresa_id, factura_id, ambiente, encf, prueba, xml, codigo_seguridad, fecha_firma, creado_por)
-    VALUES (${d.empresaId}, ${d.facturaId}, ${ambiente}, ${encf}, true, ${xml}, ${codigo}, ${firma}, ${d.usuarioId}) RETURNING id`;
-  await bitacora(tx, d.empresaId, d.usuarioId, "ecf_xml_prueba", { encf, codigo });
-  return { id, encf, codigo, firma };
+    INSERT INTO ecf_envios (empresa_id, factura_id, ambiente, encf, prueba, xml, codigo_seguridad, fecha_firma, creado_por, certificado_id, firmante)
+    VALUES (${d.empresaId}, ${d.facturaId}, ${ambiente}, ${encf}, true, ${xml}, ${codigo}, ${firma}, ${d.usuarioId}, ${firmante.id}, ${firmante.titular}) RETURNING id`;
+  await bitacora(tx, d.empresaId, d.usuarioId, "ecf_xml_prueba", { encf, codigo, firmante: firmante.titular });
+  return { id, encf, codigo, firma, firmante: firmante.titular };
 }
 
 export async function enviosDeFactura(tx: Tx, facturaId: string) {
-  return tx<{ id: string; encf: string; ambiente: string; prueba: boolean; codigo_seguridad: string; fecha_firma: string; estado: string; creado_en: Date }[]>`
-    SELECT id, encf, ambiente, prueba, codigo_seguridad, fecha_firma, estado, creado_en FROM ecf_envios
-     WHERE factura_id = ${facturaId} ORDER BY creado_en DESC LIMIT 10`;
+  return tx<{ id: string; encf: string; ambiente: string; prueba: boolean; codigo_seguridad: string; fecha_firma: string; estado: string; creado_en: Date; firmante: string | null; usuario: string | null }[]>`
+    SELECT v.id, v.encf, v.ambiente, v.prueba, v.codigo_seguridad, v.fecha_firma, v.estado, v.creado_en, v.firmante, u.nombre AS usuario
+      FROM ecf_envios v LEFT JOIN usuarios u ON u.id = v.creado_por
+     WHERE v.factura_id = ${facturaId} ORDER BY v.creado_en DESC LIMIT 10`;
 }
 
 // Prueba de conexión: pide la semilla a la DGII, la firma con el certificado y la cambia por el token.
 export async function probarConexion(tx: Tx, d: { empresaId: string; usuarioId: string }, o: Opciones = {}): Promise<string> {
   const [emp] = await tx<{ ecf_ambiente: string | null }[]>`SELECT ecf_ambiente FROM empresas WHERE id = ${d.empresaId}`;
   const ambiente = (emp?.ecf_ambiente ?? "testecf") as Ambiente;
-  const cert = await abrirCertificado(tx);
+  const { cert, titular } = await abrirCertificado(tx, d.usuarioId);
   const t = await obtenerToken(ambiente, cert, o);
-  await bitacora(tx, d.empresaId, d.usuarioId, "ecf_conexion_ok", { ambiente });
-  return t.expira ? `La DGII aceptó el certificado; el permiso vence ${t.expira}.` : "La DGII aceptó el certificado.";
+  await bitacora(tx, d.empresaId, d.usuarioId, "ecf_conexion_ok", { ambiente, firmante: titular });
+  return `La DGII aceptó el certificado de ${titular}${t.expira ? `; el permiso vence ${t.expira}` : ""}.`;
 }

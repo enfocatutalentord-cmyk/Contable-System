@@ -14,7 +14,7 @@ export const PESTANAS_CLIENTE: Seccion[] = [
   // Solo en la empresa propia y solo para el rol Administrador (bloque 7a): lo personal de la socia.
   { grupo: "Cuenta de la socia", enlaces: [["/salidas", "Registrar salidas"], ["/socia", "Cuenta de la socia"]] },
   { grupo: "Reportes", enlaces: [["/reportes", "Centro de reportes"], ["/diario", "Libro diario"], ["/mayor", "Libro mayor"], ["/balanza", "Balanza de comprobación"], ["/estados", "Estados financieros"]] },
-  { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"]] },
+  { grupo: "Impuestos", enlaces: [["/dgii", "Reportes DGII"], ["/comprobantes", "Comprobantes NCF"], ["/fiscal", "Perfil fiscal"], ["/certificado", "Mi certificado de firma"]] },
   {
     grupo: "Configuración del cliente",
     enlaces: [["/empresa", "Ficha de la empresa"], ["/catalogo", "Catálogo de cuentas"], ["/configuracion", "Configuración de cuentas"],

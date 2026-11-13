@@ -9,7 +9,7 @@ import { CATALOGO_RD, nivelDeCodigo, TIPO_POR_CLASE } from "../lib/catalogo-rd.t
 import { leerP12 } from "../lib/ecf-certificado.ts";
 import { cifrar, descifrar, hayLlave, nuevaLlave } from "../lib/ecf-cifrado.ts";
 import { consultarResultado, enviarEcf, ErrorDgii, obtenerToken } from "../lib/ecf-dgii.ts";
-import { certificadoActivo, datosDeFactura, guardarCertificado, probarConexion, xmlDePrueba } from "../lib/ecf-emision.ts";
+import { abrirCertificado, certificadoActivo, certificadosDeEmpresa, compartirCertificado, datosDeFactura, guardarCertificado, miCertificado, probarConexion, retirarCertificado, xmlDePrueba } from "../lib/ecf-emision.ts";
 import { codigoSeguridad, firmaValida, firmarXml } from "../lib/ecf-firma.ts";
 import { armarXml, calcularTotales, enlaceQr, escapar, fechaHoraFirma, revisarEcf } from "../lib/ecf-xml.ts";
 import { guardarBorradorFactura } from "../lib/ventas.ts";
@@ -127,7 +127,7 @@ const url = process.env.DATABASE_URL;
 const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : null;
 const conBase = { skip: !sql && "sin DATABASE_URL" };
 const marca = Date.now();
-let ana, firma, empresa, imp, cliente;
+let ana, beto, firma, empresa, imp, cliente;
 const leer = (fn) => sql.begin(async (tx) => {
   await tx`SELECT set_config('app.empresa_id', ${empresa}, true)`;
   await tx`SELECT set_config('app.usuario_id', ${ana}, true)`;
@@ -139,6 +139,7 @@ const padre = (c) => (c.length === 1 ? null : c.length === 2 ? c[0] : c.slice(0,
 before(async () => {
   if (!sql) return;
   [{ id: ana }] = await sql`INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${`ana-e2a-${marca}@x.do`}, 'Ana', 'x') RETURNING id`;
+  [{ id: beto }] = await sql`INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${`beto-e3a-${marca}@x.do`}, 'Beto', 'x') RETURNING id`;
   await sql.begin(async (tx) => {
     [{ id: firma }] = await tx`INSERT INTO firmas (nombre) VALUES (${`Firma E2a ${marca}`}) RETURNING id`;
     [{ id: empresa }] = await tx`INSERT INTO empresas (nombre, firma_id, rnc, direccion, lleva_contabilidad) VALUES ('Empire Prueba SRL', ${firma}, '133097346', 'Plaza Coral Garden, local K01', true) RETURNING id`;
@@ -164,7 +165,7 @@ after(async () => {
   try {
     await sql`DELETE FROM empresas WHERE id = ${empresa}`;
     await sql`DELETE FROM firmas WHERE id = ${firma}`;
-    await sql`DELETE FROM usuarios WHERE id = ${ana}`;
+    await sql`DELETE FROM usuarios WHERE id IN (${ana}, ${beto})`;
   } finally {
     await sql.end();
   }
@@ -174,10 +175,12 @@ test("certificado guardado cifrado: se abre con la llave, no con otra, y reempla
   await assert.rejects(leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: ana, bytes: P12, clave: "mala", hoy: "2026-11-15" })), /contraseña/);
   const vencido = p12DePrueba("c", "2026-06-01");
   await assert.rejects(leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: ana, bytes: vencido, clave: "c", hoy: "2026-11-15" })), /no está vigente/);
-  await leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: ana, bytes: P12, clave: "clave-prueba", hoy: "2026-11-15" }));
+  await leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: ana, bytes: P12, clave: "clave-prueba", hoy: "2026-11-15", principal: true }));
+  // Al reemplazarlo sigue siendo el principal.
   await leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: ana, bytes: P12, clave: "clave-prueba", hoy: "2026-11-15" }));
   const c = await leer((tx) => certificadoActivo(tx));
   assert.equal(c.titular, "PERSONA DE PRUEBA");
+  assert.equal(c.usuario_id, ana);
   const filas = await leer((tx) => tx`SELECT activo, archivo, clave FROM certificados_ecf`);
   assert.deepEqual(filas.map((f) => f.activo).sort(), [false, true]);
   assert.ok(!filas[0].archivo.equals(P12), "el archivo no está en claro");
@@ -217,4 +220,44 @@ test("probar conexión con la DGII simulada: usa el certificado guardado y el am
   const texto = await leer((tx) => probarConexion(tx, { empresaId: empresa, usuarioId: ana }, { pedir: dgiiSimulada(r) }));
   assert.match(texto, /aceptó el certificado/);
   assert.match(r[0].url, /\/testecf\//);
+});
+
+// ───── Entrega E3a: un certificado por firmante ─────
+test("E3a: cada usuario firma con el suyo; sin uno propio, con el principal compartido", conBase, async () => {
+  const xmlDe = async (usuarioId) => {
+    const facturaId = await leer((tx) => guardarBorradorFactura(tx, {
+      empresaId: empresa, usuarioId, clienteId: cliente, tipo: "B01", fecha: "2026-11-15", vence: "2026-11-15", moneda: "DOP", tasa: 10000n, notas: null,
+      lineas: [{ servicioId: null, descripcion: "Servicio", cantidad: 10000n, precio: 100000n, impuestoIds: [imp["ITBIS 18 %"]] }],
+    }));
+    const r = await leer((tx) => xmlDePrueba(tx, { empresaId: empresa, usuarioId, facturaId, ahora: new Date("2026-11-15T14:30:05Z") }));
+    const [v] = await leer((tx) => tx`SELECT creado_por, certificado_id, firmante FROM ecf_envios WHERE id = ${r.id}`);
+    return v;
+  };
+  const deAna = await leer((tx) => miCertificado(tx, ana));
+  // Beto no tiene certificado: firma con el principal de Ana, y queda que lo hizo él con el certificado de ella.
+  assert.equal(await leer((tx) => miCertificado(tx, beto)), null);
+  let v = await xmlDe(beto);
+  assert.deepEqual([v.creado_por, v.certificado_id, v.firmante], [beto, deAna.id, "PERSONA DE PRUEBA"]);
+  // Beto sube el suyo: firma con él. No puede compartirlo mientras Ana comparta el de ella.
+  const otro = p12DePrueba("otra");
+  await assert.rejects(leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: beto, bytes: otro, clave: "otra", hoy: "2026-11-15", principal: true })), /ya es el de/);
+  await leer((tx) => guardarCertificado(tx, { empresaId: empresa, usuarioId: beto, bytes: otro, clave: "otra", hoy: "2026-11-15" }));
+  const deBeto = await leer((tx) => miCertificado(tx, beto));
+  v = await xmlDe(beto);
+  assert.equal(v.certificado_id, deBeto.id);
+  assert.equal((await leer((tx) => certificadosDeEmpresa(tx))).length, 2);
+  // Beto no retira el de Ana sin el permiso «empresa»; con él, sí.
+  await assert.rejects(leer((tx) => retirarCertificado(tx, { empresaId: empresa, usuarioId: beto, certificadoId: deAna.id })), /no es tuyo/);
+  // Ana deja de compartirlo: Beto sigue con el suyo; sin el suyo, ya no puede firmar.
+  await leer((tx) => compartirCertificado(tx, { empresaId: empresa, usuarioId: ana, principal: false }));
+  assert.equal(await leer((tx) => certificadoActivo(tx)), null);
+  await leer((tx) => retirarCertificado(tx, { empresaId: empresa, usuarioId: beto }));
+  await assert.rejects(leer((tx) => abrirCertificado(tx, beto)), /No tienes certificado/);
+  // Ana firma con el suyo aunque no lo comparta; un administrador retira el de Ana.
+  assert.equal((await leer((tx) => abrirCertificado(tx, ana))).id, deAna.id);
+  await leer((tx) => retirarCertificado(tx, { empresaId: empresa, usuarioId: beto, certificadoId: deAna.id, deOtros: true }));
+  assert.equal((await leer((tx) => certificadosDeEmpresa(tx))).length, 0);
+  // Lo firmado antes conserva con qué certificado se firmó.
+  const [{ n }] = await leer((tx) => tx`SELECT count(*)::int AS n FROM ecf_envios WHERE certificado_id IS NOT NULL`);
+  assert.ok(n >= 3);
 });

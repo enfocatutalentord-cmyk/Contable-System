@@ -432,6 +432,22 @@ No se pasa a la siguiente sin su autorización expresa.
   https://claude.ai/artifact/Q6TF4cexYp3gY6jackzKhh, esperando el «sí» de Patricia: E3a (sin DGII) rol «Cliente · Factura», certificado
   por usuario («Mi certificado», cifrado, uno principal por empresa), registro de quién emitió y con qué certificado; E3b emisión real
   para clientes tras E2b/E2c; E2d Empire proveedor.
+  «sí» del 13-nov a empezar la E3a (con las respuestas recomendadas: accesos los crea la coordinadora o Patricia; sin certificado propio
+  se firma con el principal solo si su dueño lo comparte; el cliente hace notas de crédito pero no anula). **Entrega E3a · firmantes y rol
+  Cliente · Factura** (migración 056): `certificados_ecf.usuario_id` y `principal` (uno activo por persona y empresa; uno principal por
+  empresa, lo marca solo su dueño; el de Empire quedó como el de quien lo subió y principal). `ecf_envios.certificado_id` y `firmante`.
+  `lib/ecf-emision.ts`: `certificadosDeEmpresa`, `miCertificado`, `certificadoActivo` (= principal), `guardarCertificado` (`principal`),
+  `compartirCertificado`, `retirarCertificado` (suyo, o de otro con «empresa»), `abrirCertificado(tx, usuarioId)` (el suyo o el principal).
+  Pestaña nueva `/certificado` («Mi certificado de firma»; para el cliente «Mi certificado»; permiso «contabilizar»): subir, compartir,
+  retirar y probar la conexión con su certificado. `/fiscal/ecf`: tabla de firmantes con «Retirar» (permiso «empresa») y el ambiente.
+  Factura: el XML de prueba firma con el certificado de quien lo genera y la tabla dice quién y con qué certificado. Rol base
+  **«Cliente · Factura»** (ver, registrar, contabilizar, revertir, adjuntar, exportar; Inicio, Facturar, Mis clientes, Mis productos y
+  servicios, Mi certificado, Mis facturas, Mis documentos, Mis solicitudes); `anularComprobante` rechaza a los usuarios de clientes.
+  Pantalla de la firma `/firma/[fid]/firmantes` (Firma › Impuestos): firmantes por empresa, vencimiento y quién factura sin certificado.
+  Alerta «Factura electrónica» por certificado a 30 días de vencer. Pruebas en `pruebas/ecf-firma.test.mjs` (283 en total). Probado en
+  pantalla con «Rosa Facturadora» de Salón Rosa (menú, certificado de prueba subido y compartido, cliente y borrador B01 creados por
+  ella, XML E31 firmado con su certificado y válido contra el XSD, emitida, sin anular, pantallas bloqueadas; firmantes y alerta en la
+  firma). Esperando el «sí» de Patricia para pasarla a `main`.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`

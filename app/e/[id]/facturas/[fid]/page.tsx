@@ -23,7 +23,7 @@ import { PagoEnDocumento } from "../../pago-en-documento";
 import { listarRetenciones } from "@/lib/fiscal";
 import { enviarFacturaPorCorreo } from "../../correo-acciones";
 import { generarXmlPrueba } from "../../ecf-acciones";
-import { certificadoActivo, enviosDeFactura } from "@/lib/ecf-emision";
+import { certificadoActivo, enviosDeFactura, miCertificado } from "@/lib/ecf-emision";
 
 type Factura = {
   id: string; estado: "borrador" | "emitida"; tipo_ncf: TipoNcf; ncf: string | null; ncf_vence: string | null; ncf_externo: string | null; fecha: string; vence: string;
@@ -88,13 +88,16 @@ export default async function VerFactura({ params, searchParams }: {
     const anticipos = (await listarAnticipos(tx, cliente_id)).filter((a) => !a.anulado && Number(a.saldo) > 0);
     const [ecf] = await tx<EmisorEcf[]>`
       SELECT emisor_ecf, to_char(ecf_desde, 'YYYY-MM-DD') AS ecf_desde, ecf_via, ecf_proveedor FROM empresas WHERE id = ${id}`;
-    // Emisión propia (entrega E2a): con certificado guardado se puede generar el XML firmado de prueba.
-    const conCertificado = (await certificadoActivo(tx)) !== null;
-    const envios = conCertificado ? await enviosDeFactura(tx, fid) : [];
-    return { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf, conCertificado, envios };
+    // Emisión propia (entrega E2a): con certificado se puede generar el XML firmado de prueba. E3a: firma con el de quien lo genera
+    // o, si no tiene uno, con el principal de la empresa.
+    const mio = await miCertificado(tx, usuario.id);
+    const firmaCon = mio ?? (await certificadoActivo(tx));
+    const conCertificado = firmaCon !== null;
+    const envios = await enviosDeFactura(tx, fid);
+    return { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf, conCertificado, envios, firmaCon, propio: !!mio };
   });
   if (!datos) notFound();
-  const { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf, conCertificado, envios } = datos;
+  const { f, lineas, porImpuesto, movimientos, anticipos, retenciones, ecf, conCertificado, envios, firmaCon, propio } = datos;
   // Cliente sin contabilidad (n.º 9): no hay pantalla de cobros; el cobro se anota aquí.
   const conCobros = puedeVer(pestanas, "/cobros");
   const borrador = f.estado === "borrador";
@@ -350,7 +353,9 @@ export default async function VerFactura({ params, searchParams }: {
             </>
           )}
           <h2>Anular comprobante</h2>
-          {fueraDeCierre ? (
+          {paraClientes ? (
+            <p className="sub">Anular un comprobante lo hace Empire. Si hay que anularlo, pídelo en Mis solicitudes con el número del comprobante.</p>
+          ) : fueraDeCierre ? (
             <>
               <p className="sub">
                 {electronica
@@ -406,23 +411,26 @@ export default async function VerFactura({ params, searchParams }: {
         </details>
       )}
 
-      {conCertificado && ["B01", "B02", "B04", "E31", "E32", "E34"].includes(f.tipo_ncf) && puede(permisos, "contabilizar") && (
+      {(conCertificado || envios.length > 0) && ["B01", "B02", "B04", "E31", "E32", "E34"].includes(f.tipo_ncf) && puede(permisos, "contabilizar") && (
         <details className="no-imprimir tarjeta" id="ecf" style={{ margin: "16px 0" }} open={!!sp.xml || undefined}>
           <summary><strong>Factura electrónica · XML de prueba</strong> · armado y firmado por el sistema</summary>
           <p className="sub">
-            Arma esta factura como e-CF en el formato de la DGII y la firma con el certificado guardado. Es una prueba: usa el siguiente número
-            del rango electrónico sin tomarlo, no se envía a la DGII y no cambia la factura.
+            Arma esta factura como e-CF en el formato de la DGII y la firma con {firmaCon
+              ? <>{propio ? "tu certificado" : "el certificado principal de la empresa"} ({firmaCon.titular})</>
+              : <>tu certificado (súbelo en <Link href={`/e/${id}/certificado`}>Mi certificado</Link>)</>}.
+            Es una prueba: usa el siguiente número del rango electrónico sin tomarlo, no se envía a la DGII y no cambia la factura.
           </p>
-          <Formulario accion={generarXmlPrueba.bind(null, id, f.id)} boton="Generar el XML firmado de prueba" className="fila"><span /></Formulario>
+          {conCertificado && <Formulario accion={generarXmlPrueba.bind(null, id, f.id)} boton="Generar el XML firmado de prueba" className="fila"><span /></Formulario>}
           {envios.length > 0 && (
             <div className="tabla-envoltura" style={{ marginTop: 12 }}>
               <table>
-                <thead><tr><th>Cuándo</th><th>e-NCF</th><th>Código de seguridad</th><th>Firmado</th><th>Estado</th><th /></tr></thead>
+                <thead><tr><th>Cuándo</th><th>e-NCF</th><th>Código de seguridad</th><th>Firmado</th><th>Quién y con qué certificado</th><th>Estado</th><th /></tr></thead>
                 <tbody>
                   {envios.map((x) => (
                     <tr key={x.id} className={sp.xml === x.id ? "resaltada" : undefined}>
                       <td>{fechaHora(x.creado_en)}</td><td>{x.encf}{x.prueba && <span className="sub"> · prueba</span>}</td>
                       <td><code>{x.codigo_seguridad}</code></td><td>{x.fecha_firma}</td>
+                      <td>{x.usuario ?? "—"}{x.firmante && <span className="sub"> · certificado de {x.firmante}</span>}</td>
                       <td>{x.estado === "firmado" ? "Firmado, sin enviar" : x.estado}</td>
                       <td>{puede(permisos, "exportar") && <a href={`/e/${id}/facturas/${f.id}/ecf/${x.id}`}>Descargar XML</a>}</td>
                     </tr>

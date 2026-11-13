@@ -82,6 +82,13 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
         : `Factura electrónica obligatoria: ${faltan(hoy, FECHA_ECF)}. Marca en el perfil fiscal desde cuándo emite`,
       `${base}/fiscal`, FECHA_ECF);
   }
+  // Certificados de firma de e-CF (entrega E3a): avisa 30 días antes de que venza cada uno y urgente si ya venció.
+  for (const c of await tx<{ titular: string; vence: string }[]>`
+      SELECT titular, to_char(vence, 'YYYY-MM-DD') AS vence FROM certificados_ecf WHERE activo ORDER BY vence`) {
+    if (dias(hoy, c.vence) <= 30) {
+      poner("ecf", c.vence < hoy ? "urgente" : "aviso", `Certificado de firma de ${c.titular}: ${faltan(hoy, c.vence)}. Pide la renovación y súbelo en Mi certificado`, `${base}/fiscal/ecf`, c.vence);
+    }
+  }
   if (obligaciones.includes("ir2") && e) {
     const mc = e.mes_cierre;
     const anioFin = Number(hoy.slice(5, 7)) > mc ? a : a - 1;

@@ -49,9 +49,12 @@ after(async () => {
 test("los roles de clientes solo ven la aplicación", conBase, async () => {
   const roles = await sql`SELECT nombre, pestanas FROM perfiles WHERE firma_id = ${firma} AND para_clientes ORDER BY nombre`;
   assert.ok(roles.length >= 4);
-  for (const r of roles) {
+  for (const r of roles.filter((r) => r.nombre !== "Cliente · Factura")) {
     assert.ok(r.pestanas.every((p) => ["", "/facturas-subidas", "/solicitudes", "/recepcion"].includes(p)), `${r.nombre}: ${r.pestanas}`);
   }
+  // E3a: el rol que factura suma sus facturas, clientes, productos y su certificado; nada de compras, impuestos ni contabilidad.
+  const factura = roles.find((r) => r.nombre === "Cliente · Factura");
+  assert.deepEqual([...factura.pestanas].sort(), ["", "/certificado", "/clientes", "/facturas", "/facturas-subidas", "/recepcion", "/servicios", "/solicitudes"]);
 });
 
 test("una firma nueva tiene las tareas de igualas y cobros en Contabilidad Empire", conBase, async () => {

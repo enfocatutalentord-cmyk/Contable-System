@@ -6,7 +6,11 @@ import { useEffect, useState } from "react";
 import { FUERA_DEL_MENU, PESTANAS_ADMINISTRACION, PESTANAS_CLIENTE, PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, puedeVer } from "@/lib/pestanas";
 
 // Cómo se llaman las pestañas para el cliente en su aplicación (bloque 8a).
-const NOMBRES_CLIENTE: Record<string, string> = { "": "Inicio", "/facturas-subidas": "Mis facturas", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes" };
+const NOMBRES_CLIENTE: Record<string, string> = {
+  "": "Inicio", "/facturas-subidas": "Mis facturas", "/recepcion": "Mis documentos", "/solicitudes": "Mis solicitudes",
+  // Rol «Cliente · Factura» (E3a): factura desde el sistema.
+  "/facturas": "Facturar", "/clientes": "Mis clientes", "/servicios": "Mis productos y servicios", "/certificado": "Mi certificado",
+};
 
 type Clave = "firma" | "empire" | "talleres" | "administracion";
 
@@ -75,7 +79,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
       { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],
     ["Facturas y documentos", [{ firma: `${firma}/documentos`, nombre: "Documentos recibidos" }, { firma: `${firma}/facturas-subidas`, nombre: "Facturas del cliente" },
       { cliente: "/facturas" }, { cliente: "/compras" }, { cliente: "/clientes" }, { cliente: "/proveedores" }, { cliente: "/servicios" }]],
-    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" },
+    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { cliente: "/certificado" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
       { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
     ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }]],
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },

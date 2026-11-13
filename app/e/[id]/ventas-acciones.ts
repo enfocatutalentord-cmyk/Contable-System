@@ -303,7 +303,9 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/facturas");
+  const { usuario, paraClientes } = await exigirPermiso(empresaId, "revertir", "/facturas");
+  // E3a: los usuarios del cliente hacen notas de crédito, pero anular lo hace Empire.
+  if (paraClientes) return { error: "Anular un comprobante lo hace Empire: pídelo en Mis solicitudes." };
   const motivo = texto(fd, "motivo");
   if (!MOTIVOS_608[motivo]) return { error: "Elige el motivo de anulación." };
   try {
