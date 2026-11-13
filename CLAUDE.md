@@ -447,7 +447,9 @@ No se pasa a la siguiente sin su autorización expresa.
   Alerta «Factura electrónica» por certificado a 30 días de vencer. Pruebas en `pruebas/ecf-firma.test.mjs` (283 en total). Probado en
   pantalla con «Rosa Facturadora» de Salón Rosa (menú, certificado de prueba subido y compartido, cliente y borrador B01 creados por
   ella, XML E31 firmado con su certificado y válido contra el XSD, emitida, sin anular, pantallas bloqueadas; firmantes y alerta en la
-  firma). Esperando el «sí» de Patricia para pasarla a `main`.
+  firma). En `main` y producción el 13-nov-2026 («sí» de Patricia, `0d2a07f`, migración 056 aplicada). Para usarla: dar a la persona
+  del cliente el rol «Cliente · Factura» en Personas y accesos; la empresa debe tener RNC, dirección y su rango E cargado. Sigue la E3b
+  (emisión real) cuando la DGII acepte la conexión.
 - Después de la Fase 2: enviar la factura por correo, anticipos de clientes (cobrar antes de facturar).
 - Seguridad: **límite de intentos de entrada** (`migraciones/007_intentos_entrada.sql`, `lib/intentos.ts`: 5 fallos
   seguidos por correo o 20 por IP en 15 minutos bloquean 15 minutos) y **acceso por correo** (migración 008): en `main`
