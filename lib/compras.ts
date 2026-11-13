@@ -287,6 +287,8 @@ export async function anularCompra(tx: Tx, d: { empresaId: string; usuarioId: st
   const [c] = await tx<{ ncf: string; estado: string; anulada: boolean; asiento_id: string | null; tipo_comprobante: string }[]>`
     SELECT ncf, estado, anulada, asiento_id, tipo_comprobante FROM compras WHERE id = ${d.compraId} FOR UPDATE`;
   if (!c) throw new ErrorContable("La compra no existe");
+  const [vc] = await tx`SELECT 1 FROM compras WHERE id = ${d.compraId} AND vendario_evento_id IS NOT NULL`;
+  if (vc) throw new ErrorContable("Este documento viene de Vendario: se anula allá y la anulación llega sola");
   if (c.estado !== "registrada") throw new ErrorContable("Un borrador no se anula; se descarta");
   if (c.anulada) throw new ErrorContable("La compra ya está anulada");
   const motivo608 = esPropio(c.tipo_comprobante) ? d.motivo608 ?? null : null;
@@ -396,6 +398,8 @@ export async function anularPago(tx: Tx, d: { empresaId: string; usuarioId: stri
   const [p] = await tx<{ id: string; anulado: boolean; asiento_id: string | null }[]>`
     SELECT id, anulado, asiento_id FROM pagos WHERE numero = ${d.numero} FOR UPDATE`;
   if (!p) throw new ErrorContable("El pago no existe");
+  const [vp] = await tx`SELECT 1 FROM pagos WHERE id = ${p.id} AND vendario_evento_id IS NOT NULL`;
+  if (vp) throw new ErrorContable("Este documento viene de Vendario: se anula allá y la anulación llega sola");
   if (p.anulado) throw new ErrorContable("El pago ya está anulado");
   if (p.asiento_id) await anularAsientoDeDocumento(tx, p.asiento_id, d.usuarioId, `Anulación del pago ${d.numero}: ${d.motivo}`);
   await tx`UPDATE pagos SET anulado = true, motivo_anulacion = ${d.motivo}, anulado_por = ${d.usuarioId}, anulado_en = now() WHERE id = ${p.id}`;

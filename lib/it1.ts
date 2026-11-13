@@ -266,8 +266,30 @@ export async function calcularIt1(tx: Tx, p: Periodo, manuales: Record<string, s
     // IV. Por tipo de ingreso (sin impuestos).
     sumar(`A${19 + Number(f.tipo_ingreso)}`, sub);
   }
-  s.A9 = tardias; s.A9c = nTardias; s.A43 = tardias;
+  // Ventas sin comprobante (integración con Vendario): no van al 607, pero son operaciones del mes. Van en «otras operaciones
+  // (positivas)», casilla 9 del Anexo A, con su ITBIS por tasa, sus formas de cobro y el tipo de ingreso 01.
+  let sinNcf = 0n, nSinNcf = 0n;
+  for (const v of await tx<{ subtotal: string; total: string; gravado: Record<string, string>; exento: string; formas: Record<string, string> }[]>`
+      SELECT subtotal::text, total::text, gravado, exento::text, formas FROM ventas_sin_comprobante
+       WHERE NOT anulada AND fecha BETWEEN ${p.inicio} AND ${p.fin}`) {
+    const sub = aCentavos(v.subtotal);
+    sinNcf += sub; nSinNcf += sub >= 0n ? 100n : 0n;
+    for (const [t, base] of Object.entries(v.gravado ?? {})) {
+      const k = ({ "18": "I11", "16": "I12", "9": "I13", "8": "I14" } as Record<string, string>)[t];
+      if (k) sumar(k, aCentavos(base));
+    }
+    sumar("I4", aCentavos(v.exento));
+    let cobrado = 0n;
+    for (const [forma, monto] of Object.entries(v.formas ?? {})) {
+      cobrado += aCentavos(monto);
+      sumar({ efectivo: "A12", cheque: "A13", tarjeta: "A14", permuta: "A17", otrasFormas: "A18" }[COLUMNA_COBRO[forma] ?? "otrasFormas"], aCentavos(monto));
+    }
+    if (sub >= 0n) sumar("A15", mas(aCentavos(v.total) - cobrado));
+    sumar("A20", sub);
+  }
+  s.A9 = tardias + sinNcf; s.A9c = nTardias + nSinNcf; s.A43 = tardias;
   if (tardias > 0n) origen.A9 = origen.A43 = "Notas de crédito emitidas con más de 30 días desde su factura";
+  if (sinNcf !== 0n) origen.A9 = `${tardias > 0n ? "Notas de crédito con más de 30 días y v" : "V"}entas sin comprobante recibidas de Vendario`;
   // Exportaciones (B16): el sistema no sabe si son de bienes (casilla 2) o de servicios (casilla 3).
   s.I2 = 0n; s.I3 = 0n;
   if (exportaciones !== 0n) avisos.push({ nivel: "aviso", texto: `Hay ${deCentavos(exportaciones)} en facturas de exportación (B16): repártelos entre la casilla 2 (bienes) y la 3 (servicios) del IT-1.` });

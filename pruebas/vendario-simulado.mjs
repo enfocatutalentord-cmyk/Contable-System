@@ -109,12 +109,36 @@ try {
   });
   console.log(`\nListo: ${pasos.length} pasos. Organización simulada ${ORG} (RNC ${RNC}). Ábrela en Firma › Vendario para aceptarla;`);
   console.log("este proceso sigue escuchando 3 minutos en el puerto 3999 para recibir «vista», «aceptada» y los demás estados.");
-  const hasta = Date.now() + 180_000;
-  let vistos = estados.length;
+  const hasta = Date.now() + 300_000;
+  let vistos = estados.length, enVivo = false;
   while (Date.now() < hasta) {
     await new Promise((r) => setTimeout(r, 1000));
     for (const e of estados.slice(vistos)) console.log("← Vendario recibió:", e.data.status, e.data.accountant?.name ?? "", e.data.period ?? "", e.data.note ?? "");
     vistos = estados.length;
+    // Como Vendario: al recibir «aceptada», manda las operaciones en vivo.
+    if (!enVivo && estados.some((e) => e.data.status === "aceptada")) {
+      enVivo = true;
+      const vivos = [
+        sobre("accounting.event", { event_type: "sale.posted", source: { kind: "sale", id: randomUUID(), number: "V-00000200" }, reverses: null, historical: false,
+          date: "2026-11-13", occurred_at: new Date().toISOString(), fiscal: { ncf: `B01${String(Date.now()).slice(-8)}`, ncf_type: "01", modified_ncf: null },
+          party: { kind: "customer", doc_type: "RNC", doc: "101234567", name: "Constructora X" },
+          amounts: { subtotal: "2000.00", discount: "0.00", taxes: [{ code: "ITBIS18", rate: "18.00", base: "2000.00", tax: "360.00" }], total: "2360.00" },
+          payments: [{ kind: "transfer", method: "Transferencia", amount: "2360.00", reference: "TRF-1" }], cost_of_sales: "1300.00",
+          entry: [{ account: "BANCO", debit: "2360.00", credit: "0.00" }, { account: "VENTAS", debit: "0.00", credit: "2000.00" },
+            { account: "ITBIS_POR_PAGAR", debit: "0.00", credit: "360.00" }, { account: "COSTO_VENTAS", debit: "1300.00", credit: "0.00" },
+            { account: "INVENTARIO", debit: "0.00", credit: "1300.00" }] }, true),
+        sobre("accounting.event", { event_type: "expense.posted", source: { kind: "expense", id: randomUUID(), number: "G-1" }, date: "2026-11-13",
+          occurred_at: new Date().toISOString(), description: "Luz", category: { name: "Luz", dgii_606_type: "02" },
+          fiscal: { ncf: `B01${String(Date.now() + 1).slice(-8)}`, ncf_type: "01", modified_ncf: null }, party: { kind: "supplier", doc_type: "RNC", doc: "101820217", name: "EDESUR" },
+          amounts: { subtotal: "500.00", discount: "0.00", taxes: [{ code: "ITBIS", rate: null, base: "500.00", tax: "90.00" }], total: "590.00" },
+          payments: [{ kind: "cash", amount: "590.00" }],
+          entry: [{ account: "GASTO:Luz", debit: "500.00", credit: "0.00" }, { account: "ITBIS_ADELANTADO", debit: "90.00", credit: "0.00" }, { account: "CAJA", debit: "0.00", credit: "590.00" }] }, true),
+        sobre("accounting.event", { event_type: "cash.closed", source: { kind: "cash_session", id: randomUUID() }, date: "2026-11-13", occurred_at: new Date().toISOString(),
+          amounts: { subtotal: "25.00", discount: "0.00", taxes: [], total: "25.00" },
+          entry: [{ account: "FALTANTE_CAJA", debit: "25.00", credit: "0.00" }, { account: "CAJA", debit: "0.00", credit: "25.00" }] }, true),
+      ];
+      for (const s of vivos) console.log("→ En vivo:", s.data.event_type, (await mandar(s)).codigo);
+    }
   }
 } catch (e) {
   console.error("✖", e.message);

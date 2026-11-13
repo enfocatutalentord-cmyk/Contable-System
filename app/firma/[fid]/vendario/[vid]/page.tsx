@@ -8,7 +8,9 @@ import { equipoDe } from "@/lib/firma";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { empresasConRnc, enviarPendientes, registrarVista } from "@/lib/vendario";
 import { ESTADO_CLIENTE, ESTADOS, PEDIDOS_SUGERIDOS, SERVICIOS } from "@/lib/vendario-sobre";
-import { aceptarSolicitud, cambiarEstadoVendario } from "../../../vendario-acciones";
+import { CUENTAS_NEUTRALES, SUGERIDAS } from "@/lib/vendario-contable";
+import { cuentasUsadas, mapeoDe } from "@/lib/vendario-registro";
+import { aceptarSolicitud, cambiarEstadoVendario, guardarMapeoVendario, reprocesarVendario } from "../../../vendario-acciones";
 
 export const metadata = { title: "Solicitud de Vendario · Empire Tax’N Legal" };
 
@@ -49,6 +51,12 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
       SELECT seq, lead(seq) OVER (ORDER BY seq) AS siguiente FROM vendario_eventos WHERE vendario_cliente_id = ${vid} AND seq IS NOT NULL) x
      WHERE siguiente > seq + 1 LIMIT 20`;
   const equipo = await equipoDe(fid);
+  // Mapeo de cuentas: las del acuerdo y las que usen sus eventos (cada gasto por categoría).
+  const usadas = await cuentasUsadas(vid);
+  const m = c.empresa_id ? await mapeoDe(c.empresa_id) : null;
+  const porCodigo = new Map((m?.cuentas ?? []).map((x) => [x.codigo, x.id]));
+  const neutrales = [...new Set([...Object.keys(CUENTAS_NEUTRALES).filter((k) => !k.startsWith("RETENCION") || usadas.includes(k)), ...usadas])];
+  const sinMapear = usadas.filter((k) => !m?.mapeo[k]);
   const mismas = c.empresa_id ? [] : await empresasConRnc(fid, c.rnc);
   const e = c.empresa_datos as Record<string, string | null>;
   const abierta = c.estado !== "finalizada";
@@ -169,7 +177,49 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
           </tbody>
         </table>
       </div>
-      <p className="sub">La contabilización de los eventos llega en la parte 2; hasta entonces quedan guardados, sin perderse.</p>
+      <p className="sub">
+        <Link href={`/firma/${fid}/vendario/${vid}/eventos`}>Ver los eventos uno por uno, con los pendientes y su motivo</Link>
+      </p>
+      {eventos.some((x) => x.estado === "pendiente" || x.estado === "esperando") && c.empresa_id && (
+        <Formulario accion={reprocesarVendario.bind(null, fid, vid, null)} boton="Reprocesar los pendientes" className="fila"><span /></Formulario>
+      )}
+
+      {m && (
+        <div className="tarjeta" style={{ marginTop: 16 }} id="mapeo">
+          <h2 style={{ marginTop: 0 }}>Cuentas de Vendario → catálogo de {c.empresa}</h2>
+          <p className="sub" style={{ marginTop: 0 }}>
+            Vendario manda cuentas neutrales; aquí se elige a qué cuenta del catálogo del cliente va cada una. Las evidentes vienen sugeridas
+            (en gris): se aplican al guardar. Cada gasto por categoría se elige a mano. Lo que llegue con una cuenta sin mapear queda pendiente.
+          </p>
+          {sinMapear.length > 0 && <p className="aviso">Sin mapear y usadas en sus eventos: {sinMapear.join(", ")}.</p>}
+          <Formulario accion={guardarMapeoVendario.bind(null, fid, vid)} boton="Guardar el mapeo" className="formulario">
+            <div className="tabla-envoltura">
+              <table>
+                <thead><tr><th>Cuenta de Vendario</th><th>Cuenta del catálogo</th></tr></thead>
+                <tbody>
+                  {neutrales.map((k) => {
+                    const sugerida = SUGERIDAS[k] ? porCodigo.get(SUGERIDAS[k]) : undefined;
+                    const actual = m.mapeo[k] ?? sugerida ?? "";
+                    return (
+                      <tr key={k}>
+                        <td><code>{k}</code><div className="sub">{CUENTAS_NEUTRALES[k] ?? (k.startsWith("GASTO:") ? `Gasto de la categoría «${k.slice(6)}»` : "Cuenta nueva")}
+                          {usadas.includes(k) ? " · usada" : ""}{!m.mapeo[k] && sugerida ? " · sugerida" : ""}</div>
+                          <input type="hidden" name="cuenta" value={k} /></td>
+                        <td>
+                          <select name={`c:${k}`} defaultValue={actual} style={!m.mapeo[k] && sugerida ? { color: "var(--texto-suave, #666)" } : undefined}>
+                            <option value="">— Sin mapear —</option>
+                            {m.cuentas.map((x) => <option key={x.id} value={x.id}>{x.codigo} · {x.nombre}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Formulario>
+        </div>
+      )}
 
       {(c.historico_totales || recibidoHist.size > 0) && (
         <>

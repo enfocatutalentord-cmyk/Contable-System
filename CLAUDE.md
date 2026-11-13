@@ -1025,7 +1025,7 @@ No se pasa a la siguiente sin su autorización expresa.
   Pruebas `pruebas/vendario.test.mjs` (294 en total) y punta a punta `node --env-file=.env.local pruebas/vendario-simulado.mjs`
   (Vendario simulado en el puerto 3999 que firma y verifica como el real). Probado en local: 7 pasos del simulador y vista, aceptar,
   en proceso y necesita información recibidos y verificados por el simulador. Sin publicar (pide confirmación del dueño y el «sí» de
-  Patricia). Sigue la parte 2.
+  Patricia). **Parte 2** (migración 058, `lib/vendario-contable.ts` puro, `lib/vendario-registro.ts`, pantalla `/vendario/[vid]/eventos`, mapeo en el detalle): asiento del `entry` con `vendario_mapeo` (sugeridas evidentes que el contable guarda; gastos y caja a mano; sin mapear → pendiente), origen `vendario`; venta con NCF → factura emitida + cobros; sin NCF → `ventas_sin_comprobante` (IT-1 casilla 9 del Anexo A); anulación enlazada (`revierte_a`); devolución → B04/E34; compra/gasto con NCF → compra + pago (tipo 606 o 09/02); caja, ajustes y anticipos solo asiento; con solo ITBIS sin asiento. Documentos de Vendario no se anulan a mano. Pruebas `pruebas/vendario-contable.test.mjs` (304 en total). Falta: probarla en pantalla con el simulador (ya manda eventos en vivo al recibir «aceptada») y la parte 3 (cuadre).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

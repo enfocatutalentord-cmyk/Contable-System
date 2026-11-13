@@ -113,6 +113,8 @@ const cliente = async () => (await sql`SELECT * FROM vendario_clientes WHERE org
 
 before(async () => {
   if (!sql) return;
+  // Solo una firma recibe Vendario: las dos pruebas de Vendario se turnan con un candado de la base (se suelta al cerrar).
+  await sql`SELECT pg_advisory_lock(57057)`;
   v = await import("../lib/vendario.ts");
   [{ id: ana }] = await sql`INSERT INTO usuarios (email, nombre, clave_hash) VALUES (${`ana-vendario-${Date.now()}@x.do`}, 'Ana Contable', 'x') RETURNING id`;
   [{ id: firma }] = await sql`INSERT INTO firmas (nombre) VALUES (${`Firma Vendario ${Date.now()}`}) RETURNING id`;

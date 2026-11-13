@@ -3,6 +3,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { enviarPendientes, procesarPendientes } from "@/lib/vendario";
+import { contabilizarPendientes } from "@/lib/vendario-registro";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ function autorizada(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   if (!autorizada(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const procesados = await procesarPendientes();
+  const contabilizados = await contabilizarPendientes({ limite: 200 });
   const envios = await enviarPendientes({ limite: 50 });
-  return Response.json({ procesados, ...envios });
+  return Response.json({ procesados, contabilizados, ...envios });
 }

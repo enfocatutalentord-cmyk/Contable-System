@@ -380,6 +380,8 @@ export async function anularFactura(tx: Tx, d: { empresaId: string; usuarioId: s
     SELECT ncf, estado, anulada, asiento_id, tipo_ncf FROM facturas WHERE id = ${d.facturaId} FOR UPDATE`;
   if (!f) throw new ErrorContable("El comprobante no existe");
   if (f.estado !== "emitida") throw new ErrorContable("Un borrador no se anula; se descarta");
+  const [vf] = await tx`SELECT 1 FROM facturas WHERE id = ${d.facturaId} AND vendario_evento_id IS NOT NULL`;
+  if (vf) throw new ErrorContable("Este documento viene de Vendario: se anula allá y la anulación llega sola");
   if (f.anulada) throw new ErrorContable("El comprobante ya está anulado");
   if (!esNotaVenta(f.tipo_ncf)) {
     const [{ n }] = await tx<{ n: number }[]>`
@@ -509,6 +511,8 @@ export async function anularCobro(tx: Tx, d: { empresaId: string; usuarioId: str
   const [c] = await tx<{ id: string; anulado: boolean; asiento_id: string | null }[]>`
     SELECT id, anulado, asiento_id FROM cobros WHERE numero = ${d.numero} FOR UPDATE`;
   if (!c) throw new ErrorContable("El recibo no existe");
+  const [vc] = await tx`SELECT 1 FROM cobros WHERE id = ${c.id} AND vendario_evento_id IS NOT NULL`;
+  if (vc) throw new ErrorContable("Este documento viene de Vendario: se anula allá y la anulación llega sola");
   if (c.anulado) throw new ErrorContable("El recibo ya está anulado");
   if (c.asiento_id) await anularAsientoDeDocumento(tx, c.asiento_id, d.usuarioId, `Anulación del recibo ${d.numero}: ${d.motivo}`);
   await tx`UPDATE cobros SET anulado = true, motivo_anulacion = ${d.motivo}, anulado_por = ${d.usuarioId}, anulado_en = now() WHERE id = ${c.id}`;

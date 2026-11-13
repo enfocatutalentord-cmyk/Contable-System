@@ -3,7 +3,7 @@ import { aCentavos, deCentavos } from "./montos.ts";
 
 // categoria: categoría personal de una línea de la cuenta corriente de la socia (vivienda, alimentación…; bloque 7a).
 export type LineaAsiento = { cuentaId: string; debe: bigint; haber: bigint; descripcion?: string | null; unidadId?: string | null; categoria?: string | null };
-export type Origen = "manual" | "factura" | "nota_credito" | "cobro" | "compra" | "nota_credito_compra" | "pago" | "banco" | "cierre" | "anticipo" | "salida" | "liquidacion";
+export type Origen = "manual" | "factura" | "nota_credito" | "cobro" | "compra" | "nota_credito_compra" | "pago" | "banco" | "cierre" | "anticipo" | "salida" | "liquidacion" | "vendario";
 
 export class ErrorContable extends Error {
   code = "P0001";
