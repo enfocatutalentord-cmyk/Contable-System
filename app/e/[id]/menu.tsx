@@ -84,6 +84,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }]],
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
+    ["Vendario", [{ firma: `${firma}/vendario`, nombre: "Solicitudes y clientes" }, { firma: `${firma}/vendario/salud`, nombre: "Salud de la integración" }]],
     ["Cobros y pagos", [{ cliente: "/cobros" }, { cliente: "/anticipos" }, { cliente: "/cxc" }, { cliente: "/pagos" }, { cliente: "/cxp" }]],
     ["Contabilidad del cliente", PESTANAS_CONTABLES.filter((r) => !/^\/(cobros|anticipos|cxc|pagos|cxp)/.test(r)).map((r) => ({ cliente: r }))],
   ];

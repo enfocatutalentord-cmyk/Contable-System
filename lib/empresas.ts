@@ -1,5 +1,5 @@
-import { CATALOGO_RD, TIPO_POR_CLASE, nivelDeCodigo } from "./catalogo-rd";
-import { db, type Tx } from "./db";
+import { CATALOGO_RD, TIPO_POR_CLASE, nivelDeCodigo } from "./catalogo-rd.ts";
+import { db, type Tx } from "./db.ts";
 
 export function rncValido(rnc: string): boolean {
   return /^\d{9}$/.test(rnc) || /^\d{11}$/.test(rnc);

@@ -1000,6 +1000,32 @@ No se pasa a la siguiente sin su autorización expresa.
   (los 22 cambios de la lista, salvo el n.º 13, generador de documentos = 5b, que espera las plantillas en Word). Vuelve el plan en pausa:
   entrega B (normas y tasas), 5b, 6b, 7b/7c y 8c, cada uno con su «sí». En producción lo hace Patricia: quitar «Manaury Prueba» (Quitar de la
   firma), marcar «Exigir verificación en dos pasos» en Datos de la firma y corregir el RNC repetido de Goemhy y «Gomez Guerrero».
+- **Integración con Vendario** (13-nov-2026; Vendario es el punto de venta e inventario del mismo dueño, repo `erp-ferreteria`, Supabase).
+  Manda el **acuerdo v1.0** (copia en `docs/vendario/acuerdo.md`; el original vive en Vendario): seguirlo al pie de la letra; cualquier
+  cambio va primero al acuerdo con versión nueva y después a las dos plataformas. Plan aprobado ese día con las respuestas recomendadas:
+  retenciones y tipo 606 de las compras van en una v1.1 (borrador en `docs/vendario/acuerdo-v1.1-propuesta.md`, sin aprobar; mientras,
+  las retenciones se anotan a mano y las compras van como 09); ventas sin NCF como total diario de «ventas sin comprobante» para el IT-1;
+  con solo `itbis_606_607_608` se crean facturas y compras sin asiento (R3) y con `registro_contable`, `estados_financieros` o `ir2_anual`
+  también el asiento del `entry`; al aceptar, enlazar la empresa con el mismo RNC; Vendario no activa sin RNC. 3 partes: 1 recepción,
+  ciclo y salud; 2 contabilización, mapeo y pendientes; 3 cuadre. **Parte 1** (migración 057, `lib/vendario-firma.ts`,
+  `lib/vendario-sobre.ts`, `lib/vendario.ts`, `app/api/vendario/v1/inbox`, `app/api/vendario/v1/tarea`, `app/firma/vendario-acciones.ts`,
+  pantallas `/firma/[fid]/vendario`, `/vendario/[vid]` y `/vendario/salud`; menú Firma › Vendario): `firmas.recibe_vendario` (una sola,
+  se marca en Firma › Vendario); tablas de plataforma sin RLS ni permisos para la app (`vendario_mensajes` con el cuerpo exacto,
+  `vendario_rechazos`, `vendario_clientes`, `vendario_eventos`, `vendario_envios`). La entrada verifica la firma (HMAC-SHA256 con
+  `V2E_SECRET`, varias claves y varias v1, 5 min, tiempo constante; 401), revisa el sobre (422 solo si nunca se podrá procesar), no
+  repite el id (200 `{"duplicate": true}`), responde 202 y procesa con `after()`. Alta → «solicitud» y «recibida» (si ninguna firma
+  recibe, queda pendiente); correo a los administradores y aviso en el Inicio de la firma; abrirla → «vista»; aceptar (responsable del
+  equipo; crea la empresa con los datos del alta o enlaza la del mismo RNC; `lleva_contabilidad` según los servicios) → «aceptada»;
+  pedir información, en proceso, al día (`al_dia_hasta`) y suspender; update; baja → «finalizada» y lo que ocurra después queda
+  «después de la baja». Los eventos se guardan («por contabilizar»); se ven por tipo, con huecos de `seq` y el histórico contra
+  `sync.history_complete`. Envíos firmados con `E2V_SECRET` a `VENDARIO_URL` (por defecto la de Supabase del acuerdo) + `/empire-inbox`,
+  con reintentos de 1 min a 24 h; 401/422 no se reintentan; «Reenviar» en Salud (administradores). Vercel Cron cada 5 min
+  (`vercel.json`, `Authorization: Bearer CRON_SECRET`). Secretos nuevos en Vercel: `V2E_SECRET`, `E2V_SECRET`, `CRON_SECRET` (los pone
+  Joannie o Manaury; los dos primeros iguales que en Supabase). Dirección para Vendario: `https://contable-system.vercel.app`.
+  Pruebas `pruebas/vendario.test.mjs` (294 en total) y punta a punta `node --env-file=.env.local pruebas/vendario-simulado.mjs`
+  (Vendario simulado en el puerto 3999 que firma y verifica como el real). Probado en local: 7 pasos del simulador y vista, aceptar,
+  en proceso y necesita información recibidos y verificados por el simulador. Sin publicar (pide confirmación del dueño y el «sí» de
+  Patricia). Sigue la parte 2.
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú

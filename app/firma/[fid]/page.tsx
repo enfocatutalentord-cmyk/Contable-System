@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { accesoFirma } from "@/lib/acceso";
+import { accesoFirma, soloCliente } from "@/lib/acceso";
+import { db } from "@/lib/db";
 import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from "@/lib/firma";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
@@ -19,6 +20,9 @@ export default async function InicioFirma({ params, searchParams }: {
   const [resumenes, eventos, alertas, normas] = await Promise.all([Promise.all(clientes.map((c) => resumenCliente(c.id))), actividad(clientes, 12), alertasDeFirma(clientes, hoyISO()),
     avisosNormasDeFirma(fid, hoyISO(), usuario.id, firma.administrador)]);
   const filas = clientes.map((c, i) => ({ ...c, ...resumenes[i] }));
+  // Solicitudes nuevas de Vendario (aviso al equipo contable, acuerdo §11).
+  const [vendario] = await soloCliente(fid, usuario.id) ? [{ n: 0 }] : await db()<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM vendario_clientes WHERE firma_id = ${fid} AND estado = 'solicitud'`;
   const suma = (f: (r: (typeof filas)[number]) => bigint | number) => filas.reduce((s, r) => s + BigInt(f(r)), 0n);
   const pendientes = (r: (typeof filas)[number]) => [
     r.borradores && `${r.borradores} asiento${r.borradores > 1 ? "s" : ""} en borrador`,
@@ -39,6 +43,12 @@ export default async function InicioFirma({ params, searchParams }: {
         <p className="aviso">
           Faltan el nombre y el RNC de la firma (salen en los correos, los reportes y las facturas de Empire).{" "}
           <Link href={`/firma/${fid}/clientes#datos-firma`}>Completarlos en Empresas Empire › Datos de la firma</Link>.
+        </p>
+      )}
+      {vendario.n > 0 && (
+        <p className="aviso">
+          {vendario.n === 1 ? "Hay 1 solicitud nueva" : `Hay ${vendario.n} solicitudes nuevas`} desde Vendario.{" "}
+          <Link href={`/firma/${fid}/vendario`}>Verlas</Link>
         </p>
       )}
       <div className="entre">
