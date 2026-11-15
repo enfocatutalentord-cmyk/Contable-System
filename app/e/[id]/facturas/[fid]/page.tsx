@@ -31,7 +31,7 @@ type Factura = {
   anulada: boolean; motivo_anulacion: string | null; asiento: number | null; asiento_id: string | null; cliente: string; rnc: string | null;
   direccion: string | null; origen_id: string | null; origen_ncf: string | null; creado_por_id: string; creado_por: string | null;
   emitida_por: string | null; emitida_en: Date | null; saldo: string | null; acuerdo_id: string | null;
-  ecf_codigo: string | null; ecf_firmada: string | null;
+  ecf_codigo: string | null; ecf_firmada: string | null; de_vendario: boolean; reverso: number | null;
 };
 type EmisorEcf = { emisor_ecf: boolean; ecf_desde: string | null; ecf_via: string | null; ecf_proveedor: string | null };
 
@@ -52,7 +52,8 @@ export default async function VerFactura({ params, searchParams }: {
              f.total::text, f.notas, f.anulada, f.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, c.nombre AS cliente, c.rnc,
              c.direccion, o.id AS origen_id, o.ncf AS origen_ncf, f.creado_por AS creado_por_id, u.nombre AS creado_por,
              ue.nombre AS emitida_por, f.emitida_en, s.saldo::text, f.acuerdo_id,
-             f.ecf_codigo, to_char(f.ecf_firmada, 'DD/MM/YYYY HH24:MI') AS ecf_firmada
+             f.ecf_codigo, to_char(f.ecf_firmada, 'DD/MM/YYYY HH24:MI') AS ecf_firmada, f.vendario_evento_id IS NOT NULL AS de_vendario,
+             (SELECT r.numero FROM asientos r WHERE r.revierte_a = f.asiento_id AND r.estado = 'contabilizado' ORDER BY r.numero LIMIT 1) AS reverso
         FROM facturas f JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN asientos a ON a.id = f.asiento_id
         LEFT JOIN facturas o ON o.id = f.factura_origen_id
@@ -131,7 +132,12 @@ export default async function VerFactura({ params, searchParams }: {
         {sp.anulada && <p className="exito">Comprobante anulado. Va en el formato 608 del mes.</p>}
         {sp.cobrado && <p className="exito">Cobro (recibo n.º {sp.cobrado}) registrado: va al 607 y al IT-1 con su fecha, forma y retenciones.</p>}
         {sp.cobro_anulado && <p className="exito">Recibo n.º {sp.cobro_anulado} anulado.</p>}
-        {f.anulada && <p className="aviso">Anulado: {MOTIVOS_608[f.motivo_anulacion ?? ""] ?? f.motivo_anulacion}. El asiento también quedó anulado.</p>}
+        {f.anulada && (
+          <p className="aviso">
+            Anulado{f.de_vendario ? " en Vendario" : ""}: {MOTIVOS_608[f.motivo_anulacion ?? ""] ?? f.motivo_anulacion}.{" "}
+            {f.reverso ? `Se registró el asiento inverso n.º ${f.reverso}.` : f.asiento ? "El asiento también quedó anulado." : ""}
+          </p>
+        )}
         <div className="entre" style={{ marginBottom: 12 }}>
           <div className="fila">
             {!borrador && <BotonImprimir />}

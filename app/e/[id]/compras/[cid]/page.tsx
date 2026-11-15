@@ -23,6 +23,7 @@ type Compra = {
   notas: string | null; anulada: boolean; motivo_anulacion: string | null; asiento: number | null; asiento_id: string | null;
   proveedor: string; rnc: string | null; origen_id: string | null; origen_ncf: string | null; creado_por_id: string;
   creado_por: string | null; registrada_por: string | null; registrada_en: Date | null; saldo: string | null;
+  de_vendario: boolean; reverso: number | null;
 };
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" }) ?? "";
@@ -41,7 +42,8 @@ export default async function VerCompra({ params, searchParams }: {
              c.moneda, c.tasa::text, c.tipo_gasto, c.itbis_al_costo, c.subtotal::text, c.itbis::text, c.otros_impuestos::text, c.total::text,
              c.notas, c.anulada, c.motivo_anulacion, a.numero AS asiento, a.id AS asiento_id, p.nombre AS proveedor, p.rnc,
              o.id AS origen_id, o.ncf AS origen_ncf, c.creado_por AS creado_por_id, u.nombre AS creado_por, ur.nombre AS registrada_por,
-             c.registrada_en, s.saldo::text
+             c.registrada_en, s.saldo::text, c.vendario_evento_id IS NOT NULL AS de_vendario,
+             (SELECT r.numero FROM asientos r WHERE r.revierte_a = c.asiento_id AND r.estado = 'contabilizado' ORDER BY r.numero LIMIT 1) AS reverso
         FROM compras c JOIN proveedores p ON p.id = c.proveedor_id
         LEFT JOIN asientos a ON a.id = c.asiento_id
         LEFT JOIN compras o ON o.id = c.compra_origen_id
@@ -91,7 +93,12 @@ export default async function VerCompra({ params, searchParams }: {
       {sp.anulada && <p className="exito">Compra anulada{c.asiento ? "; su asiento también" : ""}.</p>}
       {sp.pagado && <p className="exito">Pago n.º {sp.pagado} registrado: va al 606 con su fecha, forma y retenciones.</p>}
       {sp.pago_anulado && <p className="exito">Pago n.º {sp.pago_anulado} anulado.</p>}
-      {c.anulada && <p className="aviso">Anulada: {c.motivo_anulacion}. El asiento también quedó anulado.</p>}
+      {c.anulada && (
+        <p className="aviso">
+          Anulada{c.de_vendario ? " en Vendario" : ""}{c.motivo_anulacion ? `: ${c.motivo_anulacion}` : ""}.{" "}
+          {c.reverso ? `Se registró el asiento inverso n.º ${c.reverso}.` : c.asiento ? "El asiento también quedó anulado." : ""}
+        </p>
+      )}
       <div className="entre" style={{ marginBottom: 12 }}>
         <div>
           <h1>{borrador ? "Borrador de " : ""}{esNota ? "nota de crédito del proveedor" : "compra"} {c.ncf ?? ""}</h1>
