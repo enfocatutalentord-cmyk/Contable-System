@@ -68,7 +68,7 @@ after(async () => {
 test("los 24 mensajes del manual se cargan en la firma y terminan con la firma de Empire", conBase, async () => {
   const p = await plantillasDe(firma);
   assert.equal(p.length, 24);
-  assert.ok(p.every((x) => x.texto.endsWith("-- Empire Tax’N Legal")));
+  assert.ok(p.every((x) => x.texto.endsWith("-- Empire Tax & Legal")));
   await sql`SELECT crear_plantillas_mensaje(${firma})`;
   assert.equal((await plantillasDe(firma)).length, 24, "cargarlos otra vez no repite");
 });
@@ -81,7 +81,7 @@ test("notificación TSS: el mensaje se llena, el enlace descarga el PDF, la bit�
   assert.deepEqual(p.enlace, { tipo: "documento", refId: documento, titulo: "Notificación TSS de octubre 2026" });
   const token = nuevoToken();
   const texto = armarTexto(plantilla.texto, p, `https://ejemplo.do/d/${token}`);
-  assert.equal(texto, `Buenos días, María. Le compartimos la notificación de pago de la TSS de octubre 2026, por RD$12,450.00: https://ejemplo.do/d/${token}. Favor pagar antes del 03/11/2026 para evitar recargos. -- Empire Tax’N Legal`);
+  assert.equal(texto, `Buenos días, María. Le compartimos la notificación de pago de la TSS de octubre 2026, por RD$12,450.00: https://ejemplo.do/d/${token}. Favor pagar antes del 03/11/2026 para evitar recargos. -- Empire Tax & Legal`);
 
   assert.equal(await enlaceVigente(token), null, "antes de enviarlo el enlace no existe");
   const id = await leer(cliente, ana, (tx) => registrarEnvio(tx, {

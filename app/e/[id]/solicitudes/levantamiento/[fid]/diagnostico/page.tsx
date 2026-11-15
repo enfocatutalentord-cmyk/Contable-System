@@ -13,7 +13,7 @@ import { puede } from "@/lib/permisos";
 import { preciosVigentes, type CategoriaPrecio } from "@/lib/precios";
 import { aprobarDiagnostico, guardarDiagnostico, quitarAprobacionDiagnostico } from "../../../../diagnostico-acciones";
 
-export const metadata = { title: "Diagnóstico · Empire Tax’N Legal" };
+export const metadata = { title: "Diagnóstico · Empire Tax & Legal" };
 
 // Informe de diagnóstico y propuesta económica (6b.3): el sistema sugiere y Patricia decide; nada sale al cliente sin su aprobación.
 export default async function PaginaDiagnostico({ params }: { params: Promise<{ id: string; fid: string }> }) {

@@ -7,7 +7,7 @@ import { verFecha } from "@/lib/montos";
 import { REGIMENES } from "@/lib/permisos";
 import { salir } from "../acciones-cuenta";
 
-export const metadata = { title: "Panel de la firma · Empire Tax’N Legal" };
+export const metadata = { title: "Panel de la firma · Empire Tax & Legal" };
 
 // Lo que hay dentro de cada cliente (mismo orden que el menú de app/e/[id]/menu.tsx).
 const MODULOS = ["Ventas y cobros", "Cuentas por cobrar", "Compras y pagos", "Cuentas por pagar", "Contabilidad", "Libros", "Impuestos", "Historial de cambios"];

@@ -12,7 +12,7 @@ import { borrarCorte, guardarFirmasEstados, guardarSaldosRegistro } from "../est
 import { llevaContabilidad } from "@/lib/reportes";
 import { CONCEPTOS_BALANCE, corteA, cortesDe, sugeridosA } from "@/lib/saldos-registro";
 
-export const metadata = { title: "Estados financieros · Empire Tax’N Legal" };
+export const metadata = { title: "Estados financieros · Empire Tax & Legal" };
 
 // Estado de resultados y estado de situación financiera, con comparativos y clic al libro mayor de cada cuenta.
 export default async function Estados({ params, searchParams }: {

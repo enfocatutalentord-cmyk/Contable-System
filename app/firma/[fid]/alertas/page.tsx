@@ -6,7 +6,7 @@ import { hoyISO } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
 import { EnviarWhatsApp } from "@/app/whatsapp";
 
-export const metadata = { title: "Alertas · Empire Tax’N Legal" };
+export const metadata = { title: "Alertas · Empire Tax & Legal" };
 
 // Alertas de todos los clientes (bloque 3b, Documento maestro, sección 9): primero lo urgente. Se calculan con lo registrado y
 // desaparecen solas cuando se resuelve lo que avisan.

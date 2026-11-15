@@ -3,7 +3,7 @@ import { accesoFirma } from "@/lib/acceso";
 import { actividad, clientesDeFirma } from "@/lib/firma";
 import { fechaValida } from "@/lib/reportes";
 
-export const metadata = { title: "Actividad · Empire Tax’N Legal" };
+export const metadata = { title: "Actividad · Empire Tax & Legal" };
 
 // Todo lo que hacen el equipo y los clientes: facturas, compras, cobros, pagos, asientos, documentos y cierres.
 export default async function Actividad({ params, searchParams }: {

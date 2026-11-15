@@ -9,7 +9,7 @@ import { puedeVer } from "@/lib/pestanas";
 import { CATEGORIAS, ESTADOS, listarRecepciones } from "@/lib/recepciones";
 import { cambiarEstadoRecepcion, subirDocumentos } from "../recepcion-acciones";
 
-export const metadata = { title: "Documentos · Empire Tax’N Legal" };
+export const metadata = { title: "Documentos · Empire Tax & Legal" };
 
 const TIPOS_BANCO = Object.fromEntries(Object.entries(MIME).map(([k, v]) => [v, NOMBRE_TIPO[k as keyof typeof NOMBRE_TIPO]]));
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });

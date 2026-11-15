@@ -6,7 +6,7 @@ import { clientesDeFirma } from "@/lib/firma";
 import { ESTADOS_SOLICITUD, listarSolicitudes, ORIGENES_SOLICITUD, PRIORIDADES, TIPOS_FORMULARIO } from "@/lib/formularios";
 import { hoyISO, verFecha } from "@/lib/montos";
 
-export const metadata = { title: "Solicitudes · Empire Tax’N Legal" };
+export const metadata = { title: "Solicitudes · Empire Tax & Legal" };
 
 // Solicitudes abiertas y formularios por revisar de todos los clientes (bloque 6a): lo más urgente arriba.
 export default async function SolicitudesDeLaFirma({ params }: { params: Promise<{ fid: string }> }) {

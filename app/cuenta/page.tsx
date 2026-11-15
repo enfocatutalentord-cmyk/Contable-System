@@ -9,7 +9,7 @@ import { cambiarClave } from "../acciones-cuenta";
 import { Formulario } from "../formulario";
 import { cancelarDosPasos, confirmarDosPasos, desactivarDosPasos, empezarDosPasos, nuevosCodigos } from "./acciones-dos-pasos";
 
-export const metadata = { title: "Mi cuenta · Empire Tax’N Legal" };
+export const metadata = { title: "Mi cuenta · Empire Tax & Legal" };
 
 // Solo dígitos, salvo donde también vale un código de recuperación (letras y guion).
 const campoCodigo = (etiqueta = "Código de 6 dígitos de la app", recuperacion = false) => (

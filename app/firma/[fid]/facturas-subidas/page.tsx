@@ -5,7 +5,7 @@ import { clientesDeFirma } from "@/lib/firma";
 import { ESTADOS_SUBIDA, FORMAS_SUBIDA, listarSubidas } from "@/lib/facturas-subidas";
 import { verMonto } from "@/lib/montos";
 
-export const metadata = { title: "Facturas del cliente · Empire Tax’N Legal" };
+export const metadata = { title: "Facturas del cliente · Empire Tax & Legal" };
 
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });
 const FILTROS: Record<string, string> = { recibida: "Por revisar", aprobada: "Aprobadas", rechazada: "Rechazadas", desestimada: "Desestimadas", todas: "Todas" };

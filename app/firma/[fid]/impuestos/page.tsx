@@ -10,7 +10,7 @@ import { clientesDeFirma, impuestosDeFirma } from "@/lib/firma";
 import { MENSUALES, type EstadoDeclaracion } from "@/lib/impuestos-mes";
 import { aCentavos, deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 
-export const metadata = { title: "Impuestos del mes · Empire Tax’N Legal" };
+export const metadata = { title: "Impuestos del mes · Empire Tax & Legal" };
 
 const TEXTO: Record<EstadoDeclaracion, string> = { presentada: "Presentada", en_cero: "En cero", pendiente: "Pendiente", vencida: "Vencida" };
 const FILTROS: Record<string, string> = { todos: "Todos", pendientes: "Con pendientes", listos: "Listos para cerrar", cerrados: "Cerrados" };

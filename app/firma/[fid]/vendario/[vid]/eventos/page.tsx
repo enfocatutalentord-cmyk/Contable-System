@@ -7,7 +7,7 @@ import { verFecha, verMonto } from "@/lib/montos";
 import { NOMBRE_EVENTO } from "@/lib/vendario-contable";
 import { reprocesarVendario } from "../../../../vendario-acciones";
 
-export const metadata = { title: "Eventos de Vendario · Empire Tax’N Legal" };
+export const metadata = { title: "Eventos de Vendario · Empire Tax & Legal" };
 
 const ESTADO: Record<string, string> = {
   esperando: "Por contabilizar", contabilizado: "Contabilizado", pendiente: "Pendiente", despues_de_baja: "Después de la baja", descartado: "Descartado",

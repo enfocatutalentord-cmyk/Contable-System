@@ -38,7 +38,7 @@ async function enviarUna(d: {
     para: d.para.join(", "), asunto, titulo: p.titulo, parrafos: parrafosDe(cuerpo),
     pie: `${p.emisor.nombre}${p.emisor.rnc ? ` · RNC ${p.emisor.rnc}` : ""}${p.emisor.correo ? ` · ${p.emisor.correo}` : ""}`,
     adjuntos: [pdf], responderA: p.emisor.correo,
-    remitente: d.propia ? "Empire Tax’N Legal" : p.emisor.nombre, encabezado: d.propia ? null : p.emisor.nombre,
+    remitente: d.propia ? "Empire Tax & Legal" : p.emisor.nombre, encabezado: d.propia ? null : p.emisor.nombre,
   });
   const error = r.ok ? null : r.error;
   await conEmpresa(d.empresaId, (tx) => registrarCorreo(tx, {

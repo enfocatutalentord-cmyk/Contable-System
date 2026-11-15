@@ -1,6 +1,6 @@
 import { VistaTareas } from "./vista";
 
-export const metadata = { title: "Tareas del mes · Empire Tax’N Legal" };
+export const metadata = { title: "Tareas del mes · Empire Tax & Legal" };
 
 export default async function Tareas({ params, searchParams }: {
   params: Promise<{ fid: string }>; searchParams: Promise<{ mes?: string; mias?: string; editar?: string }>;

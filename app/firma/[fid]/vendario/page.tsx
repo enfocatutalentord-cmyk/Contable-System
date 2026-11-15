@@ -9,7 +9,7 @@ import { clavesDe } from "@/lib/vendario-firma";
 import { ESTADO_CLIENTE, SERVICIOS } from "@/lib/vendario-sobre";
 import { marcarReceptora } from "../../vendario-acciones";
 
-export const metadata = { title: "Vendario · Empire Tax’N Legal" };
+export const metadata = { title: "Vendario · Empire Tax & Legal" };
 
 type Fila = { id: string; nombre: string | null; rnc: string | null; estado: string; servicios: string[]; responsable: string | null; empresa: string | null;
   empresa_id: string | null; al_dia_hasta: string | null; creado_en: Date; vista_en: Date | null; esperando: number; ultimo: string | null };

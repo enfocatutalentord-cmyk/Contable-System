@@ -43,7 +43,7 @@ async function abrir(nombreArchivo, dir, opciones = {}) {
     },
     async tarjeta(titulo, linea2 = "", ms = 3200) {
       await page.evaluate(([a, b]) => { const c = document.getElementById("tuto-tarjeta");
-        c.innerHTML = `<p style="letter-spacing:3px;font-size:16px">EMPIRE TAX’N LEGAL · SISTEMA CONTABLE</p><div class="linea"></div><h1>${a}</h1><p>${b}</p>`; c.style.opacity = 1; }, [titulo, linea2]);
+        c.innerHTML = `<p style="letter-spacing:3px;font-size:16px">EMPIRE TAX &amp; LEGAL · SISTEMA CONTABLE</p><div class="linea"></div><h1>${a}</h1><p>${b}</p>`; c.style.opacity = 1; }, [titulo, linea2]);
       await espera(ms);
       await page.evaluate(() => { document.getElementById("tuto-tarjeta").style.opacity = 0; });
       await espera(600);
@@ -51,7 +51,7 @@ async function abrir(nombreArchivo, dir, opciones = {}) {
     // Tarjeta a pantalla completa con contenido libre (por ejemplo, una lista); se quita con tarjetaFuera().
     async tarjetaHtml(html) {
       await page.evaluate((h) => { const c = document.getElementById("tuto-tarjeta");
-        c.innerHTML = `<p style="letter-spacing:3px;font-size:16px">EMPIRE TAX’N LEGAL · SISTEMA CONTABLE</p><div class="linea"></div>${h}`; c.style.opacity = 1; }, html);
+        c.innerHTML = `<p style="letter-spacing:3px;font-size:16px">EMPIRE TAX &amp; LEGAL · SISTEMA CONTABLE</p><div class="linea"></div>${h}`; c.style.opacity = 1; }, html);
     },
     async tarjetaFuera() { await page.evaluate(() => { document.getElementById("tuto-tarjeta").style.opacity = 0; }); await espera(600); },
     async señalar(loc, texto) {

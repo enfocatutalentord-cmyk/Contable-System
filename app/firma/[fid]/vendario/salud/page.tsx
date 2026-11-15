@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { ESTADOS } from "@/lib/vendario-sobre";
 import { reenviarEnvio } from "../../../vendario-acciones";
 
-export const metadata = { title: "Salud de la integración · Empire Tax’N Legal" };
+export const metadata = { title: "Salud de la integración · Empire Tax & Legal" };
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" }) ?? "—";
 

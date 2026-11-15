@@ -3,7 +3,7 @@ import { exigirDuena } from "@/lib/acceso";
 import { firmasPlataforma } from "@/lib/plataforma";
 import { verFecha } from "@/lib/montos";
 
-export const metadata = { title: "Consola de la plataforma · Empire Tax’N Legal" };
+export const metadata = { title: "Consola de la plataforma · Empire Tax & Legal" };
 
 const fecha = (d: Date | null) => (d ? verFecha(d.toISOString().slice(0, 10)) : "—");
 

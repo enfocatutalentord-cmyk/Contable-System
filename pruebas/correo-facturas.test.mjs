@@ -29,7 +29,7 @@ test("Gmail: el límite del día se reconoce para volver a enviarlo después", (
 test("la factura de un cliente sale con su nombre y sin la marca de Empire", () => {
   const base = { para: "a@x.do", asunto: "Factura", titulo: "Factura B0100000001", parrafos: ["Hola <b>"] };
   const conMarca = armarHtml(base);
-  assert.match(conMarca, /EMPIRE TAX’N LEGAL/);
+  assert.match(conMarca, /EMPIRE TAX &amp; LEGAL/);
   const sin = armarHtml({ ...base, encabezado: "Salón Rosa SRL" });
   assert.doesNotMatch(sin, /EMPIRE|003D19|B88A40/);
   assert.match(sin, /Salón Rosa SRL/);

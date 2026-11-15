@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 
 // Códigos de un solo uso basados en el tiempo (TOTP, RFC 6238): los mismos que generan Google Authenticator,
 // Microsoft Authenticator o Authy. Intervalos de 30 s, HMAC-SHA1 y 6 dígitos (lo que todas esas apps leen del QR).
 
-export const EMISOR = "Empire Tax’N Legal";
+export const EMISOR = "Empire Tax & Legal";
 const PERIODO = 30;
 const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 

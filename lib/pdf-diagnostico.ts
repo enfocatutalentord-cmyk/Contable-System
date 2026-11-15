@@ -23,7 +23,7 @@ export async function pdfDiagnostico(tx: Tx, fid: string): Promise<{ nombre: str
   const m = (v: string) => ({ text: verMonto(v), alignment: "right" });
   const contenido = [
     { canvas: [{ type: "rect", x: 0, y: 0, w: 548, h: 220, color: VERDE }, { type: "rect", x: 0, y: 220, w: 548, h: 5, color: DORADO }] },
-    { text: "EMPIRE TAX’N LEGAL", bold: true, color: "#ffffff", fontSize: 13, characterSpacing: 2, absolutePosition: { x: 64, y: 90 } },
+    { text: "EMPIRE TAX & LEGAL", bold: true, color: "#ffffff", fontSize: 13, characterSpacing: 2, absolutePosition: { x: 64, y: 90 } },
     { text: "Informe de diagnóstico", bold: true, color: "#ffffff", fontSize: 30, absolutePosition: { x: 64, y: 130 } },
     { text: "y propuesta de servicios", color: "#ffffff", fontSize: 16, absolutePosition: { x: 64, y: 172 } },
     { text: f.empresa, bold: true, fontSize: 20, margin: [16, 48, 0, 4] },
@@ -48,8 +48,8 @@ export async function pdfDiagnostico(tx: Tx, fid: string): Promise<{ nombre: str
     { text: "Los precios no incluyen ITBIS. Si el servicio requiere comprobante con valor fiscal, se suma el 18 %.", italics: true, color: "#666666", margin: [0, 10, 0, 0] },
   ];
   const datos = await armarPdf({
-    pageSize: "LETTER", pageMargins: [32, 40, 32, 40], defaultStyle: { font: "Helvetica", fontSize: 9 }, info: { title: `Diagnóstico · ${f.empresa}`, creator: "Empire Tax’N Legal" }, content: contenido,
-    footer: (actual: number, total: number) => actual === 1 ? null : ({ columns: [{ text: "Empire Tax’N Legal", color: VERDE }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }], margin: [32, 10, 32, 0], fontSize: 7 }),
+    pageSize: "LETTER", pageMargins: [32, 40, 32, 40], defaultStyle: { font: "Helvetica", fontSize: 9 }, info: { title: `Diagnóstico · ${f.empresa}`, creator: "Empire Tax & Legal" }, content: contenido,
+    footer: (actual: number, total: number) => actual === 1 ? null : ({ columns: [{ text: "Empire Tax & Legal", color: VERDE }, { text: `Página ${actual} de ${total}`, alignment: "right", color: "#666666" }], margin: [32, 10, 32, 0], fontSize: 7 }),
   });
   return { nombre: `diagnostico-${f.rnc ?? "cliente"}.pdf`, datos: new Uint8Array(datos) };
 }

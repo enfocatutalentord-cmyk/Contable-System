@@ -4,7 +4,7 @@ import { crearClaveConEnlace } from "../../acciones-cuenta";
 import { Formulario } from "../../formulario";
 import { LogoCompleto } from "../../marca";
 
-export const metadata = { title: "Crear contraseña · Empire Tax’N Legal", robots: { index: false } };
+export const metadata = { title: "Crear contraseña · Empire Tax & Legal", robots: { index: false } };
 
 // Página del enlace que llega por correo: verifica el correo y pide crear la contraseña antes de entrar.
 // Solo mirar la página no gasta el enlace (algunos correos abren los enlaces para revisarlos); se gasta al guardar.

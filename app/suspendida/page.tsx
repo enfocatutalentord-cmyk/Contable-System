@@ -2,7 +2,7 @@ import { exigirUsuario } from "@/lib/auth";
 import { contactoPlataforma } from "@/lib/plataforma";
 import { salir } from "../acciones-cuenta";
 
-export const metadata = { title: "Firma suspendida · Empire Tax’N Legal" };
+export const metadata = { title: "Firma suspendida · Empire Tax & Legal" };
 
 // Aviso para quien entra a una firma suspendida desde la Consola de la plataforma.
 export default async function Suspendida() {

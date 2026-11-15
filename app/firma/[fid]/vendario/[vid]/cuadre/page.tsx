@@ -8,7 +8,7 @@ import { NOMBRE_EVENTO } from "@/lib/vendario-contable";
 import type { Comparacion, Fila } from "@/lib/vendario-cuadre";
 import { cuadrarMes } from "../../../../vendario-acciones";
 
-export const metadata = { title: "Cuadre con Vendario · Empire Tax’N Legal" };
+export const metadata = { title: "Cuadre con Vendario · Empire Tax & Legal" };
 
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
 

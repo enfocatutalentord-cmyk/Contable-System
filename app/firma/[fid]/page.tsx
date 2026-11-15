@@ -5,7 +5,7 @@ import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
 
-export const metadata = { title: "Inicio de la firma · Empire Tax’N Legal" };
+export const metadata = { title: "Inicio de la firma · Empire Tax & Legal" };
 
 // Todo lo de la firma en una sola pantalla: cifras, clientes con lo pendiente y la actividad del equipo y de los clientes
 // (como el tablero de clientes de Xero HQ y la lista de clientes de QuickBooks Online Accountant).

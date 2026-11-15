@@ -3,7 +3,7 @@ import { pedirRecuperacion } from "../acciones-cuenta";
 import { Formulario } from "../formulario";
 import { LogoCompleto } from "../marca";
 
-export const metadata = { title: "Olvidé mi contraseña · Empire Tax’N Legal" };
+export const metadata = { title: "Olvidé mi contraseña · Empire Tax & Legal" };
 
 export default function Recuperar() {
   return (

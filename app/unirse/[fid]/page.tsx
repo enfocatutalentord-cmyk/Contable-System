@@ -6,7 +6,7 @@ import { Formulario } from "../../formulario";
 import { LogoCompleto } from "../../marca";
 import { crearCuentaProspecto } from "../acciones";
 
-export const metadata = { title: "Crear mi cuenta · Empire Tax’N Legal", robots: { index: false } };
+export const metadata = { title: "Crear mi cuenta · Empire Tax & Legal", robots: { index: false } };
 
 // Página pública de registro de la firma (bloque 8a): quien se registra queda como prospecto y puede pedir servicios, llenar sus
 // formularios y subir documentos. La firma la abre o la cierra en Empresas Empire › Datos de la firma.

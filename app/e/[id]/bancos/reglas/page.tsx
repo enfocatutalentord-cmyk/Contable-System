@@ -9,7 +9,7 @@ import { conEmpresa } from "@/lib/db";
 import { puede } from "@/lib/permisos";
 import { agregarReglasSugeridas, borrarRegla, guardarRegla } from "../../bancos-acciones";
 
-export const metadata = { title: "Reglas del banco · Empire Tax’N Legal" };
+export const metadata = { title: "Reglas del banco · Empire Tax & Legal" };
 
 const DIRECCION: Record<string, string> = { sale: "Sale del banco", entra: "Entra al banco", ambas: "Entra o sale" };
 

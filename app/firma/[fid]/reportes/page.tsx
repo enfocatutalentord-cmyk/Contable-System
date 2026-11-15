@@ -7,7 +7,7 @@ import { clientesDeFirma } from "@/lib/firma";
 import { hoyISO } from "@/lib/montos";
 import { ESTADOS_REPORTE } from "@/lib/reporte-mensual";
 
-export const metadata = { title: "Reportes del mes · Empire Tax’N Legal" };
+export const metadata = { title: "Reportes del mes · Empire Tax & Legal" };
 
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" }) ?? "";
 

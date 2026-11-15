@@ -8,7 +8,7 @@ import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { guardarCuentaBancaria } from "../bancos-acciones";
 
-export const metadata = { title: "Bancos · Empire Tax’N Legal" };
+export const metadata = { title: "Bancos · Empire Tax & Legal" };
 
 // Cuentas bancarias del cliente. Cada una se liga a su cuenta del catálogo y recibe los estados de cuenta del banco.
 export default async function Bancos({ params }: { params: Promise<{ id: string }> }) {

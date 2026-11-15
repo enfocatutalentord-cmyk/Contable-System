@@ -8,7 +8,7 @@ import { PERMISOS } from "@/lib/permisos";
 import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, PESTANAS_SOLO_PROPIA } from "@/lib/pestanas";
 import { agregarPersona, enviarAcceso, guardarAccesos, guardarPermisosPersona, quitarDeFirma, reiniciarDosPasos } from "../../acciones";
 
-export const metadata = { title: "Personas y accesos · Empire Tax’N Legal" };
+export const metadata = { title: "Personas y accesos · Empire Tax & Legal" };
 
 export default async function Equipo({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;

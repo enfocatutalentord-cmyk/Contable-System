@@ -9,7 +9,7 @@ import { puede } from "@/lib/permisos";
 import { reporteConciliacion, type PartidaBanco, type PartidaLibros } from "@/lib/reporte-conciliacion";
 import { cerrarMesBanco, reabrirMesBanco } from "../../../bancos-acciones";
 
-export const metadata = { title: "Conciliación del mes · Empire Tax’N Legal" };
+export const metadata = { title: "Conciliación del mes · Empire Tax & Legal" };
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });

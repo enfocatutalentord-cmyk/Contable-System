@@ -11,7 +11,7 @@ import { SIN_CREDITO } from "@/lib/validar-fiscal";
 import { agregarProrroga, cargarTasa, guardarCalendario, guardarResponsableNormas, quitarProrroga, registrarRevision } from "../../normas-acciones";
 import { CamposTasaNueva } from "./tasa-nueva";
 
-export const metadata = { title: "Normas y tasas · Empire Tax’N Legal" };
+export const metadata = { title: "Normas y tasas · Empire Tax & Legal" };
 
 const ESTADO: Record<string, string> = { vigente: "Vigente", proxima: "Próxima", cerrada: "Cerrada", inactiva: "Inactiva" };
 const credito = (t: string) =>

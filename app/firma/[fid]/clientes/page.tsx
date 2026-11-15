@@ -9,7 +9,7 @@ import { filtrarClientes, leerFiltrosLista, resumenLista } from "@/lib/lista-mae
 import { hoyISO, verFecha } from "@/lib/montos";
 import { asignarResponsable, guardarFirma, marcarEmpresaPropia } from "../../acciones";
 
-export const metadata = { title: "Empresas Empire · Empire Tax’N Legal" };
+export const metadata = { title: "Empresas Empire · Empire Tax & Legal" };
 
 // Lista maestra de clientes (bloque 1b): lo de la ficha de cada cliente, con filtros y el resumen del Documento maestro.
 export default async function Clientes({ params, searchParams }: {

@@ -18,9 +18,9 @@ export type Tabla = {
   sinMarca?: boolean; // documento de un cliente (su factura): sin los colores ni el nombre de Empire
 };
 
-// Colores de la marca Empire Tax’N Legal (manual de identidad 1.0).
+// Colores de la marca Empire Tax & Legal (manual de identidad 1.0).
 const VERDE = "003D19", DORADO = "B88A40";
-const PRODUCTO = "Empire Tax’N Legal · Sistema contable";
+const PRODUCTO = "Empire Tax & Legal · Sistema contable";
 
 const numero = (v: Celda) => (v === null || v === "" ? null : Number(v));
 

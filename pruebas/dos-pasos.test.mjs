@@ -45,5 +45,5 @@ test("códigos de recuperación y enlace del QR", () => {
   assert.ok(cs.every((c) => /^[a-z2-9]{5}-[a-z2-9]{5}$/.test(c)));
   assert.equal(hashCodigo(cs[0]), hashCodigo(cs[0].toUpperCase().replace("-", " ")));
   const u = enlaceAutenticador("ABC", "ana@x.do");
-  assert.match(u, /^otpauth:\/\/totp\/Empire%20Tax%E2%80%99N%20Legal%3Aana%40x\.do\?secret=ABC&issuer=Empire/);
+  assert.match(u, /^otpauth:\/\/totp\/Empire%20Tax%20%26%20Legal%3Aana%40x\.do\?secret=ABC&issuer=Empire/);
 });

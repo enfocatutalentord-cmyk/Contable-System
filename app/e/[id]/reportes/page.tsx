@@ -2,7 +2,7 @@ import Link from "next/link";
 import { accesoEmpresa } from "@/lib/acceso";
 import { puedeVer } from "@/lib/pestanas";
 
-export const metadata = { title: "Centro de reportes · Empire Tax’N Legal" };
+export const metadata = { title: "Centro de reportes · Empire Tax & Legal" };
 
 type Reporte = { nombre: string; ayuda: string; ruta: string; pestana: string };
 const GRUPOS: [titulo: string, reportes: Reporte[]][] = [

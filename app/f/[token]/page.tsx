@@ -7,7 +7,7 @@ import { conEmpresa } from "@/lib/db";
 import { CamposLevantamiento } from "./levantamiento";
 import { enviarFormularioPublico } from "../acciones";
 
-export const metadata = { title: "Formulario · Empire Tax’N Legal", robots: { index: false } };
+export const metadata = { title: "Formulario · Empire Tax & Legal", robots: { index: false } };
 
 const Campo = ({ n, t, tipo = "text", req, ph, ancho }: { n: string; t: string; tipo?: string; req?: boolean; ph?: string; ancho?: number }) => (
   <label style={ancho ? { flex: `1 1 ${ancho}px` } : undefined}>{t}<input name={n} type={tipo} required={req} placeholder={ph} maxLength={200} /></label>

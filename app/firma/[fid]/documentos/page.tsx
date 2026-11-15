@@ -9,7 +9,7 @@ import { descartarDocumento, procesarDocumento } from "../../documentos-acciones
 import { iaDisponible } from "@/lib/lectura-ia";
 import { BotonLeerDocumento } from "./leer-ia";
 
-export const metadata = { title: "Documentos recibidos · Empire Tax’N Legal" };
+export const metadata = { title: "Documentos recibidos · Empire Tax & Legal" };
 
 const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" });
 const ES_FACTURA = ["application/pdf", "image/jpeg", "image/png"];

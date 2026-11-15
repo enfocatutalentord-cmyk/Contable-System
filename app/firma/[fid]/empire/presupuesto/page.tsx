@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { accesoFirma } from "@/lib/acceso";
 
-export const metadata = { title: "Presupuesto · Empire Tax’N Legal" };
+export const metadata = { title: "Presupuesto · Empire Tax & Legal" };
 
 // Contabilidad Empire (rediseño R2, n.º 5 de la lista): el lugar del presupuesto de la oficina y del personal. Se arma con el Excel
 // PRESUPUESTO 2026 (entregas 7b y 7c, propuestas el 5-nov-2026). Solo para administradores: el presupuesto personal es privado.

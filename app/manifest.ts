@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 // La aplicación de Empire se instala desde el navegador, sin tienda (bloque 8a; guía de Next.js para Progressive Web Apps).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Empire Tax’N Legal",
+    name: "Empire Tax & Legal",
     short_name: "Empire",
-    description: "Tu cuenta en Empire Tax’N Legal: solicitudes, documentos, impuestos y reportes.",
+    description: "Tu cuenta en Empire Tax & Legal: solicitudes, documentos, impuestos y reportes.",
     start_url: "/",
     scope: "/",
     display: "standalone",

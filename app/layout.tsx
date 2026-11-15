@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: PRODUCTO,
-  description: "Sistema contable de Empire Tax’N Legal para firmas que administran empresas en República Dominicana",
+  description: "Sistema contable de Empire Tax & Legal para firmas que administran empresas en República Dominicana",
   // Instalable en el celular (bloque 8a): icono y nombre en la pantalla de inicio del iPhone.
   icons: { apple: "/app/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "Empire", statusBarStyle: "default" },

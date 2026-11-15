@@ -12,7 +12,7 @@ import {
   conciliarMovimiento, desconciliarMovimiento, deshacer, guardarCuentaBancaria, registrarDesdeBanco, reincluirMovimiento, subirEstadoCuenta,
 } from "../../bancos-acciones";
 
-export const metadata = { title: "Cuenta bancaria · Empire Tax’N Legal" };
+export const metadata = { title: "Cuenta bancaria · Empire Tax & Legal" };
 
 const ESTADOS: Record<string, string> = { pendiente: "Por conciliar", conciliado: "Conciliado", excluido: "Excluido" };
 const FILTROS: Record<string, string> = { pendiente: "Por conciliar", conciliado: "Conciliados", excluido: "Excluidos", todos: "Todos" };

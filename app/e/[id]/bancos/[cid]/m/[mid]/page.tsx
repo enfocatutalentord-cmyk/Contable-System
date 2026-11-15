@@ -13,7 +13,7 @@ import { excluirMovimiento, registrarDesdeBanco } from "../../../../bancos-accio
 import { conciliarMovimiento } from "../../../../bancos-acciones";
 import { ElegirLineas } from "./elegir";
 
-export const metadata = { title: "Conciliar movimiento · Empire Tax’N Legal" };
+export const metadata = { title: "Conciliar movimiento · Empire Tax & Legal" };
 
 // Un movimiento del banco: buscar y combinar registros, registrarlo contra otra cuenta, registrar el cobro o el pago que
 // falta, o excluirlo (por ejemplo, una línea repetida del banco).

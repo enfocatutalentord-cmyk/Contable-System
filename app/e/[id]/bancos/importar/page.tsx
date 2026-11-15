@@ -7,7 +7,7 @@ import { conEmpresa } from "@/lib/db";
 import { puede } from "@/lib/permisos";
 import { importarDesdeRecepcion } from "../../bancos-acciones";
 
-export const metadata = { title: "Importar estado de cuenta · Empire Tax’N Legal" };
+export const metadata = { title: "Importar estado de cuenta · Empire Tax & Legal" };
 
 // Un estado de cuenta que el cliente subió en «Mis documentos»: se elige a qué cuenta bancaria va y se abre la vista previa.
 export default async function ImportarRecibido({ params, searchParams }: {

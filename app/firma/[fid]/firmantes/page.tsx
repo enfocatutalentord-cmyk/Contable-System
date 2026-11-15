@@ -6,7 +6,7 @@ import { certificadosDeEmpresa } from "@/lib/ecf-emision";
 import { clientesDeFirma } from "@/lib/firma";
 import { hoyISO, verFecha } from "@/lib/montos";
 
-export const metadata = { title: "Firmantes de e-CF · Empire Tax’N Legal" };
+export const metadata = { title: "Firmantes de e-CF · Empire Tax & Legal" };
 
 // Firmantes de factura electrónica de todas las empresas (entrega E3a): quién tiene certificado en cada una, cuál es el principal,
 // cuándo vence cada uno y qué usuarios del cliente con el rol «Cliente · Factura» todavía no tienen uno.

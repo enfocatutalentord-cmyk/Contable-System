@@ -12,7 +12,7 @@ import { puede } from "@/lib/permisos";
 import { aceptarFormularioAccion, descartarFormularioAccion } from "../../../solicitudes-acciones";
 import { aprobarEstadoInicial, guardarPatrimonio, pasarASaldos, quitarAprobacionEstado } from "../../../levantamiento-acciones";
 
-export const metadata = { title: "Levantamiento contable · Empire Tax’N Legal" };
+export const metadata = { title: "Levantamiento contable · Empire Tax & Legal" };
 
 const dinero = (v: bigint) => (v < 0n ? `-${verMonto(deCentavos(-v))}` : verMonto(deCentavos(v)));
 const SECCIONES: [string, string, string[]][] = [

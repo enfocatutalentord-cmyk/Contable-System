@@ -6,7 +6,7 @@ import { clientesDeFirma } from "@/lib/firma";
 import { hoyISO, verFecha } from "@/lib/montos";
 import { AVISO_DIAS, diasEntre, INSTITUCIONES, listarTramites } from "@/lib/tramites";
 
-export const metadata = { title: "Trámites abiertos · Empire Tax’N Legal" };
+export const metadata = { title: "Trámites abiertos · Empire Tax & Legal" };
 
 // Trámites abiertos de todos los clientes (bloque 5a, Fase 2, sección 7): los que vencen primero arriba, con los días que faltan.
 export default async function TramitesAbiertos({ params }: { params: Promise<{ fid: string }> }) {

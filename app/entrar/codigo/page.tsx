@@ -5,7 +5,7 @@ import { verificarEntrada } from "../../acciones-cuenta";
 import { Formulario } from "../../formulario";
 import { LogoCompleto } from "../../marca";
 
-export const metadata = { title: "Código de verificación · Empire Tax’N Legal" };
+export const metadata = { title: "Código de verificación · Empire Tax & Legal" };
 
 export default async function Codigo() {
   const p = await entradaPendiente();
@@ -16,7 +16,7 @@ export default async function Codigo() {
         <LogoCompleto />
         <div className="tarjeta">
           <h1>Verificación en dos pasos</h1>
-          <p className="sub">Hola, {p.nombre}. Abre tu app de autenticación y escribe el código de 6 dígitos de Empire Tax’N Legal.</p>
+          <p className="sub">Hola, {p.nombre}. Abre tu app de autenticación y escribe el código de 6 dígitos de Empire Tax & Legal.</p>
           <Formulario accion={verificarEntrada} boton="Verificar">
             <label>Código<input name="codigo" inputMode="numeric" autoComplete="one-time-code" maxLength={11} autoFocus required /></label>
           </Formulario>

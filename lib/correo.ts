@@ -43,7 +43,7 @@ export function errorDeGmail(e: unknown): { error: string; limite: boolean } {
 export function armarHtml(d: Envio): string {
   const cabeza = d.encabezado
     ? `<div style="background:#f2f2f2;color:#222;padding:16px 20px;border-bottom:2px solid #999;font-weight:bold">${escapar(d.encabezado)}</div>`
-    : `<div style="background:#003D19;color:#F6F3EC;padding:16px 20px;border-bottom:3px solid #B88A40;font-weight:bold;letter-spacing:1px">EMPIRE TAX’N LEGAL · Sistema contable</div>`;
+    : `<div style="background:#003D19;color:#F6F3EC;padding:16px 20px;border-bottom:3px solid #B88A40;font-weight:bold;letter-spacing:1px">EMPIRE TAX &amp; LEGAL · Sistema contable</div>`;
   const color = d.encabezado ? "#222" : "#003D19";
   return `<div style="font-family:Arial,sans-serif;font-size:15px;color:#1d241f;max-width:560px">
     ${cabeza}
@@ -64,7 +64,7 @@ export async function enviarConDetalle(d: Envio): Promise<Resultado> {
   const texto = [d.titulo, "", ...d.parrafos, ...(d.boton ? ["", `${d.boton.texto}: ${d.boton.url}`] : []), ...(d.pie ? ["", d.pie] : [])].join("\n");
   try {
     const info = await transporte.sendMail({
-      from: `"${nombreSeguro(d.remitente ?? "Empire Tax’N Legal · Sistema contable")}" <${usuario}>`,
+      from: `"${nombreSeguro(d.remitente ?? "Empire Tax & Legal · Sistema contable")}" <${usuario}>`,
       to: d.para, subject: d.asunto, text: texto, html: armarHtml(d),
       ...(d.responderA ? { replyTo: d.responderA } : {}),
       ...(d.adjuntos?.length ? { attachments: d.adjuntos.map((a) => ({ filename: a.nombre, content: a.contenido, contentType: a.tipo })) } : {}),

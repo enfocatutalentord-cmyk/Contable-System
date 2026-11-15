@@ -10,7 +10,7 @@ import { A1, anexoA1, anexoJ, B1, type Anexo1, type Casilla } from "@/lib/ir2";
 import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 
-export const metadata = { title: "IR-2 · Empire Tax’N Legal" };
+export const metadata = { title: "IR-2 · Empire Tax & Legal" };
 
 const ANEXOS: Record<string, string> = {
   a1: "Anexo A-1 · Balance general", b1: "Anexo B-1 · Estado de resultados", j: "Anexo J · Comprobantes",

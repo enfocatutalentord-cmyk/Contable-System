@@ -5,7 +5,7 @@ import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma, equipoDe } from "@/lib/firma";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 
-export const metadata = { title: "Bitácora de la firma · Empire Tax’N Legal" };
+export const metadata = { title: "Bitácora de la firma · Empire Tax & Legal" };
 
 // Bitácora de toda la firma (bloque 3a): las gestiones del mes de todos los clientes y las notificaciones de pago abiertas.
 export default async function BitacoraFirma({ params, searchParams }: {

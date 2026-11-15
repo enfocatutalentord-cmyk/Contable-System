@@ -1,5 +1,5 @@
 [
-  ["01", "Bienvenidos al sistema contable de Empire Tax'N Legal: una plataforma en la nube, hecha para firmas contables, que lleva la contabilidad, la facturación y los impuestos de todos sus clientes desde un solo lugar, cumpliendo con la DGII.", ""],
+  ["01", "Bienvenidos al sistema contable de Empire Tax & Legal: una plataforma en la nube, hecha para firmas contables, que lleva la contabilidad, la facturación y los impuestos de todos sus clientes desde un solo lugar, cumpliendo con la DGII.", ""],
   ["02", "Al entrar, la firma ve su inicio: cuántos clientes tiene, lo que está por cobrar y lo vencido, y los documentos que los clientes enviaron y faltan por procesar.", "El <b>Inicio de la firma</b>: clientes, cobros y pendientes de un vistazo."],
   ["03", "Cada cliente tiene su responsable en el equipo y sus pendientes a la vista, para que nada se quede atrás.", "Cada cliente con su <b>responsable</b> y sus <b>pendientes</b>."],
   ["04", "Los clientes suben sus facturas y gastos desde el celular. El equipo los recibe aquí y, con un clic, los convierte en una compra con el documento adjunto.", "<b>Documentos recibidos</b>: lo que los clientes suben desde el celular."],
@@ -13,5 +13,5 @@
   ["12", "También prepara el borrador del IT-1 y del IR-17 con las casillas oficiales, y los cuadra contra el 606 y el 607.", "Borradores del <b>IT-1</b> y del <b>IR-17</b> con las casillas oficiales."],
   ["13", "La seguridad está a la altura de las plataformas líderes: roles con permisos, verificación en dos pasos y un historial de cada cambio, con quién lo hizo y cuándo.", "<b>Roles</b>, <b>verificación en dos pasos</b> e historial de cada cambio."],
   ["14", "Y esto es lo que viene: la factura electrónica, conectada a un proveedor autorizado por la DGII; la conciliación bancaria con los estados de cuenta; los estados financieros con la declaración anual de renta; y un asistente con inteligencia artificial que responde según el rol de cada persona.", ""],
-  ["15", "Empire Tax'N Legal: la contabilidad y los impuestos de tus clientes, en orden y al día.", ""]
+  ["15", "Empire Tax & Legal: la contabilidad y los impuestos de tus clientes, en orden y al día.", ""]
 ]

@@ -117,7 +117,7 @@ const dur = (id) => Number(execFileSync("ffprobe", ["-v", "error", "-show_entrie
       </ul>`);
   });
   await escena("15", async () => {
-    await t.tarjetaHtml(`<h1>Empire Tax’N Legal</h1><p>La contabilidad y los impuestos de tus clientes, en orden y al día.</p>`);
+    await t.tarjetaHtml(`<h1>Empire Tax &amp; Legal</h1><p>La contabilidad y los impuestos de tus clientes, en orden y al día.</p>`);
   });
   await t.espera(1200);
   fs.writeFileSync(path.join(dir, "tiempos.json"), JSON.stringify(tiempos));

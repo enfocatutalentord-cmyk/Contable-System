@@ -15,7 +15,7 @@ const B = process.env.BASE || "http://localhost:3100";
   await page.fill("input[name=nombre]", "Joannie");
   await page.fill("input[name=email]", correo);
   await page.fill("input[name=clave]", "clave-segura-123");
-  await page.fill("input[name=firma]", "Empire Tax’N Legal");
+  await page.fill("input[name=firma]", "Empire Tax & Legal");
   await page.click("button.primario");
   await page.waitForURL(/\/firma\/[0-9a-f-]+$/);
   const firma = page.url().split("/firma/")[1];

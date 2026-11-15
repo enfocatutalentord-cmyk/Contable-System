@@ -12,7 +12,7 @@ import { CUENTAS_NEUTRALES, SUGERIDAS } from "@/lib/vendario-contable";
 import { cuentasUsadas, mapeoDe } from "@/lib/vendario-registro";
 import { aceptarSolicitud, cambiarEstadoVendario, guardarMapeoVendario, reprocesarVendario } from "../../../vendario-acciones";
 
-export const metadata = { title: "Solicitud de Vendario · Empire Tax’N Legal" };
+export const metadata = { title: "Solicitud de Vendario · Empire Tax & Legal" };
 
 type Cliente = {
   id: string; org_id: string; rnc: string | null; estado: string; servicios: string[]; fecha_inicio: string | null; historico_desde: string | null;

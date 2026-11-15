@@ -4,7 +4,7 @@ import { Formulario } from "@/app/formulario";
 import { redirect } from "next/navigation";
 import { accesoFirma } from "@/lib/acceso";
 
-export const metadata = { title: "Nuevo cliente · Empire Tax’N Legal" };
+export const metadata = { title: "Nuevo cliente · Empire Tax & Legal" };
 
 export default async function NuevoCliente({ params }: { params: Promise<{ fid: string }> }) {
   const { fid } = await params;

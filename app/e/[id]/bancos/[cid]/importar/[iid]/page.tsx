@@ -9,7 +9,7 @@ import { verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { descartarImportacion, guardarFormato, importarMovimientos } from "../../../../bancos-acciones";
 
-export const metadata = { title: "Importar estado de cuenta · Empire Tax’N Legal" };
+export const metadata = { title: "Importar estado de cuenta · Empire Tax & Legal" };
 
 const verCelda = (c: Celda) => (c === null ? "" : c instanceof Date ? verFecha(c.toISOString()) : String(c));
 const ORDENES: Record<string, string> = { dma: "Día/mes/año (31/12/2026)", mda: "Mes/día/año (12/31/2026)", amd: "Año-mes-día (2026-12-31)" };

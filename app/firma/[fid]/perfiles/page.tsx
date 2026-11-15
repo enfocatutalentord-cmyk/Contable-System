@@ -6,7 +6,7 @@ import { PERMISOS } from "@/lib/permisos";
 import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
 import { eliminarPerfil, guardarPerfil } from "../../acciones";
 
-export const metadata = { title: "Roles y permisos · Empire Tax’N Legal" };
+export const metadata = { title: "Roles y permisos · Empire Tax & Legal" };
 
 type Perfil = { id: string; nombre: string; permisos: string[]; pestanas: string[] | null; para_clientes: boolean; sistema: boolean; usos: number };
 

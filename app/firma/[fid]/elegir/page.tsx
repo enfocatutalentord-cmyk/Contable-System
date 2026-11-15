@@ -3,7 +3,7 @@ import { accesoFirma } from "@/lib/acceso";
 import { clientesDeFirma } from "@/lib/firma";
 import { PESTANAS_CLIENTE } from "@/lib/pestanas";
 
-export const metadata = { title: "Elige un cliente · Empire Tax’N Legal" };
+export const metadata = { title: "Elige un cliente · Empire Tax & Legal" };
 
 // Se llega aquí al tocar una pestaña de cliente con «Todos los clientes» elegido arriba.
 export default async function Elegir({ params, searchParams }: { params: Promise<{ fid: string }>; searchParams: Promise<{ a?: string }> }) {
