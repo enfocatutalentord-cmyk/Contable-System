@@ -1081,5 +1081,5 @@ Ojo: con FORCE RLS, consultar las tablas con `psql` como dueño devuelve 0 filas
 - **empire-web** (`enfocatutalentord-cmyk/empire-web`): web de Empire Tax’N Legal, publicada en
   https://www.empiretaxnlegal.com.do. Su estado está en el `CLAUDE.md` de ese repositorio. 15-nov-2026: logo y nombre «Empire Tax &
   Legal» publicados también ahí («sí» de Patricia, `ed8ec9c`; copia local en `C:\Users\Manau\Projects\empire-web`). Vercel bloquea en
-  esa web los commits con el correo de Manaury; los de `Claude <noreply@anthropic.com>` sí se publican.
+  esa web los commits con el correo de Manaury; los de `Claude <noreply@anthropic.com>` sí se publican. También publicado el correo y el aviso por Gmail de cada solicitud (`67ebd57`; el aviso necesita `GMAIL_CLAVE_APP` en Vercel › empire-web).
 - `enfoca-panel` y `enfoca-talent-intelligence-platform`: Joannie pidió **no tocarlos** en esta línea de trabajo.
