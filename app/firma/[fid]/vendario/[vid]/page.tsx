@@ -179,6 +179,7 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
       </div>
       <p className="sub">
         <Link href={`/firma/${fid}/vendario/${vid}/eventos`}>Ver los eventos uno por uno, con los pendientes y su motivo</Link>
+        {" · "}<Link href={`/firma/${fid}/vendario/${vid}/cuadre`}>Cuadre mensual con Vendario</Link>
       </p>
       {eventos.some((x) => x.estado === "pendiente" || x.estado === "esperando") && c.empresa_id && (
         <Formulario accion={reprocesarVendario.bind(null, fid, vid, null)} boton="Reprocesar los pendientes" className="fila"><span /></Formulario>

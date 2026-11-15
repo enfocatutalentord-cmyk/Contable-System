@@ -2,6 +2,7 @@
 
 // Integración con Vendario, parte 1: lo que hace el equipo de la firma con las solicitudes y los clientes de Vendario.
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { accesoFirma, esUuid, soloCliente } from "@/lib/acceso";
 import { equipoDe } from "@/lib/firma";
@@ -117,4 +118,17 @@ export async function reprocesarVendario(firmaId: string, clienteId: string, eve
   const n = await contabilizarPendientes({ clienteId });
   revalidar(firmaId);
   return { ok: n ? `Se reprocesaron ${n} eventos.` : "No había eventos pendientes." };
+}
+
+// Cuadre mensual (acuerdo, sección 10): consulta a Vendario y compara con lo recibido.
+export async function cuadrarMes(firmaId: string, clienteId: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await equipo(firmaId);
+  const c = await clienteDeFirma(firmaId, clienteId);
+  if (!c) return { error: "El cliente no existe." };
+  const mes = String(fd.get("mes") ?? "");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return { error: "Elige el mes." };
+  const { cuadrar, finDeMes } = await import("@/lib/vendario-cuadre");
+  await cuadrar({ clienteId, desde: `${mes}-01`, hasta: finDeMes(mes), usuarioId: usuario.id });
+  revalidar(firmaId);
+  redirect(`/firma/${firmaId}/vendario/${clienteId}/cuadre?mes=${mes}`);
 }

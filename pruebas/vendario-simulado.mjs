@@ -27,14 +27,37 @@ async function verifySignature(header, body, secrets, toleranceSec = 300, now = 
   return false;
 }
 
-// ── empire-inbox simulado ──
+// ── empire-inbox y empire-ledger simulados ──
 const estados = [];
+const contables = []; // eventos contables que Vendario registró (los entregados y uno que «no llegó»)
+const money = (c) => (c / 100).toFixed(2);
+const cent = (t) => Math.round(Number(t) * 100);
+function ledger(q) {
+  const ev = contables.filter((e) => e.data.date >= q.from && e.data.date <= q.to);
+  const by_event = {}, by_account = {};
+  for (const e of ev) {
+    const x = (by_event[e.data.event_type] ??= { count: 0, t: 0 }); x.count++; x.t += cent(e.data.amounts.total);
+    for (const l of e.data.entry) { const a = (by_account[l.account] ??= { d: 0, c: 0 }); a.d += cent(l.debit); a.c += cent(l.credit); }
+  }
+  return { org_rnc: q.org_rnc, from: q.from, to: q.to,
+    by_event: Object.fromEntries(Object.entries(by_event).map(([k, v]) => [k, { count: v.count, total: money(v.t) }])),
+    by_account: Object.fromEntries(Object.entries(by_account).map(([k, v]) => [k, { debit: money(v.d), credit: money(v.c) }])),
+    ids: ev.sort((a, b) => a.seq - b.seq).map((e) => e.id) };
+}
 const servidor = createServer(async (req, res) => {
   let body = "";
   for await (const c of req) body += c;
-  const ok = req.url === "/empire-inbox" && (await verifySignature(req.headers["x-signature"], body, [E2V]));
-  if (ok) estados.push(JSON.parse(body));
-  res.writeHead(ok ? 200 : 401, { "content-type": "application/json" }).end(JSON.stringify(ok ? { ok: true } : { error: "INVALID_SIGNATURE" }));
+  const firmado = await verifySignature(req.headers["x-signature"], body, [E2V]);
+  const responder = (codigo, j) => res.writeHead(codigo, { "content-type": "application/json" }).end(JSON.stringify(j));
+  if (!firmado) return responder(401, { error: "INVALID_SIGNATURE" });
+  if (req.url === "/empire-inbox") { estados.push(JSON.parse(body)); return responder(200, { ok: true }); }
+  if (req.url === "/empire-ledger") {
+    const q = JSON.parse(body);
+    if (q.org_rnc !== RNC) return responder(422, { error: "UNKNOWN_ORG" });
+    console.log("← Empire pidió el cuadre del", q.from, "al", q.to);
+    return responder(200, ledger(q));
+  }
+  responder(404, { error: "NOT_FOUND" });
 });
 await new Promise((r) => servidor.listen(3999, r));
 
@@ -46,6 +69,7 @@ const sobre = (type, data, conSeq = false) => ({ version: "1.0", id: randomUUID(
 async function mandar(s, { firma, cuerpo } = {}) {
   const body = cuerpo ?? JSON.stringify(s);
   const r = await fetch(`${EMPIRE}/api/vendario/v1/inbox`, { method: "POST", headers: { "Content-Type": "application/json", "X-Signature": firma ?? (await signBody(V2E, body)) }, body });
+  if (s?.type === "accounting.event" && (r.status === 200 || r.status === 202) && !contables.some((x) => x.id === s.id)) contables.push(s);
   return { codigo: r.status, json: await r.json().catch(() => null) };
 }
 const esperarEstado = async (status, ms = 20_000) => {
@@ -138,6 +162,10 @@ try {
           entry: [{ account: "FALTANTE_CAJA", debit: "25.00", credit: "0.00" }, { account: "CAJA", debit: "0.00", credit: "25.00" }] }, true),
       ];
       for (const s of vivos) console.log("→ En vivo:", s.data.event_type, (await mandar(s)).codigo);
+      // Un evento que Vendario registró pero que todavía no salió (su envío falló): el cuadre lo debe mostrar como faltante.
+      contables.push(sobre("accounting.event", { event_type: "cash.movement", date: "2026-11-13", amounts: { subtotal: "100.00", discount: "0.00", taxes: [], total: "100.00" },
+        entry: [{ account: "RETIROS_CAJA", debit: "100.00", credit: "0.00" }, { account: "CAJA", debit: "0.00", credit: "100.00" }] }, true));
+      console.log("  (y un retiro de caja de 100.00 que se queda sin enviar, para el cuadre)");
     }
   }
 } catch (e) {

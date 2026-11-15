@@ -6,7 +6,11 @@ import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
 import { centavos, impuestos, leerEntry, leerNcf, mapearLineas, Pendiente, tasaDe, tipoGasto } from "../lib/vendario-contable.ts";
+import { verificar } from "../lib/vendario-firma.ts";
 import { leerSobre } from "../lib/vendario-sobre.ts";
+
+process.env.E2V_SECRET = "clave-de-prueba-e2v";
+process.env.VENDARIO_URL = "https://vendario.prueba/functions/v1";
 
 // ───── Puras ─────
 const ENTRY_VENTA = [{ account: "CAJA", debit: "1180.00", credit: "0.00" }, { account: "VENTAS", debit: "0.00", credit: "1000.00" },
@@ -63,7 +67,7 @@ const venta = (org, rnc, ncf, pagos, extra = {}) => sobre(org, rnc, "accounting.
   occurred_at: "2026-11-10T14:05:20Z", fiscal: { ncf, ncf_type: ncf?.slice(1, 3) ?? null, modified_ncf: null },
   party: ncf?.startsWith("B01") ? { kind: "customer", doc_type: "RNC", doc: "101234567", name: "Constructora X" } : null,
   amounts: { subtotal: "1000.00", discount: "0.00", taxes: [{ code: "ITBIS18", rate: "18.00", base: "1000.00", tax: "180.00" }], total: "1180.00" },
-  payments: pagos, cost_of_sales: "640.00", entry: ENTRY_VENTA.map((l) => (l.account === "CAJA" && pagos[0]?.kind === "credit" ? { ...l, account: "CXC_CLIENTES" } : l)), ...extra,
+  payments: pagos, cost_of_sales: "640.00", entry: ENTRY_VENTA.map((l) => (l.account === "CAJA" && pagos[0]?.kind === "credit" ? { ...l, account: "CXC_CLIENTES" } : { ...l })), ...extra,
 });
 const empresaDe = async (org) => (await sql`SELECT empresa_id, id FROM vendario_clientes WHERE org_id = ${org}`)[0];
 const ver = async (empresaId, fn) => sql.begin(async (tx) => { await tx`SELECT set_config('app.empresa_id', ${empresaId}, true)`; return fn(tx); });
@@ -221,4 +225,50 @@ test("cliente con solo el servicio de ITBIS: factura y cobro para el 607, sin as
   assert.equal(x.asiento_id, null);
   const [f] = await ver(e2, (tx) => tx`SELECT estado, ncf, asiento_id FROM facturas WHERE id = ${x.factura_id}`);
   assert.deepEqual([f.estado, f.ncf, f.asiento_id], ["emitida", "B0200000001", null]);
+});
+
+// ───── Parte 3: cuadre con Vendario (acuerdo, sección 10) ─────
+test("cuadre: por tipo, por cuenta y evento por evento; lo que falta y lo que sobra", async () => {
+  const { comparar, leerLedger } = await import("../lib/vendario-cuadre.ts");
+  const a = { id: "11111111-1111-1111-1111-111111111111", tipo: "sale.posted", total: "1180.00", entry: ENTRY_VENTA };
+  const l = leerLedger({ org_rnc: "1", from: "2026-11-01", to: "2026-11-30", by_event: { "sale.posted": { count: 1, total: "1180.00" } },
+    by_account: { CAJA: { debit: "1180.00", credit: "0.00" }, VENTAS: { debit: "0.00", credit: "1000.00" }, ITBIS_POR_PAGAR: { debit: "0.00", credit: "180.00" },
+      COSTO_VENTAS: { debit: "640.00", credit: "0.00" }, INVENTARIO: { debit: "0.00", credit: "640.00" } }, ids: [a.id.toUpperCase()] });
+  assert.equal(comparar(l, [a]).cuadra, true);
+  // Vendario tiene uno más que no llegó.
+  const l2 = { ...l, by_event: { "sale.posted": { count: 2, total: "2360.00" } }, ids: [a.id, "22222222-2222-2222-2222-222222222222"] };
+  const q = comparar(l2, [a]);
+  assert.equal(q.cuadra, false);
+  assert.deepEqual(q.faltan, ["22222222-2222-2222-2222-222222222222"]);
+  assert.deepEqual(q.eventos[0], { clave: "sale.posted", vendario: ["2", "2360.00"], empire: ["1", "1180.00"], igual: false });
+  // Empire tiene uno que Vendario no cuenta.
+  assert.deepEqual(comparar({ ...l, ids: [] }, [a]).sobran, [a.id]);
+  assert.throws(() => leerLedger({ ok: true }), /no es el cuadre/);
+});
+
+test("cuadre: la consulta va firmada a empire-ledger y se guarda con la comparación", conBase, async () => {
+  const { cuadrar } = await import("../lib/vendario-cuadre.ts");
+  const c = await empresaDe(ORG);
+  const eventos = await sql`SELECT id::text, tipo, total::text, datos->'entry' AS entry FROM vendario_eventos WHERE vendario_cliente_id = ${c.id} AND fecha BETWEEN '2026-11-01' AND '2026-11-30'`;
+  let pedido;
+  const pedir = async (u, init) => {
+    pedido = { u, cuerpo: JSON.parse(init.body), firmaValida: verificar(init.headers["X-Signature"], init.body, [process.env.E2V_SECRET]).ok };
+    const by_event = {};
+    for (const e of eventos) { const x = (by_event[e.tipo] ??= { count: 0, total: 0 }); x.count++; x.total += Math.round(Number(e.total ?? 0) * 100); }
+    return Response.json({ org_rnc: RNC, from: "2026-11-01", to: "2026-11-30", by_account: {},
+      by_event: Object.fromEntries(Object.entries(by_event).map(([k, v]) => [k, { count: v.count, total: (v.total / 100).toFixed(2) }])), ids: eventos.map((e) => e.id) });
+  };
+  const id = await cuadrar({ clienteId: c.id, desde: "2026-11-01", hasta: "2026-11-30", usuarioId: ana, pedir });
+  assert.equal(pedido.u, "https://vendario.prueba/functions/v1/empire-ledger");
+  assert.deepEqual(pedido.cuerpo, { org_rnc: RNC, from: "2026-11-01", to: "2026-11-30" });
+  assert.ok(pedido.firmaValida, "firmado con E2V_SECRET");
+  const [q] = await sql`SELECT cuadra, error, comparacion FROM vendario_cuadres WHERE id = ${id}`;
+  assert.equal(q.error, null);
+  assert.deepEqual(q.comparacion.faltan, []);
+  assert.ok(q.comparacion.eventos.every((f) => f.igual), "por tipo cuadra");
+  assert.equal(q.cuadra, false, "las cuentas no cuadran porque este Vendario simulado no mandó by_account");
+  // Vendario no responde: se guarda el motivo.
+  const id2 = await cuadrar({ clienteId: c.id, desde: "2026-11-01", hasta: "2026-11-30", usuarioId: ana, pedir: async () => new Response('{"error":"UNKNOWN_ORG"}', { status: 422 }) });
+  const [q2] = await sql`SELECT error FROM vendario_cuadres WHERE id = ${id2}`;
+  assert.match(q2.error, /422/);
 });
