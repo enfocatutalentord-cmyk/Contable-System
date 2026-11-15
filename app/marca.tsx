@@ -34,9 +34,9 @@ export function LogoCompleto() {
   return (
     <div className="logo-completo">
       <picture>
-        <source srcSet="/marca/logo-inverso.svg" media="(prefers-color-scheme: dark)" />
+        <source srcSet="/marca/logo-inverso.png" media="(prefers-color-scheme: dark)" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/marca/logo.svg" alt="Empire Tax’N Legal" width={230} height={240} />
+        <img src="/marca/logo.png" alt="Empire Tax &amp; Legal" width={230} height={234} />
       </picture>
       <div className="producto">Sistema contable</div>
     </div>
