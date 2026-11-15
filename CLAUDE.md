@@ -45,7 +45,11 @@ Desde el 22-oct-2026 (pedido de Joannie) el sistema lleva la identidad de **Empi
 (la misma de la web de Empire). Logos maestros en `public/marca/` (copiados de `empire-web/public/assets`; `simbolo-inverso.svg`
 es el símbolo con la columna en blanco para el fondo verde). Componentes en `app/marca.tsx`; colores en `app/globals.css`;
 encabezados verdes con línea dorada en Excel y PDF (`lib/exportar.ts`). No redibujar ni recolorear el logo; mínimos: logo
-220 px, símbolo 64 px. Las facturas impresas de los clientes no llevan la marca de Empire (son documentos del cliente).
+220 px, símbolo 64 px. **Logo nuevo desde el 14-nov-2026** («EMPIRE CAPAS.pdf», 3 capas en JPG: columna, arco con
+estrellas y nombre «EMPIRE TAX & LEGAL» en dorado degradado): `public/marca/logo.png` y `logo-inverso.png` (columna en blanco) se
+armaron superponiendo las capas y quitando el fondo blanco, sin redibujar; los SVG del logo anterior se quitaron. El símbolo y los
+iconos de la aplicación siguen iguales. El nombre escrito («Tax’N Legal») no se ha cambiado: falta confirmar si pasa a «Tax & Legal».
+En `main` y producción el 14-nov-2026 («sí» de Patricia, `dc3cbe9`). Las facturas impresas de los clientes no llevan la marca de Empire (son documentos del cliente).
 
 ## Qué es
 
