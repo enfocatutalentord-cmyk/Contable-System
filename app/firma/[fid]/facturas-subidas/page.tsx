@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { Formulario } from "@/app/formulario";
+import { SelectorClienteRapido } from "@/app/selector-cliente-rapido";
 import { accesoFirma } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
 import { ESTADOS_SUBIDA, FORMAS_SUBIDA, listarSubidas } from "@/lib/facturas-subidas";
 import { verMonto } from "@/lib/montos";
+import { elegirClienteYSeguir } from "../../cliente-rapido-acciones";
 
 export const metadata = { title: "Facturas del cliente · Empire Tax & Legal" };
 
@@ -37,6 +40,13 @@ export default async function FacturasDelCliente({ params, searchParams }: {
         </div>
         {uno && <Link className="boton primario" href={`/e/${uno.id}/facturas-subidas`}>Cargar o revisar las de {uno.nombre}</Link>}
       </div>
+      <details className="tarjeta" style={{ marginBottom: 12 }}>
+        <summary><strong>+ Cargar facturas de un cliente (o de uno nuevo)</strong></summary>
+        <p className="sub">Elige el cliente o créalo aquí y sigue a su pantalla para subir sus facturas.</p>
+        <Formulario accion={elegirClienteYSeguir.bind(null, fid, "facturas-subidas")} boton="Seguir a cargar" className="fila">
+          <SelectorClienteRapido clientes={todos.map((c) => ({ id: c.id, nombre: c.nombre }))} crearClientes={firma.crear_clientes} />
+        </Formulario>
+      </details>
       <form className="fila" style={{ marginBottom: 12 }} aria-label="Elegir cliente">
         <label style={{ flex: "2 1 240px" }}>Cliente
           <select name="cliente" defaultValue={uno?.id ?? ""}>

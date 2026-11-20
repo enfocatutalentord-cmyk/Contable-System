@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Formulario } from "@/app/formulario";
+import { SelectorClienteRapido } from "@/app/selector-cliente-rapido";
 import { accesoFirma, soloCliente } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
-import { clientesDeFirma } from "@/lib/firma";
+import { clientesDeFirma, equipoDe } from "@/lib/firma";
 import { ESTADOS_SOLICITUD, listarSolicitudes, ORIGENES_SOLICITUD, PRIORIDADES, TIPOS_FORMULARIO } from "@/lib/formularios";
 import { hoyISO, verFecha } from "@/lib/montos";
+import { crearSolicitudAccion, iniciarLevantamientoAccion } from "../../cliente-rapido-acciones";
 
 export const metadata = { title: "Solicitudes · Empire Tax & Legal" };
 
@@ -20,6 +23,8 @@ export default async function SolicitudesDeLaFirma({ params }: { params: Promise
     solicitudes: await listarSolicitudes(tx, true),
     formularios: await tx<{ id: string; tipo: string; recibido_en: Date }[]>`SELECT id, tipo, recibido_en FROM formularios WHERE estado = 'recibido' ORDER BY recibido_en`,
   }))));
+  const equipo = await equipoDe(fid);
+  const listaClientes = clientes.map((c) => ({ id: c.id, nombre: c.nombre }));
   const solicitudes = datos.flatMap((d) => d.solicitudes.map((s) => ({ c: d.c, s })));
   const formularios = datos.flatMap((d) => d.formularios.map((f) => ({ c: d.c, f })));
 
@@ -27,6 +32,27 @@ export default async function SolicitudesDeLaFirma({ params }: { params: Promise
     <>
       <h1>Solicitudes</h1>
       <p className="sub">Lo que piden los clientes y los formularios que mandaron y esperan revisión. Al aceptarlos, sus datos entran a la ficha.</p>
+      <details className="tarjeta" style={{ marginBottom: 12 }}>
+        <summary><strong>+ Nueva solicitud</strong> (llegó por WhatsApp, por escrito o en una llamada)</summary>
+        <Formulario accion={crearSolicitudAccion.bind(null, fid)} boton="Anotar la solicitud" className="fila">
+          <SelectorClienteRapido clientes={listaClientes} crearClientes={firma.crear_clientes} />
+          <label>Llegó por<select name="origen" defaultValue="whatsapp">{Object.entries(ORIGENES_SOLICITUD).filter(([k]) => k !== "formulario" && k !== "app").map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+          <label>Tipo<select name="tipo" defaultValue="servicio"><option value="servicio">Servicio para cotizar</option><option value="requerimiento">Requerimiento (carta, certificación…)</option></select></label>
+          <label style={{ flex: "1 1 220px" }}>Servicio<input name="servicio" maxLength={200} placeholder="Ej.: Carta de ingresos" /></label>
+          <label style={{ flex: "1 1 100%" }}>Qué pide<input name="descripcion" required maxLength={2000} /></label>
+          <label style={{ flex: "1 1 220px" }}>Para qué<input name="para_que" maxLength={1000} /></label>
+          <label>Para cuándo<input type="date" name="fecha_requerida" /></label>
+          <label>Prioridad<select name="prioridad" defaultValue="media">{Object.entries(PRIORIDADES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+          <label>Responsable<select name="responsable" defaultValue={usuario.id}><option value="">—</option>{equipo.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></label>
+        </Formulario>
+      </details>
+      <details className="tarjeta" style={{ marginBottom: 16 }}>
+        <summary><strong>+ Nuevo levantamiento contable</strong> (para una propuesta o para empezar a trabajar con el cliente)</summary>
+        <p className="sub">Elige el cliente o créalo aquí. Sigues a su pantalla para mandarle el enlace del formulario por WhatsApp.</p>
+        <Formulario accion={iniciarLevantamientoAccion.bind(null, fid)} boton="Crear el levantamiento" className="fila">
+          <SelectorClienteRapido clientes={listaClientes} crearClientes={firma.crear_clientes} />
+        </Formulario>
+      </details>
       {formularios.length > 0 && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
           <h2 style={{ marginTop: 0 }}>Formularios por revisar ({formularios.length})</h2>

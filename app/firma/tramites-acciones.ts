@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { accesoFirma, esUuid, exigirPermiso } from "@/lib/acceso";
 import { conEmpresa, db, mensajeError } from "@/lib/db";
-import { crearEmpresa, leerFicha } from "@/lib/empresas";
+import { clienteDeFormulario } from "@/lib/cliente-rapido";
 import { ErrorExpediente, guardarArchivos, leerArchivos } from "@/lib/expediente";
 import { hoyISO } from "@/lib/montos";
 import {
@@ -29,30 +29,8 @@ async function delEquipo(firmaId: string, usuarioId: string | null) {
   return usuarioId;
 }
 
-// El cliente elegido o, si es nuevo, un alta rápida con su nombre (y el RNC o cédula si lo tiene).
-async function clienteDelTramite(firmaId: string, fd: FormData): Promise<string> {
-  const { usuario, firma } = await accesoFirma(firmaId, false);
-  const elegido = texto(fd, "empresa");
-  if (elegido && elegido !== "nuevo") {
-    if (!esUuid(elegido)) throw new ErrorTramite("Elige el cliente.");
-    return elegido;
-  }
-  if (!firma.crear_clientes) throw new ErrorTramite("Crear clientes no está entre tus permisos: elige uno de la lista.");
-  const datos = new FormData();
-  datos.set("nombre", texto(fd, "cliente_nombre"));
-  const rnc = texto(fd, "cliente_rnc").replace(/[-\s]/g, "");
-  datos.set("tipo_identificacion", rnc.length === 11 ? "cedula" : "rnc");
-  datos.set("rnc", rnc);
-  const ficha = leerFicha(datos);
-  if (typeof ficha === "string") throw new ErrorTramite(ficha === "Escribe la razón social o el nombre de la empresa." ? "Elige el cliente o escribe el nombre del nuevo." : ficha);
-  const id = await crearEmpresa({ firmaId, usuarioId: usuario.id, ficha });
-  if (!firma.administrador) {
-    await db()`UPDATE empresas SET responsable_id = COALESCE(responsable_id, ${usuario.id}) WHERE id = ${id}`;
-    await db()`UPDATE miembros_firma SET clientes = array_append(clientes, ${id}::uuid)
-                WHERE firma_id = ${firmaId} AND usuario_id = ${usuario.id} AND alcance = 'elegidos' AND NOT (${id}::uuid = ANY (clientes))`;
-  }
-  return id;
-}
+// El cliente elegido o, si es nuevo, un alta rápida con su nombre (y el RNC o cédula si lo tiene): `clienteDeFormulario`, compartido (P2c.2).
+const clienteDelTramite = async (firmaId: string, fd: FormData) => (await clienteDeFormulario(firmaId, fd)).id;
 
 export async function crearTramiteAccion(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
   let destino = "";

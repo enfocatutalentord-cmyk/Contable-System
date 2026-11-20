@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { Formulario } from "@/app/formulario";
+import { SelectorClienteRapido } from "@/app/selector-cliente-rapido";
 
 type Plantilla = { id: string; nombre: string; institucion: string; dias_estimados: number; pasos: { texto: string; dia: number | null }[] };
 
@@ -14,7 +15,6 @@ export function NuevoTramite({ accion, plantillas, clientes, equipo, institucion
   instituciones: Record<string, string>; etapas: Record<string, string>; crearClientes: boolean; hoy: string;
 }) {
   const [plantilla, setPlantilla] = useState<Plantilla | null>(null);
-  const [cliente, setCliente] = useState("");
   const [etapa, setEtapa] = useState("pendiente");
   const pasos = plantilla ? plantilla.pasos.map((p) => (p.dia === null ? p.texto : `${p.texto} | ${p.dia}`)).join("\n") : "";
   return (
@@ -31,17 +31,7 @@ export function NuevoTramite({ accion, plantillas, clientes, equipo, institucion
         </label>
       </div>
       <div className="fila">
-        <label style={{ flex: "2 1 260px" }}>Cliente
-          <select name="empresa" value={cliente} onChange={(e) => setCliente(e.target.value)} required>
-            <option value="" disabled>Elige el cliente</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            {crearClientes && <option value="nuevo">+ Cliente nuevo…</option>}
-          </select>
-        </label>
-        {cliente === "nuevo" && <>
-          <label style={{ flex: "2 1 220px" }}>Nombre del cliente nuevo<input name="cliente_nombre" required maxLength={200} /></label>
-          <label style={{ width: 160 }}>RNC o cédula (si lo tiene)<input name="cliente_rnc" inputMode="numeric" /></label>
-        </>}
+        <SelectorClienteRapido clientes={clientes} crearClientes={crearClientes} />
       </div>
       <div className="fila">
         <label>Institución

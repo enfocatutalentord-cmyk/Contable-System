@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Formulario } from "@/app/formulario";
+import { SelectorClienteRapido } from "@/app/selector-cliente-rapido";
 import { accesoFirma } from "@/lib/acceso";
 import { TIPOS_GASTO } from "@/lib/compras";
 import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
 import { CATEGORIAS, ESTADOS, listarRecepciones } from "@/lib/recepciones";
 import { descartarDocumento, procesarDocumento } from "../../documentos-acciones";
+import { elegirClienteYSeguir } from "../../cliente-rapido-acciones";
 import { iaDisponible } from "@/lib/lectura-ia";
 import { BotonLeerDocumento } from "./leer-ia";
 
@@ -41,6 +43,13 @@ export default async function DocumentosFirma({ params, searchParams }: {
         </p>
       )}
       {sp.hecho === "descartado" && <p className="exito" role="status">Documento descartado. El cliente ve el motivo.</p>}
+      <details className="tarjeta" style={{ marginBottom: 12 }}>
+        <summary><strong>+ Subir documentos de un cliente (o de uno nuevo)</strong></summary>
+        <p className="sub">Elige el cliente o créalo aquí y sigue a su pantalla para subir fotos o PDF.</p>
+        <Formulario accion={elegirClienteYSeguir.bind(null, fid, "recepcion")} boton="Seguir a subir" className="fila">
+          <SelectorClienteRapido clientes={todos.map((c) => ({ id: c.id, nombre: c.nombre }))} crearClientes={firma.crear_clientes} />
+        </Formulario>
+      </details>
       <form className="fila" style={{ marginBottom: 12 }} aria-label="Elegir cliente">
         <label style={{ flex: "2 1 240px" }}>Cliente
           <select name="cliente" defaultValue={sp.cliente ?? ""}>
