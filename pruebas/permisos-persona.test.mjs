@@ -29,10 +29,10 @@ test("alcance: todos, solo los suyos o los elegidos", () => {
 
 test("el formulario: secciones activas, «ver» se agrega solo y lo inventado se descarta", () => {
   const p = leerPermisosPersona(fd([
-    ["clientes_activo", "on"], ["c_permiso", "registrar"], ["c_permiso", "hackear"], ["c_pestana", "/facturas"], ["c_pestana", "/nada"],
+    ["clientes_activo", "on"], ["c_nivel|registrar", "si"], ["c_nivel|hackear", "si"], ["c_nivel|usuarios", "aprob"], ["c_pestana", "/facturas"], ["c_pestana", "/nada"],
     ["alcance", "todos"], ["crear_clientes", "on"], ["plantilla", "Coordinadora"],
   ]));
-  assert.deepEqual(p.clientes, { permisos: ["ver", "registrar"], pestanas: ["/facturas"] });
+  assert.deepEqual(p.clientes, { permisos: ["ver", "registrar", "usuarios"], pestanas: ["/facturas"] });
   assert.equal(p.empire, null, "sin marcar Contabilidad Empire no tiene acceso propio");
   assert.equal(p.alcance, "todos");
   assert.equal(p.crearClientes, true);

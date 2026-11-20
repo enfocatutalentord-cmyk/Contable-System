@@ -5,7 +5,9 @@ import { Formulario } from "@/app/formulario";
 import { BotonImprimir } from "@/app/imprimir";
 import { accesoEmpresa, esUuid, misFirmas } from "@/lib/acceso";
 import { EnviarWhatsApp } from "@/app/whatsapp";
+import { aprobacionDe, historialDe } from "@/lib/aprobaciones";
 import { conEmpresa } from "@/lib/db";
+import { EstadoAprobacion } from "../../estado-aprobacion";
 import { verPorcentaje } from "@/lib/fiscal";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
@@ -45,7 +47,7 @@ export default async function VerFactura({ params, searchParams }: {
   const { id, fid } = await params;
   const sp = await searchParams;
   if (!esUuid(fid)) notFound();
-  const { empresa, permisos, usuario, pestanas, paraClientes, propia: deLaDuena } = await accesoEmpresa(id);
+  const { empresa, permisos, conAprobacion, usuario, pestanas, paraClientes, propia: deLaDuena } = await accesoEmpresa(id);
   // En un cliente esto es el registro de su factura (Prioridad 1.3): se ve y se anota el cobro; no se factura desde aquí.
   const registroDeCliente = !deLaDuena;
   const datos = await conEmpresa(id, async (tx) => {
@@ -114,6 +116,10 @@ export default async function VerFactura({ params, searchParams }: {
   const saldo = Number(f.saldo ?? 0);
   const fueraDeCierre = !empresa.fecha_bloqueo || f.fecha > empresa.fecha_bloqueo;
   const propioConAprobacion = empresa.requiere_aprobacion && f.creado_por_id === usuario.id;
+  // Prioridad 2.1: con el permiso «contabilizar» con aprobación no se emite directo: se pide la aprobación y se espera.
+  const pideApr = conAprobacion.includes("contabilizar");
+  const apr = borrador || f.anulada === false ? await conEmpresa(id, async (tx) => { const a = await aprobacionDe(tx, "factura", fid); return { a, h: a ? await historialDe(tx, a.id) : [] }; }) : { a: null, h: [] };
+  const enEspera = apr.a?.estado === "pendiente";
   const titulo = esNota ? `Nota de crédito${electronica ? " electrónica" : ""}` : `Factura de ${NOMBRE_NCF[f.tipo_ncf].toLowerCase()}`;
   // WhatsApp (bloque 3c): las facturas de la empresa propia a sus clientes (igualas y demás servicios).
   const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id);
@@ -209,16 +215,20 @@ export default async function VerFactura({ params, searchParams }: {
             )}
           </details>
         )}
+        {apr.a && <EstadoAprobacion empresaId={id} aprobacion={apr.a} historial={apr.h} puedeAprobar={puede(permisos, "aprobar")} usuarioId={usuario.id} />}
         {borrador && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>
             <div className="fila">
-              {puede(permisos, "registrar") && <Link className="boton" href={`/e/${id}/facturas/${fid}/editar`}>Editar</Link>}
+              {puede(permisos, "registrar") && !enEspera && <Link className="boton" href={`/e/${id}/facturas/${fid}/editar`}>Editar</Link>}
+              {pideApr && !enEspera && fueraDeCierre && (!electronica || f.ncf_externo) && (
+                <Formulario accion={emitirBorrador.bind(null, id, fid)} boton={apr.a?.estado === "devuelta" ? "Volver a pedir la aprobación" : "Pedir aprobación para emitir"} className="fila"><span /></Formulario>
+              )}
               {puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (!electronica || f.ncf_externo) && (
                 <Formulario accion={emitirBorrador.bind(null, id, fid)} boton={ecfVigente && !f.ncf_externo ? "Emitir con NCF de serie B" : "Emitir factura"} className="fila">
                   {conAbono ? <CamposAbono cuentas={cuentasEfectivo} /> : <span />}
                 </Formulario>
               )}
-              {puede(permisos, "registrar") && (
+              {puede(permisos, "registrar") && !enEspera && (
                 <Formulario accion={descartarFactura.bind(null, id, fid)} boton="Descartar borrador" className="fila"><span /></Formulario>
               )}
             </div>

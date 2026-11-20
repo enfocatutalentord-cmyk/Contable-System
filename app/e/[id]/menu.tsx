@@ -92,7 +92,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const nombreDe = new Map(PESTANAS_CLIENTE.flatMap((s) => s.enlaces));
   type Trabajo = { firma: string; nombre: string } | { cliente: string; nombre?: string };
   const trabajos: [string, Trabajo[]][] = [
-    ["Trabajo del mes", [{ firma, nombre: "Inicio de la firma" }, { cliente: "", nombre: "Resumen del cliente" }, { firma: `${firma}/alertas`, nombre: "Alertas" },
+    ["Trabajo del mes", [{ firma, nombre: "Inicio de la firma" }, { firma: `${firma}/aprobaciones`, nombre: "Por aprobar" }, { cliente: "", nombre: "Resumen del cliente" }, { firma: `${firma}/alertas`, nombre: "Alertas" },
       { firma: `${firma}/tareas`, nombre: "Tareas del mes" }, { firma: `${firma}/impuestos`, nombre: "Impuestos del mes" },
       { firma: `${firma}/reportes`, nombre: "Reportes del mes" }, { firma: `${firma}/bitacora`, nombre: "Bitácora de la firma" },
       { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],

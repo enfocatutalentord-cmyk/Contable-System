@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
-import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
+import { leerNiveles, puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
 import { esRegistroDeCliente, PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 import { alcanceIncluye } from "./permisos-persona.ts";
@@ -19,6 +19,7 @@ const exigirDosPasos = (usuario: Usuario, exigida: boolean) => {
 };
 export type Acceso = {
   usuario: Usuario; empresa: Empresa; permisos: Permiso[]; perfil: string; adminFirma: boolean;
+  conAprobacion: Permiso[];  // permisos que la persona tiene «con aprobación»: lo que hace queda pendiente hasta que alguien lo apruebe (P2a)
   pestanas: string[] | null; // pestañas que ve su rol; null = todas
   paraClientes: boolean;     // rol de usuario de la empresa cliente (no del equipo de la firma)
   propia?: boolean;          // una de las empresas de la dueña (Contabilidad, Prioridad 1.1), no un cliente
@@ -88,7 +89,10 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     empresa,
     adminFirma: administrador,
     perfil: administrador ? "Administrador de la firma" : propios ? "Permisos propios" : perfil!,
-    permisos: administrador ? TODOS_LOS_PERMISOS : (permisos!.filter((p) => (TODOS_LOS_PERMISOS as string[]).includes(p)) as Permiso[]),
+    // Con un permiso «con aprobación» la persona NO puede ejecutar la acción por su cuenta: queda en `conAprobacion` y solo las acciones que
+    // saben pedir la aprobación lo admiten (`exigirPermiso(..., true)`). Así lo que aún no la contempla sigue cerrado.
+    permisos: administrador ? TODOS_LOS_PERMISOS : leerNiveles(permisos!).permisos.filter((p) => !leerNiveles(permisos!).conAprobacion.includes(p)),
+    conAprobacion: administrador ? [] : leerNiveles(permisos!).conAprobacion,
     pestanas: visibles,
     paraClientes: !administrador && !propios && !!para_clientes,
     propia: es_propia,
@@ -107,18 +111,21 @@ async function accesoSupervision(usuario: Usuario, empresaId: string): Promise<A
   if (!e) return null;
   const supervision = await supervisionVigente(usuario.id, e.firma_id);
   if (!supervision) return null;
-  return { usuario, empresa: e, adminFirma: false, perfil: "Supervisión de la plataforma (solo lectura)", permisos: ["ver"], pestanas: pestanasDelRol(null, false), paraClientes: false, supervision };
+  return { usuario, empresa: e, adminFirma: false, perfil: "Supervisión de la plataforma (solo lectura)", permisos: ["ver"], conAprobacion: [], pestanas: pestanasDelRol(null, false), paraClientes: false, supervision };
 }
 
 // Para server actions y páginas que requieren un permiso puntual. La pestaña se revisa aparte porque una acción del
 // servidor se puede llamar desde cualquier página: así, quien no ve Asientos tampoco contabiliza un asiento por otra vía.
-export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana?: string): Promise<Acceso> {
+export async function exigirPermiso(empresaId: string, permiso: Permiso, pestana?: string, admiteAprobacion = false): Promise<Acceso> {
   const acceso = await accesoEmpresa(empresaId);
   const inicio = `/e/${empresaId}${acceso.pestanas?.[0] ?? ""}`;
   if (pestana !== undefined && !puedeVer(acceso.pestanas, pestana)) redirect(`${inicio}?sin_pestana=1`);
-  if (!puede(acceso.permisos, permiso)) redirect(`${inicio}?sin_permiso=1`);
+  if (!puede(acceso.permisos, permiso) && !(admiteAprobacion && acceso.conAprobacion.includes(permiso))) redirect(`${inicio}?sin_permiso=1`);
   return acceso;
 }
+
+// Prioridad 2.1: ¿lo que esta persona hace con este permiso queda pendiente de aprobación?
+export const pideAprobacion = (acceso: Acceso, permiso: Permiso) => acceso.conAprobacion.includes(permiso);
 
 // Pestañas que la persona ve en la empresa propia de la firma (Contabilidad Empire en el menú, rediseño R2): null = todas;
 // false = no tiene acceso a ella.
@@ -176,7 +183,7 @@ export async function exigirDuena(): Promise<Usuario> {
 
 // Acciones sobre el registro de una factura o compra (registrar un pendiente, anular, nota de crédito, cobro o pago): en una empresa propia
 // piden su pestaña; en un cliente, «Facturas del cliente», que es donde se cargan (Prioridad 1.3 del prompt de Patricia, 20-nov-2026).
-export async function exigirPermisoRegistro(empresaId: string, permiso: Permiso, pestana: "/facturas" | "/compras"): Promise<Acceso> {
+export async function exigirPermisoRegistro(empresaId: string, permiso: Permiso, pestana: "/facturas" | "/compras", admiteAprobacion = false): Promise<Acceso> {
   const { propia } = await accesoEmpresa(empresaId);
-  return exigirPermiso(empresaId, permiso, propia ? pestana : "/facturas-subidas");
+  return exigirPermiso(empresaId, permiso, propia ? pestana : "/facturas-subidas", admiteAprobacion);
 }

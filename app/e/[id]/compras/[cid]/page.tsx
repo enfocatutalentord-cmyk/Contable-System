@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid } from "@/lib/acceso";
 import { esNotaProveedor, esPropio, nombreComprobante, TIPOS_GASTO } from "@/lib/compras";
+import { aprobacionDe, historialDe } from "@/lib/aprobaciones";
 import { conEmpresa } from "@/lib/db";
+import { EstadoAprobacion } from "../../estado-aprobacion";
 import { verFecha, verMonto } from "@/lib/montos";
 import { MOTIVOS_608 } from "@/lib/ventas";
 import { puede } from "@/lib/permisos";
@@ -35,7 +37,7 @@ export default async function VerCompra({ params, searchParams }: {
   const { id, cid } = await params;
   const sp = await searchParams;
   if (!esUuid(cid)) notFound();
-  const { empresa, permisos, usuario, pestanas, propia: deLaDuena } = await accesoEmpresa(id);
+  const { empresa, permisos, conAprobacion, usuario, pestanas, propia: deLaDuena } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Compra[]>`
       SELECT c.id, c.estado, c.tipo_comprobante, c.ncf, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, to_char(c.vence, 'YYYY-MM-DD') AS vence,
@@ -84,6 +86,10 @@ export default async function VerCompra({ params, searchParams }: {
   const saldo = Number(c.saldo ?? 0);
   const fueraDeCierre = !empresa.fecha_bloqueo || c.fecha > empresa.fecha_bloqueo;
   const propioConAprobacion = empresa.requiere_aprobacion && c.creado_por_id === usuario.id;
+  // Prioridad 2.1: con el permiso «contabilizar» con aprobación no se registra directo: se pide la aprobación y se espera.
+  const pideApr = conAprobacion.includes("contabilizar");
+  const apr = await conEmpresa(id, async (tx) => { const a = await aprobacionDe(tx, "compra", cid); return { a, h: a ? await historialDe(tx, a.id) : [] }; });
+  const enEspera = apr.a?.estado === "pendiente";
 
   return (
     <>
@@ -133,14 +139,18 @@ export default async function VerCompra({ params, searchParams }: {
           <Link className="boton primario" href={`/e/${id}/pagos/nuevo?compra=${c.id}`}>Registrar pago</Link>
         )}
         {c.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
-        {borrador && puede(permisos, "registrar") && <Link className="boton" href={`/e/${id}/compras/${cid}/editar`}>Editar</Link>}
+        {borrador && puede(permisos, "registrar") && !enEspera && <Link className="boton" href={`/e/${id}/compras/${cid}/editar`}>Editar</Link>}
+        {borrador && pideApr && !enEspera && fueraDeCierre && (
+          <Formulario accion={registrarBorradorCompra.bind(null, id, cid)} boton={apr.a?.estado === "devuelta" ? "Volver a pedir la aprobación" : "Pedir aprobación para registrar"} className="fila"><span /></Formulario>
+        )}
         {borrador && puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (
           <Formulario accion={registrarBorradorCompra.bind(null, id, cid)} boton={esNota ? "Registrar nota de crédito" : "Registrar compra"} className="fila"><span /></Formulario>
         )}
-        {borrador && puede(permisos, "registrar") && (
+        {borrador && puede(permisos, "registrar") && !enEspera && (
           <Formulario accion={descartarCompra.bind(null, id, cid)} boton="Descartar borrador" className="fila"><span /></Formulario>
         )}
       </div>
+      {apr.a && <EstadoAprobacion empresaId={id} aprobacion={apr.a} historial={apr.h} puedeAprobar={puede(permisos, "aprobar")} usuarioId={usuario.id} />}
       {borrador && propioConAprobacion && <p className="sub">Este borrador lo registraste tú: en esta empresa debe registrarlo otra persona.</p>}
       {borrador && !fueraDeCierre && <p className="aviso">La fecha cae en un período cerrado: cámbiala para poder registrarla.</p>}
 

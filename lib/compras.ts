@@ -128,6 +128,7 @@ async function revisarDuplicado(tx: Tx, proveedorId: string, ncf: string, except
 
 // Crea o reemplaza un borrador de compra. Devuelve su id.
 export async function guardarBorradorCompra(tx: Tx, d: DatosCompra & { compraId?: string | null }): Promise<string> {
+  if (d.compraId && (await tx`SELECT 1 FROM aprobaciones WHERE tipo = 'compra' AND referencia_id = ${d.compraId} AND estado = 'pendiente'`).length) throw new ErrorContable("Está esperando aprobación: no se puede cambiar hasta que lo aprueben o lo devuelvan.");
   if (!esTipoCompra(d.tipo)) throw new ErrorContable("Elige el tipo de comprobante");
   if (!TIPOS_GASTO[d.tipoGasto]) throw new ErrorContable("Elige el tipo de gasto del 606");
   if (d.vence < d.fecha) throw new ErrorContable("El vencimiento no puede ser antes de la fecha de la compra");
@@ -178,6 +179,7 @@ export async function guardarBorradorCompra(tx: Tx, d: DatosCompra & { compraId?
 }
 
 export async function descartarBorradorCompra(tx: Tx, compraId: string) {
+  if ((await tx`SELECT 1 FROM aprobaciones WHERE tipo = 'compra' AND referencia_id = ${compraId} AND estado = 'pendiente'`).length) throw new ErrorContable("Está esperando aprobación: no se puede cambiar hasta que lo aprueben o lo devuelvan.");
   const r = await tx`DELETE FROM compras WHERE id = ${compraId} AND estado = 'borrador'`;
   if (r.count === 0) throw new ErrorContable("Solo se descartan borradores");
 }

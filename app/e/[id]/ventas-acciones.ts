@@ -6,7 +6,8 @@ import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso, exigirPermisoRegistro, misFirmas } from "@/lib/acceso";
+import { esUuid, exigirPermiso, exigirPermisoRegistro, misFirmas, pideAprobacion } from "@/lib/acceso";
+import { cerrarSiPendiente, solicitarAprobacion, tituloDe } from "@/lib/aprobaciones";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc } from "@/lib/empresas";
@@ -254,11 +255,28 @@ async function abonoAlFacturar(tx: Tx, d: { empresaId: string; usuarioId: string
 }
 
 export async function emitirBorrador(empresaId: string, facturaId: string, _: Estado = {}, fd: FormData = new FormData()): Promise<Estado> {
-  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas");
+  const acceso = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas", true);
+  const { usuario } = acceso;
+  // Con el permiso «con aprobación» no se emite: se pide la aprobación y el borrador espera (Prioridad 2.1).
+  if (pideAprobacion(acceso, "contabilizar")) {
+    if (texto(fd, "abono")) return { error: "Con aprobación no se puede abonar al emitir: pide la aprobación y registra el cobro después." };
+    try {
+      await conEmpresa(empresaId, async (tx) => {
+        const t = await tituloDe(tx, "factura", facturaId);
+        await solicitarAprobacion(tx, { empresaId, usuarioId: usuario.id, tipo: "factura", referenciaId: facturaId, ...t });
+        await bitacora(tx, empresaId, usuario.id, "aprobacion_solicitada", { tipo: "factura", id: facturaId });
+      });
+    } catch (e) {
+      return { error: mensajeError(e) };
+    }
+    revalidatePath(`/e/${empresaId}`, "layout");
+    redirect(`/e/${empresaId}/facturas/${facturaId}?aprobacion=1`);
+  }
   let recibo: number | null = null;
   try {
     recibo = await conEmpresa(empresaId, async (tx) => {
       await emitir(tx, { empresaId, usuarioId: usuario.id, facturaId });
+      await cerrarSiPendiente(tx, { empresaId, usuarioId: usuario.id, tipo: "factura", referenciaId: facturaId });
       return abonoAlFacturar(tx, { empresaId, usuarioId: usuario.id, facturaId }, fd);
     });
   } catch (e) {

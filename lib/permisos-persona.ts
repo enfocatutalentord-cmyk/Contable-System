@@ -1,4 +1,4 @@
-import { esPermiso, type Permiso } from "./permisos.ts";
+import { esPermiso, guardarNivel, type Nivel, type Permiso, TODOS_LOS_PERMISOS } from "./permisos.ts";
 import { esPestana, PESTANAS_PRIVADAS, TODAS_LAS_PESTANAS } from "./pestanas.ts";
 
 // Rediseño R6 (n.º 19 de la Lista de rediseños): permisos por persona con casillas, por sección. Una persona del equipo puede tener
@@ -10,7 +10,8 @@ export const ALCANCES: Record<Alcance, string> = {
   todos: "Todos los clientes", mis_clientes: "Solo los clientes donde es responsable", elegidos: "Solo los clientes que se marquen",
 };
 
-export type Seccion = { permisos: Permiso[]; pestanas: string[] };
+// Los permisos se guardan como lista de textos: el permiso solo (puede) o con «~aprob» (puede, con aprobación).
+export type Seccion = { permisos: string[]; pestanas: string[] };
 export type PermisosPersona = {
   clientes: Seccion | null; // null: sin permisos propios en los clientes (sigue con sus roles cliente por cliente)
   alcance: Alcance;
@@ -27,7 +28,7 @@ export function alcanceIncluye(p: { alcance: string; clientes: string[] }, empre
 
 // Suma las casillas de varios roles (las plantillas). Un rol sin lista de pantallas las tiene todas, menos las privadas de la socia.
 export function sumarPlantillas(roles: { permisos: string[]; pestanas: string[] | null }[]): Seccion {
-  const permisos = new Set<Permiso>(), pestanas = new Set<string>();
+  const permisos = new Set<string>(), pestanas = new Set<string>();
   for (const r of roles) {
     for (const p of r.permisos) if (esPermiso(p)) permisos.add(p);
     for (const t of r.pestanas ?? TODAS_LAS_PESTANAS.filter((x) => !PESTANAS_PRIVADAS.includes(x))) if (esPestana(t)) pestanas.add(t);
@@ -41,7 +42,13 @@ const lista = (fd: FormData, campo: string) => fd.getAll(campo).map(String);
 export function leerPermisosPersona(fd: FormData): PermisosPersona {
   const seccion = (prefijo: string, activa: boolean): Seccion | null => {
     if (!activa) return null;
-    const permisos = lista(fd, `${prefijo}_permiso`).filter(esPermiso);
+    // Cada permiso trae su nivel (P2a): «si» = puede, «aprob» = puede con aprobación; vacío = no puede.
+    const permisos: string[] = [];
+    for (const clave of TODOS_LOS_PERMISOS) {
+      const nivel = String(fd.get(`${prefijo}_nivel|${clave}`) ?? "") as Nivel | "";
+      const g = nivel === "si" || nivel === "aprob" ? guardarNivel(clave, nivel) : null;
+      if (g) permisos.push(g);
+    }
     const pestanas = lista(fd, `${prefijo}_pestana`).filter(esPestana);
     // Sin «ver» no tiene sentido entrar: se marca solo si hay algo más marcado.
     if ((permisos.length || pestanas.length) && !permisos.includes("ver")) permisos.unshift("ver");

@@ -13,6 +13,7 @@ export const PERMISOS = [
   { clave: "empresa", nombre: "Editar la ficha de la empresa" },
   { clave: "impuestos", nombre: "Configurar impuestos, retenciones y comprobantes" },
   { clave: "usuarios", nombre: "Dar y quitar acceso a la empresa" },
+  { clave: "aprobar", nombre: "Aprobar o devolver lo que otros preparan (Por aprobar)" },
 ] as const;
 
 export type Permiso = (typeof PERMISOS)[number]["clave"];
@@ -25,6 +26,36 @@ export function esPermiso(v: string): v is Permiso {
 export function puede(permisos: readonly string[], permiso: Permiso): boolean {
   return permisos.includes(permiso);
 }
+
+// Prioridad 2.1 (P2a): cada permiso de una persona tiene tres niveles: No puede, Puede hacerlo (queda en firme) y Puede hacerlo, con
+// aprobación (queda pendiente hasta que alguien con «aprobar» lo apruebe). Se guarda en la misma lista de permisos de la persona: el
+// permiso solo = «Puede»; el permiso con el sufijo «~aprob» = «Puede, con aprobación». Solo estos permisos admiten el tercer nivel.
+export const SUFIJO_APROBACION = "~aprob";
+export const CON_APROBACION: readonly Permiso[] = ["contabilizar", "revertir", "cerrar", "impuestos"];
+export type Nivel = "no" | "si" | "aprob";
+export const NIVELES: Record<Nivel, string> = { no: "No puede", si: "Puede hacerlo", aprob: "Puede, con aprobación" };
+
+// De la lista guardada: los permisos que la persona tiene (con y sin aprobación) y cuáles de ellos piden aprobación.
+export function leerNiveles(guardados: readonly string[]): { permisos: Permiso[]; conAprobacion: Permiso[] } {
+  const permisos = new Set<Permiso>(), conAprobacion = new Set<Permiso>();
+  for (const g of guardados) {
+    const aprob = g.endsWith(SUFIJO_APROBACION);
+    const clave = aprob ? g.slice(0, -SUFIJO_APROBACION.length) : g;
+    if (!esPermiso(clave)) continue;
+    if (aprob && !CON_APROBACION.includes(clave)) continue;
+    permisos.add(clave);
+    if (aprob) conAprobacion.add(clave);
+  }
+  return { permisos: [...permisos], conAprobacion: [...conAprobacion] };
+}
+
+export const nivelDe = (guardados: readonly string[], permiso: Permiso): Nivel => {
+  const { permisos, conAprobacion } = leerNiveles(guardados);
+  return !permisos.includes(permiso) ? "no" : conAprobacion.includes(permiso) ? "aprob" : "si";
+};
+
+export const guardarNivel = (permiso: Permiso, nivel: Nivel): string | null =>
+  nivel === "no" ? null : nivel === "aprob" && CON_APROBACION.includes(permiso) ? `${permiso}${SUFIJO_APROBACION}` : permiso;
 
 export const REGIMENES: Record<string, string> = {
   ordinario: "Régimen ordinario",

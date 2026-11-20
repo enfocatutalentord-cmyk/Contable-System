@@ -176,6 +176,7 @@ export type DatosFactura = {
 
 // Crea o reemplaza un borrador de factura. Devuelve su id.
 export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { facturaId?: string | null }): Promise<string> {
+  if (d.facturaId && (await tx`SELECT 1 FROM aprobaciones WHERE tipo = 'factura' AND referencia_id = ${d.facturaId} AND estado = 'pendiente'`).length) throw new ErrorContable("Está esperando aprobación: no se puede cambiar hasta que lo aprueben o lo devuelvan.");
   const [cliente] = await tx<{ activo: boolean }[]>`SELECT activo FROM clientes WHERE id = ${d.clienteId}`;
   if (!cliente?.activo) throw new ErrorContable("El cliente no existe o está inactivo");
   if (!esTipoVenta(d.tipo)) throw new ErrorContable("Elige el tipo de comprobante");
@@ -206,6 +207,7 @@ export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { factura
 }
 
 export async function descartarBorradorFactura(tx: Tx, facturaId: string) {
+  if ((await tx`SELECT 1 FROM aprobaciones WHERE tipo = 'factura' AND referencia_id = ${facturaId} AND estado = 'pendiente'`).length) throw new ErrorContable("Está esperando aprobación: no se puede cambiar hasta que lo aprueben o lo devuelvan.");
   const r = await tx`DELETE FROM facturas WHERE id = ${facturaId} AND estado = 'borrador'`;
   if (r.count === 0) throw new ErrorContable("Solo se descartan borradores");
 }

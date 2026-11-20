@@ -4,7 +4,8 @@ import { leerUnidad } from "@/lib/empresa-propia";
 import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso, exigirPermisoRegistro } from "@/lib/acceso";
+import { esUuid, exigirPermiso, exigirPermisoRegistro, pideAprobacion } from "@/lib/acceso";
+import { cerrarSiPendiente, solicitarAprobacion, tituloDe } from "@/lib/aprobaciones";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import {
   anularCompra, anularPago, descartarBorradorCompra, esNotaProveedor, esTipoCompra, FORMAS_PAGO, guardarBorradorCompra, registrarCompra,
@@ -163,9 +164,27 @@ export async function guardarCompraConDocumento(empresaId: string, recepcionId: 
 }
 
 export async function registrarBorradorCompra(empresaId: string, compraId: string): Promise<Estado> {
-  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/compras");
+  const acceso = await exigirPermisoRegistro(empresaId, "contabilizar", "/compras", true);
+  const { usuario } = acceso;
+  // Con el permiso «con aprobación» no se registra: se pide la aprobación y el borrador espera (Prioridad 2.1).
+  if (pideAprobacion(acceso, "contabilizar")) {
+    try {
+      await conEmpresa(empresaId, async (tx) => {
+        const t = await tituloDe(tx, "compra", compraId);
+        await solicitarAprobacion(tx, { empresaId, usuarioId: usuario.id, tipo: "compra", referenciaId: compraId, ...t });
+        await bitacora(tx, empresaId, usuario.id, "aprobacion_solicitada", { tipo: "compra", id: compraId });
+      });
+    } catch (e) {
+      return { error: mensajeError(e) };
+    }
+    revalidatePath(`/e/${empresaId}`, "layout");
+    redirect(`/e/${empresaId}/compras/${compraId}?aprobacion=1`);
+  }
   try {
-    await conEmpresa(empresaId, (tx) => registrarCompra(tx, { empresaId, usuarioId: usuario.id, compraId }));
+    await conEmpresa(empresaId, async (tx) => {
+      await registrarCompra(tx, { empresaId, usuarioId: usuario.id, compraId });
+      await cerrarSiPendiente(tx, { empresaId, usuarioId: usuario.id, tipo: "compra", referenciaId: compraId });
+    });
   } catch (e) {
     return { error: mensajeError(e) };
   }
