@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CamposAbono } from "../../campos-abono";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { BotonImprimir } from "@/app/imprimir";
@@ -119,6 +120,10 @@ export default async function VerFactura({ params, searchParams }: {
   const whatsapp = propia && !borrador && !esNota && !f.anulada && puede(permisos, "exportar");
   // Correo (entrega A): toda factura o nota emitida y vigente, de la empresa propia o de un cliente; el historial siempre.
   const conCorreo = !borrador && !paraClientes && !registroDeCliente && puede(permisos, "exportar");
+  // Abono al facturar (Prioridad 1.2): en las facturas en pesos de las empresas propias, con las cuentas de efectivo donde puede entrar.
+  const conAbono = borrador && !registroDeCliente && !esNota && f.moneda === "DOP";
+  const cuentasEfectivo = conAbono ? await conEmpresa(id, (tx) => tx<{ id: string; codigo: string; nombre: string }[]>`
+    SELECT id, codigo, nombre FROM cuentas WHERE de_detalle AND activa AND codigo LIKE '1101%' ORDER BY codigo`) : [];
   const correo = conCorreo ? await conEmpresa(id, async (tx) => ({
     preparado: f.anulada ? null : await prepararCorreo(tx, id, f.id, await plantillaCorreo(empresa.firma_id)),
     enviados: await correosDe(tx, f.id),
@@ -133,7 +138,7 @@ export default async function VerFactura({ params, searchParams }: {
         {sp.guardada && <p className="exito">Borrador guardado. No tiene NCF ni asiento hasta que se emita.</p>}
         {sp.emitida && !borrador && <p className="exito">{esNota ? "Nota de crédito emitida" : "Factura emitida"} con NCF {f.ncf}{f.asiento && <> y asiento n.º {f.asiento}</>}.</p>}
         {sp.anulada && <p className="exito">Comprobante anulado. Va en el formato 608 del mes.</p>}
-        {sp.cobrado && <p className="exito">Cobro (recibo n.º {sp.cobrado}) registrado: va al 607 y al IT-1 con su fecha, forma y retenciones.</p>}
+        {sp.cobrado && <p className="exito">Cobro (<Link href={`/e/${id}/cobros/${sp.cobrado}`}>recibo n.º {sp.cobrado}</Link>) registrado: va al 607 y al IT-1 con su fecha, forma y retenciones. El resto queda en cuentas por cobrar.</p>}
         {sp.cobro_anulado && <p className="exito">Recibo n.º {sp.cobro_anulado} anulado.</p>}
         {f.anulada && (
           <p className="aviso">
@@ -209,7 +214,9 @@ export default async function VerFactura({ params, searchParams }: {
             <div className="fila">
               {puede(permisos, "registrar") && <Link className="boton" href={`/e/${id}/facturas/${fid}/editar`}>Editar</Link>}
               {puede(permisos, "contabilizar") && !propioConAprobacion && fueraDeCierre && (!electronica || f.ncf_externo) && (
-                <Formulario accion={emitirBorrador.bind(null, id, fid)} boton={ecfVigente && !f.ncf_externo ? "Emitir con NCF de serie B" : "Emitir factura"} className="fila"><span /></Formulario>
+                <Formulario accion={emitirBorrador.bind(null, id, fid)} boton={ecfVigente && !f.ncf_externo ? "Emitir con NCF de serie B" : "Emitir factura"} className="fila">
+                  {conAbono ? <CamposAbono cuentas={cuentasEfectivo} /> : <span />}
+                </Formulario>
               )}
               {puede(permisos, "registrar") && (
                 <Formulario accion={descartarFactura.bind(null, id, fid)} boton="Descartar borrador" className="fila"><span /></Formulario>
@@ -235,6 +242,7 @@ export default async function VerFactura({ params, searchParams }: {
               <label style={{ flex: "1 1 200px" }}>e-NCF<input name="encf" required placeholder={`${ECF_DE[f.tipo_ncf]}0000000001`} maxLength={16} style={{ textTransform: "uppercase" }} /></label>
               <label style={{ width: 170 }}>Código de seguridad<input name="ecf_codigo" maxLength={20} placeholder="Como sale en la factura" /></label>
               <label>Fecha y hora de firma<input type="datetime-local" name="ecf_firmada" /></label>
+              {conAbono && <CamposAbono cuentas={cuentasEfectivo} />}
             </Formulario>
           </details>
         )}

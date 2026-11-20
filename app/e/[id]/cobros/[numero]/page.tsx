@@ -60,6 +60,7 @@ export default async function VerCobro({ params, searchParams }: {
         {c.anulado && <p className="aviso">Recibo anulado. Motivo: {c.motivo_anulacion}</p>}
         <div className="fila" style={{ marginBottom: 16 }}>
           <BotonImprimir />
+          {puede(permisos, "exportar") && <a className="boton" href={`/e/${id}/exportar/recibo?numero=${numero}&formato=pdf`}>Recibo en PDF</a>}
           {c.asiento && puedeVer(pestanas, "/asientos") && <Link className="boton" href={`/e/${id}/asientos/${c.asiento_id}`}>Ver asiento n.º {c.asiento}</Link>}
         </div>
         {propia && !c.anulado && puede(permisos, "exportar") && (

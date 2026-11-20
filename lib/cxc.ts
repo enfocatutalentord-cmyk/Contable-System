@@ -106,3 +106,38 @@ export async function estadoCuenta(tx: Tx, empresaId: string, clienteId: string,
   });
   return { inicial, movimientos, final: saldo };
 }
+
+// Abono al facturar (Prioridad 1.2 del prompt de Patricia): en porcentaje del total o en monto. Nunca más que el total.
+export function montoAbono(total: bigint, tipo: "porcentaje" | "monto", valor: bigint): bigint {
+  if (valor <= 0n) return 0n;
+  const m = tipo === "porcentaje" ? (total * valor + 5000n) / 10000n : valor; // el % viene en centésimas (25 % = 2500)
+  return m > total ? total : m;
+}
+
+export type DeudaCliente = {
+  clienteId: string; cliente: string; facturas: number; facturado: bigint; abonado: bigint; saldo: bigint; diasAtraso: number; tramos: bigint[];
+  detalle: FacturaPendiente[];
+};
+
+// Qué debe cada cliente (Prioridad 1.2): facturas pendientes, lo facturado, los abonos, el saldo y los días de atraso de la más vieja, en
+// pesos al valor de cada factura. Es la antigüedad de saldos con las columnas del «Aged Receivables» de Xero.
+export async function deudaPorCliente(tx: Tx, corte: string): Promise<DeudaCliente[]> {
+  const pendientes = await pendientesAl(tx, corte);
+  const por = new Map<string, DeudaCliente>();
+  for (const f of pendientes) {
+    let d = por.get(f.cliente_id);
+    if (!d) {
+      d = { clienteId: f.cliente_id, cliente: f.cliente, facturas: 0, facturado: 0n, abonado: 0n, saldo: 0n, diasAtraso: 0, tramos: [0n, 0n, 0n, 0n, 0n], detalle: [] };
+      por.set(f.cliente_id, d);
+    }
+    const total = aPesos(aCentavos(f.total), tasaDeTexto(f.tasa));
+    d.facturas += 1;
+    d.facturado += total;
+    d.saldo += f.saldoPesos;
+    d.abonado += total - f.saldoPesos;
+    d.diasAtraso = Math.max(d.diasAtraso, f.dias);
+    d.tramos[tramo(f.dias)] += f.saldoPesos;
+    d.detalle.push(f);
+  }
+  return [...por.values()].sort((a, b) => b.diasAtraso - a.diasAtraso || (b.saldo > a.saldo ? 1 : -1));
+}

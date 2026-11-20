@@ -40,7 +40,7 @@ import { leerPeriodo } from "../../periodo";
 import { cuentasDeSocia, esTipoSalida, listarSalidas, TIPOS_SALIDA } from "@/lib/salidas";
 import { estadoDeCuenta, tablaEstadoSocia } from "@/lib/socia";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-inicial|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-inicial|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -489,6 +489,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
     if (reporte === "factura" && esUuid(sp.id ?? "")) {
       return conEmpresa(id, (tx) => tablaFactura(tx, sp.id, base));
+    }
+    if (reporte === "recibo" && /^\d+$/.test(sp.numero ?? "")) {
+      // Recibo de ingreso de un cobro (Prioridad 1.2): las facturas que paga, lo que queda pendiente de cada una y las retenciones.
+      return conEmpresa(id, async (tx) => {
+        const [c] = await tx<{ id: string; numero: number; fecha: string; cliente: string; rnc: string | null; forma_pago: string; referencia: string | null;
+          recibido: string; moneda: string; anulado: boolean }[]>`
+          SELECT co.id, co.numero, to_char(co.fecha, 'YYYY-MM-DD') AS fecha, c.nombre AS cliente, c.rnc, co.forma_pago, co.referencia,
+                 co.recibido::text, co.moneda, co.anulado
+            FROM cobros co JOIN clientes c ON c.id = co.cliente_id WHERE co.numero = ${Number(sp.numero)}`;
+        if (!c) return null;
+        const facturas = await tx<{ ncf: string; total: string; aplicado: string; saldo: string }[]>`
+          SELECT f.ncf, f.total::text, a.monto::text AS aplicado, COALESCE(s.saldo, 0)::text AS saldo
+            FROM aplicaciones_cobro a JOIN facturas f ON f.id = a.factura_id LEFT JOIN saldos_factura s ON s.factura_id = f.id
+           WHERE a.cobro_id = ${c.id} ORDER BY f.ncf`;
+        const retenciones = await tx<{ nombre: string; monto: string }[]>`
+          SELECT r.nombre, rc.monto::text FROM retenciones_cobro rc JOIN retenciones r ON r.id = rc.retencion_id WHERE rc.cobro_id = ${c.id}`;
+        const filas: Celda[][] = facturas.map((f) => [`Factura ${f.ncf}`, f.total, f.aplicado, f.saldo]);
+        for (const r of retenciones) filas.push([`Retención: ${r.nombre}`, "", deCentavos(-aCentavos(r.monto)), ""]);
+        return [`recibo-${c.numero}`, {
+          ...base, titulo: `Recibo de ingreso n.º ${c.numero}${c.anulado ? " (ANULADO)" : ""}`,
+          detalle: [`Recibimos de ${c.cliente}${c.rnc ? ` (RNC ${c.rnc})` : ""}`, `el ${verFecha(c.fecha)}`,
+                    `forma de pago: ${FORMAS_ANTICIPO[c.forma_pago] ?? c.forma_pago}`, c.referencia ? `referencia ${c.referencia}` : "",
+                    c.moneda === "USD" ? "montos en dólares" : ""].filter(Boolean).join(" · "),
+          columnas: [col("Concepto", false, 50), col("Total de la factura", true), col("Pagado con este recibo", true), col("Queda pendiente", true)],
+          filas,
+          totales: ["Total recibido", "", c.recibido, ""],
+        }] as [string, Tabla];
+      });
     }
     if (reporte === "recibo-anticipo" && esUuid(sp.id ?? "")) {
       const [a] = await conEmpresa(id, (tx) => tx<{ numero: number; cliente: string; rnc: string | null; fecha: string; monto: string; forma_pago: string;

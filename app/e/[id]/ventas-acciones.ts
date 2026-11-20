@@ -18,6 +18,8 @@ import {
   anularCobro, anularFactura, CLAVES_CUENTAS, descartarBorradorFactura, emitir, emitirNotaCredito, esTipoFactura, guardarBorradorFactura,
   leerCantidad, leerCodigoEcf, leerTasa, MOTIVOS_608, registrarCobro, registrarEcfEmitida, type LineaEntrada,
 } from "@/lib/ventas";
+import { montoAbono } from "@/lib/cxc";
+import type { Tx } from "@/lib/db";
 import type { Estado } from "../../acciones-cuenta";
 
 function texto(fd: FormData, campo: string): string {
@@ -226,15 +228,44 @@ export async function guardarFactura(empresaId: string, facturaId: string | null
   redirect(`/e/${empresaId}/facturas/${id}?${ncf ? "emitida" : "guardada"}=1`);
 }
 
-export async function emitirBorrador(empresaId: string, facturaId: string): Promise<Estado> {
+// Abono o adelanto al facturar (Prioridad 1.2 del prompt de Patricia): con la factura emitida, se aplica de una vez un pago por el porcentaje o
+// el monto indicado y sale su recibo. El resto queda en cuentas por cobrar. Sin abono escrito no hace nada.
+const FORMAS_ABONO = ["transferencia", "efectivo", "cheque", "tarjeta", "otro"];
+async function abonoAlFacturar(tx: Tx, d: { empresaId: string; usuarioId: string; facturaId: string }, fd: FormData): Promise<number | null> {
+  const valorTxt = texto(fd, "abono");
+  if (!valorTxt) return null;
+  const valor = leerMonto(valorTxt);
+  if (valor === null) throw new ErrorContable("El abono no es un número válido.");
+  const tipo = texto(fd, "abono_tipo") === "porcentaje" ? "porcentaje" : "monto";
+  if (tipo === "porcentaje" && aCentavos(valor) > 10000n) throw new ErrorContable("El abono no puede pasar del 100 %.");
+  const [f] = await tx<{ total: string; cliente_id: string; fecha: string; moneda: string }[]>`
+    SELECT total::text, cliente_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, moneda FROM facturas WHERE id = ${d.facturaId}`;
+  if (f.moneda !== "DOP") throw new ErrorContable("El abono al facturar es para facturas en pesos; en dólares aplícalo en Cobros.");
+  const monto = montoAbono(aCentavos(f.total), tipo, aCentavos(valor));
+  if (monto <= 0n) return null;
+  const forma = FORMAS_ABONO.includes(texto(fd, "abono_forma")) ? texto(fd, "abono_forma") : "transferencia";
+  const cuenta = texto(fd, "abono_cuenta");
+  if (cuenta && !esUuid(cuenta)) throw new ErrorContable("Elige la cuenta donde entró el abono.");
+  return registrarCobro(tx, {
+    empresaId: d.empresaId, usuarioId: d.usuarioId, clienteId: f.cliente_id, fecha: f.fecha, moneda: "DOP", tasa: 10000n, cuentaDestinoId: cuenta || null,
+    formaPago: forma, referencia: texto(fd, "abono_referencia").slice(0, 60) || null, notas: "Abono al facturar",
+    recibido: monto, retenciones: [], aplicaciones: [{ facturaId: d.facturaId, monto }],
+  });
+}
+
+export async function emitirBorrador(empresaId: string, facturaId: string, _: Estado = {}, fd: FormData = new FormData()): Promise<Estado> {
   const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas");
+  let recibo: number | null = null;
   try {
-    await conEmpresa(empresaId, (tx) => emitir(tx, { empresaId, usuarioId: usuario.id, facturaId }));
+    recibo = await conEmpresa(empresaId, async (tx) => {
+      await emitir(tx, { empresaId, usuarioId: usuario.id, facturaId });
+      return abonoAlFacturar(tx, { empresaId, usuarioId: usuario.id, facturaId }, fd);
+    });
   } catch (e) {
     return { error: mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}`, "layout");
-  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1`);
+  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1${recibo ? `&cobrado=${recibo}` : ""}`);
 }
 
 // Fecha y hora de firma de la e-CF (opcional): «AAAA-MM-DDTHH:MM» del navegador.
@@ -251,13 +282,17 @@ export async function registrarEcf(empresaId: string, facturaId: string, _: Esta
   const firmada = firmaEcf(fd);
   if (codigo === false) return { error: "El código de seguridad lleva solo letras y números, como sale en la factura." };
   if (firmada === false) return { error: "La fecha de firma no es válida." };
+  let recibo: number | null = null;
   try {
-    await conEmpresa(empresaId, (tx) => registrarEcfEmitida(tx, { empresaId, usuarioId: usuario.id, facturaId, encf: texto(fd, "encf"), codigo, firmada }));
+    recibo = await conEmpresa(empresaId, async (tx) => {
+      await registrarEcfEmitida(tx, { empresaId, usuarioId: usuario.id, facturaId, encf: texto(fd, "encf"), codigo, firmada });
+      return abonoAlFacturar(tx, { empresaId, usuarioId: usuario.id, facturaId }, fd);
+    });
   } catch (e) {
     return { error: mensajeError(e) };
   }
   revalidatePath(`/e/${empresaId}`, "layout");
-  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1`);
+  redirect(`/e/${empresaId}/facturas/${facturaId}?emitida=1${recibo ? `&cobrado=${recibo}` : ""}`);
 }
 
 export async function descartarFactura(empresaId: string, facturaId: string): Promise<Estado> {
