@@ -1074,6 +1074,14 @@ No se pasa a la siguiente sin su autorización expresa.
   /entrar), abiertos recordados en `sessionStorage` (`CLAVE_MENU`); en escritorio `.menu` sticky con su propio desplazamiento. Pruebas
   309. Probado en pantalla (menú, inicio, panel del 606, cliente sin Facturas/Compras, aprobar y registrar con pago, roles). En `main` y
   producción el 20-nov-2026 («sí» de Patricia, `4de65da`, migración 062 aplicada). Sigue la P1c (cuentas por cobrar de Empire).
+  **P1c · Cuentas por cobrar de Empire** (sin migración): `deudaPorCliente` y `montoAbono` en `lib/cxc.ts`; `/cxc` reescrita (por cliente:
+  facturas pendientes, facturado, abonos y notas, saldo, días de atraso de la más vieja; tramos arriba; detalle por factura; «Aplicar un
+  pago»). Abono al facturar (`app/e/[id]/campos-abono.tsx`, `abonoAlFacturar` en `ventas-acciones.ts`): en el borrador en pesos de una
+  propia, «Emitir factura» y «Registrar e-CF emitida» aceptan abono en monto o % (centésimas), forma, cuenta 1101 y referencia; se aplica
+  con `registrarCobro` en la misma transacción y redirige con `cobrado=`. Recibo de ingreso en PDF `/exportar/recibo?numero=` (facturas
+  pagadas, lo que queda, retenciones; `REPORTES.recibo = "/cobros"`), botón en el cobro. Menú: «Lo que deben los clientes» en Cobros de
+  Empire. Pruebas `pruebas/cxc-empire.test.mjs` (310). Probado en pantalla (lista, borrador de 15,930.00 con 25 % → recibo n.º 2 de 3,982.50,
+  saldo 11,947.50, PDF). En `main` y producción el 20-nov-2026 («sí» de Patricia, `3ba4b8c`). Sigue la P1d (trámites).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
