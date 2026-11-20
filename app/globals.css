@@ -92,6 +92,10 @@ h3 { color: var(--titulo); }
 .menu .seccion-cuerpo, .menu .subgrupo { display: flex; flex-direction: column; gap: 2px; }
 .menu .seccion-cuerpo { padding: 0 0 10px 6px; }
 .menu .seccion-cuerpo .grupo { padding-top: 10px; }
+/* Contabilidad (Prioridad 1.1): cada empresa de la dueña con sus pantallas debajo cuando está abierta. */
+.menu .empresa-propia { padding-top: 4px; }
+.menu .empresa-propia > .nombre-propia { font-weight: 700; }
+.menu .empresa-propia > .subgrupo { padding-left: 10px; }
 .menu .nota-menu { margin: 0; padding: 4px 10px 8px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); }
 .menu .nota-menu a { padding: 0; border: 0; color: var(--dorado); }
 .menu-cabeza { display: flex; align-items: center; gap: 8px; }

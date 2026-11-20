@@ -35,7 +35,7 @@ export default async function Normas({ params, searchParams }: { params: Promise
   ]);
   const ultima = normas.revisiones[0]?.fecha ?? null;
   const avisos = avisosDeNormas({ firmaId: fid, hoy, conceptos, prorrogas: normas.prorrogas, ultimaRevision: ultima, responsable: normas.responsable });
-  const nombreEmpresa = (e: { id: string; nombre: string }) => (empresas.find((x) => x.id === e.id)?.propia ? `${e.nombre} (Empire)` : e.nombre);
+  const nombreEmpresa = (e: { id: string; nombre: string }) => (empresas.find((x) => x.id === e.id)?.propia ? `${e.nombre} (propia)` : e.nombre);
 
   // Conceptos vigentes hoy, uno por clase y nombre (con todas las empresas que lo tienen) para «Cargar una tasa nueva».
   const opciones = new Map<string, { clave: string; nombre: string; clase: "impuesto" | "retencion"; tasas: Set<string>; empresas: { id: string; nombre: string }[] }>();

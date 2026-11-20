@@ -47,7 +47,7 @@ export default async function Firmantes({ params }: { params: Promise<{ fid: str
                 const n = faltan(c.vence);
                 return (
                   <tr key={c.id}>
-                    <td><Link href={`/e/${e.id}/fiscal/ecf`}>{e.propia ? `${e.nombre} (Empire)` : e.nombre}</Link></td>
+                    <td><Link href={`/e/${e.id}/fiscal/ecf`}>{e.propia ? `${e.nombre} (propia)` : e.nombre}</Link></td>
                     <td>{c.usuario ?? "—"}</td>
                     <td>{c.titular}{c.identificacion && <span className="sub"> · {c.identificacion}</span>}</td>
                     <td style={n <= 30 ? { color: "var(--peligro)", fontWeight: 600 } : undefined}>{verFecha(c.vence)}{n < 0 ? " · vencido" : n <= 30 ? ` · faltan ${n} días` : ""}</td>

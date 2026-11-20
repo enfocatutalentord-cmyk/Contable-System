@@ -7,6 +7,7 @@ import { puede } from "@/lib/permisos";
 import { puedeVer } from "@/lib/pestanas";
 import { InicioClienteApp } from "./inicio-cliente";
 import { ResumenTrabajo } from "./resumen-trabajo";
+import { nombreCorto } from "@/lib/nombre-corto";
 import { antiguedad } from "@/lib/cxc";
 import { antiguedadCxp } from "@/lib/cxp";
 import { primerDiaMes, saldoNatural, saldosPorCuenta } from "@/lib/reportes";
@@ -17,23 +18,23 @@ export default async function InicioEmpresa({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { sin_permiso, sin_pestana, solo_empire, sin_contabilidad } = await searchParams;
-  const { empresa, permisos, pestanas, usuario, paraClientes } = await accesoEmpresa(id);
+  const { empresa, permisos, pestanas, usuario, paraClientes, propia: deLaDuena } = await accesoEmpresa(id);
   // Los usuarios de los clientes ven la pantalla de inicio de la aplicación (bloque 8a; todos los roles de clientes desde el rediseño R3).
   if (paraClientes) return <InicioClienteApp id={id} nombre={empresa.nombre} usuario={usuario.nombre} />;
   const ve = (r: string) => puedeVer(pestanas, r);
   const hoy = hoyISO();
   const inicioAnio = `${hoy.slice(0, 4)}-01-01`;
 
-  // Contabilidad Empire (rediseño R2): sus avisos de cobro (igualas vencidas, acuerdos) salen aquí, no en las alertas de la Firma.
+  // Empire (rediseño R2): sus avisos de cobro (igualas vencidas, acuerdos) salen aquí, no en las alertas de la Firma.
   const propia = (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
   const avisosArriba = <>
-    {solo_empire && <p className="aviso">Igualas, facturas recurrentes y propuestas son lo que Empire le cobra a sus clientes: están en Contabilidad Empire, no dentro de cada cliente.</p>}
+    {solo_empire && <p className="aviso">Igualas, facturas recurrentes y propuestas son lo que Empire le cobra a sus clientes: están en la contabilidad de Empire, no dentro de cada cliente ni de tus otras empresas.</p>}
     {sin_contabilidad && <p className="aviso">A este cliente no se le lleva contabilidad en el sistema (asientos, libros, catálogo, bancos, cierre, cobros ni pagos): sus facturas y compras sirven para los impuestos y los reportes, y el cobro o el pago se anota dentro de cada una. Si la lleva, márcalo en Ficha › Relación con Empire.</p>}
     {sin_pestana && <p className="aviso">Tus permisos no incluyen esa pantalla. Pídele a una administradora de la firma que te la agregue.</p>}
     {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
   </>;
   // Un cliente sin contabilidad ve el trabajo del mes, no cifras contables (rediseño R3, n.º 15).
-  if (!propia && !ve("/asientos")) return <>{avisosArriba}<ResumenTrabajo id={id} nombre={empresa.nombre} hoy={hoy} ve={ve} /></>;
+  if (!deLaDuena && !ve("/asientos")) return <>{avisosArriba}<ResumenTrabajo id={id} nombre={empresa.nombre} hoy={hoy} ve={ve} /></>;
   const { cuentas, delMes, recientes, cxc, cxp, borradores, avisos } = await conEmpresa(id, async (tx) => {
     const cuentas = await saldosPorCuenta(tx, inicioAnio, hoy);
     const [{ n }] = await tx<{ n: number }[]>`
@@ -64,7 +65,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
   return (
     <>
       {avisosArriba}
-      <h1>{propia ? "Resumen de Empire" : "Inicio"}</h1>
+      <h1>{deLaDuena ? `Resumen de ${nombreCorto(empresa.nombre)}` : "Inicio"}</h1>
       <p className="sub">
         {empresa.nombre} · cifras al {verFecha(hoy)}
         {empresa.fecha_bloqueo && <> · período cerrado hasta el {verFecha(empresa.fecha_bloqueo)}</>}

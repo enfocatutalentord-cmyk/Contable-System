@@ -10,7 +10,8 @@ import { hoyISO, verFecha, verMonto } from "./montos";
 export type ClienteFirma = {
   id: string; nombre: string; rnc: string | null; activa: boolean; fecha_bloqueo: string | null;
   responsable_id: string | null; responsable: string | null;
-  propia: boolean; // la empresa propia de la firma (bloque 1b)
+  propia: boolean; // una empresa de la dueña: va en Contabilidad, no es un cliente (Prioridad 1.1)
+  empire: boolean; // la propia que factura a los clientes de la firma (bloque 1b)
   // Lista maestra (ficha del cliente, bloque 1a).
   categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null;
   fecha_inicio_contrato: string | null; formalizado: boolean; creada: string;
@@ -31,7 +32,7 @@ export const equipoDe = (firmaId: string) => db()<{ id: string; nombre: string }
 export async function clientesDeFirma(firmaId: string, usuarioId: string, administrador: boolean, conInactivos = false): Promise<ClienteFirma[]> {
   return db()<ClienteFirma[]>`
     SELECT e.id, e.nombre, e.rnc, e.activa, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.responsable_id, r.nombre AS responsable,
-           e.id = f.empresa_propia_id AS propia, e.categoria, e.tipo_cliente, e.estado_cliente, e.modalidad,
+           e.contabilidad_propia AS propia, e.id IS NOT DISTINCT FROM f.empresa_propia_id AS empire, e.categoria, e.tipo_cliente, e.estado_cliente, e.modalidad,
            to_char(e.fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato,
            (e.ficha_firmada IS NOT NULL AND e.hoja_firmada IS NOT NULL AND e.contrato_firmado IS NOT NULL) AS formalizado,
            to_char(e.creada AT TIME ZONE 'America/Santo_Domingo', 'YYYY-MM-DD') AS creada
@@ -41,10 +42,10 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
      WHERE e.firma_id = ${firmaId} AND (${conInactivos} OR e.activa)
        AND (${administrador} OR EXISTS (SELECT 1 FROM miembros m WHERE m.empresa_id = e.id AND m.usuario_id = ${usuarioId})
             OR EXISTS (SELECT 1 FROM miembros_firma mf WHERE mf.firma_id = e.firma_id AND mf.usuario_id = ${usuarioId}
-                        AND CASE WHEN e.id = f.empresa_propia_id THEN mf.permisos_empire IS NOT NULL
+                        AND CASE WHEN e.contabilidad_propia THEN mf.permisos_empire IS NOT NULL
                                  ELSE mf.permisos_clientes IS NOT NULL AND (mf.alcance = 'todos' OR (mf.alcance = 'mis_clientes' AND e.responsable_id = ${usuarioId})
                                                                             OR e.id = ANY (mf.clientes)) END))
-     ORDER BY e.id = f.empresa_propia_id DESC, e.activa DESC, e.nombre`;
+     ORDER BY e.id IS NOT DISTINCT FROM f.empresa_propia_id DESC, e.contabilidad_propia DESC, e.activa DESC, e.nombre`;
 }
 
 // Las alertas de todos los clientes de la firma (bloque 3b), con el cliente de cada una.

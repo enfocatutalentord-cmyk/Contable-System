@@ -15,19 +15,21 @@ const NOMBRES_CLIENTE: Record<string, string> = {
 type Clave = "firma" | "empire" | "talleres" | "administracion";
 
 // Menú en cuatro secciones con desplegables (rediseño R1, «Lista de rediseños» de Patricia del 6-nov-2026): Firma (el trabajo a los
-// clientes), Contabilidad Empire (la empresa propia), Talleres (reservada) y Administración. Cada sección muestra solo lo suyo y se
-// abre sola la que tiene la pantalla en la que se está.
+// clientes), Contabilidad (las empresas de la dueña, Prioridad 1.1 del prompt del 20-nov-2026), Talleres (reservada) y Administración.
+// Cada sección muestra solo lo suyo y se abre sola la que tiene la pantalla en la que se está.
 // pestanas: las que ve el rol de la persona en la empresa elegida (null = todas). soloCliente: usuario de una empresa cliente, que
-// solo ve su aplicación. propia: la empresa propia de la firma.
-// pestanasPropia: lo que la persona ve en la empresa propia, para mostrar Contabilidad Empire aunque esté en un cliente (R2).
-export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente, propia = null, pestanasPropia = false }: {
+// solo ve su aplicación. propias: las empresas de la dueña que la persona puede abrir (Empire es la que factura a los clientes).
+// pestanasPropia: lo que la persona ve en Empire (false = sin acceso), para los cobros de Empire.
+export type Propia = { id: string; nombre: string; empire: boolean };
+export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente, propias = [], pestanasPropia = false }: {
   firmaId: string; empresaId: string | null; admin: boolean; auditoria: boolean; pestanas: string[] | null; soloCliente: boolean;
-  propia?: { id: string; nombre: string } | null; pestanasPropia?: string[] | null | false;
+  propias?: Propia[]; pestanasPropia?: string[] | null | false;
 }) {
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
   const base = empresaId ? `/e/${empresaId}` : null;
-  const enPropia = !!propia && empresaId === propia.id;
+  const propia = propias.find((p) => p.id === empresaId) ?? null; // la empresa propia abierta
+  const enPropia = !!propia;
 
   const deLaFirma: [string, string][] = [
     ...(admin ? [[`${firma}/clientes`, "Empresas Empire"], [`${firma}/equipo`, "Personas y accesos"], [`${firma}/perfiles`, "Roles y permisos"], [`${firma}/normas`, "Normas y tasas"]] as [string, string][] : []),
@@ -40,10 +42,10 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ...s, enlaces: s.enlaces.filter(([r]) => !PESTANAS_ADMINISTRACION.includes(r) && !PESTANAS_SOLO_PROPIA.includes(r) && visible(r)
       && (base || !PESTANAS_CONTABLES.includes(r))), // sin cliente elegido no se sabe si lleva contabilidad: casi ninguno la lleva (R3)
   })).filter((s) => s.enlaces.length);
-  // Pestañas de la empresa propia, en Contabilidad Empire (siempre, aunque se esté en un cliente).
+  // Pestañas de la empresa propia abierta, en Contabilidad debajo de su nombre (el acceso ya quitó lo que no le toca).
   const basePropia = propia ? `/e/${propia.id}` : null;
-  const gruposPropia = pestanasPropia === false || !basePropia ? [] : PESTANAS_CLIENTE.map((s) => ({
-    ...s, enlaces: s.enlaces.filter(([r]) => !PESTANAS_ADMINISTRACION.includes(r) && !FUERA_DEL_MENU.includes(r) && puedeVer(pestanasPropia, r)),
+  const gruposPropia = !basePropia ? [] : PESTANAS_CLIENTE.map((s) => ({
+    ...s, enlaces: s.enlaces.filter(([r]) => !PESTANAS_ADMINISTRACION.includes(r) && !FUERA_DEL_MENU.includes(r) && puedeVer(pestanas, r)),
   })).filter((s) => s.enlaces.length);
   const deCobro: [string, string][] = [[`${firma}/empire/tareas`, "Tareas de cobro"], [`${firma}/empire/mensajes`, "Mensajes de cobro"],
     ...(admin ? [[`${firma}/empire/presupuesto`, "Presupuesto"]] as [string, string][] : [])];
@@ -118,7 +120,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
       {s.grupo && s.grupo !== "Cliente elegido" && <div className="grupo">{s.grupo === "Configuración del cliente" ? "Configuración" : s.grupo}</div>}
       {s.enlaces.map(([r, nombre]) => (
         <Link key={r} href={basePropia + r} aria-current={activoEn(basePropia, r) ? "page" : undefined}>
-          {r === "" ? "Resumen de Empire" : nombre}
+          {r === "" ? "Resumen" : nombre}
         </Link>
       ))}
     </div>
@@ -126,7 +128,8 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
 
   // Sección donde está la pantalla abierta.
   const enAdmin = deLaFirma.some(([h]) => activoFirma(h)) || deEmpresa.some((r) => activoEmpresa(r));
-  const actual: Clave = enAdmin ? "administracion" : enPropia || ruta.startsWith(`${firma}/empire`) ? "empire" : "firma";
+  const actual: Clave = enAdmin ? "administracion"
+    : enPropia || ruta.startsWith(`${firma}/empire`) || ruta.startsWith(`${firma}/contabilidad`) ? "empire" : "firma";
   const [abiertas, setAbiertas] = useState<Record<Clave, boolean>>({ firma: actual === "firma", empire: actual === "empire", talleres: false, administracion: actual === "administracion" });
   useEffect(() => { setAbiertas((a) => (a[actual] ? a : { ...a, [actual]: true })); }, [actual]);
 
@@ -145,19 +148,26 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   return (
     <>
       {seccion("firma", "Firma", <>{enlacesTrabajos}</>)}
-      {seccion("empire", "Contabilidad Empire", <>
-        {enlacesPropia}
-        {!enlacesPropia.length && (
+      {seccion("empire", "Contabilidad", <>
+        {propias.map((p) => (
+          <div key={p.id} className="subgrupo empresa-propia">
+            <Link href={`/e/${p.id}`} className="nombre-propia" aria-current={ruta === `/e/${p.id}` ? "page" : undefined}>{p.nombre}</Link>
+            {p.id === propia?.id && enlacesPropia}
+            {p.empire && pestanasPropia !== false && (p.id === propia?.id || ruta.startsWith(`${firma}/empire`)) && (
+              <div className="subgrupo">
+                <div className="grupo">Cobros de Empire</div>
+                {deCobro.map(enlaceFirma)}
+              </div>
+            )}
+          </div>
+        ))}
+        {!propias.length && (
           <p className="nota-menu">
-            {propia ? "No tienes acceso a la contabilidad de Empire."
-              : admin ? <>Todavía no está elegida la empresa propia. <Link href={`${firma}/clientes#empresa-propia`}>Elegirla</Link></>
-              : "La contabilidad de Empire la ven quienes tienen acceso a ella."}
+            {admin ? <>Todavía no están tus empresas. <Link href={`${firma}/contabilidad`}>Agregarlas</Link></>
+              : "La contabilidad la ven quienes tienen acceso a ella."}
           </p>
         )}
-        <div className="subgrupo">
-          <div className="grupo">Cobros de Empire</div>
-          {deCobro.map(enlaceFirma)}
-        </div>
+        {admin && propias.length > 0 && enlaceFirma([`${firma}/contabilidad`, "Agregar o quitar empresas"])}
       </>)}
       {seccion("talleres", "Talleres", <p className="nota-menu">Próximamente. Se definen en una fase aparte.</p>)}
       {seccion("administracion", "Administración", <>

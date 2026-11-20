@@ -49,9 +49,10 @@ export const PESTANAS_CONTABLES = ["/asientos", "/plantillas", "/cierres", "/dia
   // n.º 9: cobros, pagos, cuentas por cobrar y por pagar son del sistema del cliente. El cobro y el pago se anotan en la factura y la compra.
   "/cobros", "/anticipos", "/cxc", "/cxc/estado", "/pagos", "/cxp", "/cxp/estado"];
 
-// Lo que ve un rol en una empresa según sea la propia o un cliente (y si ese cliente lleva contabilidad en el sistema).
-export const pestanasEn = (pestanas: string[] | null, propia: boolean, contabilidad = false): string[] | null =>
-  propia ? pestanas : (pestanas ?? TODAS_LAS_PESTANAS).filter((r) => !PESTANAS_SOLO_PROPIA.includes(r) && (contabilidad || !PESTANAS_CONTABLES.includes(r)));
+// Lo que ve un rol en una empresa: Empire (la que factura a los clientes) lo ve todo; las otras propias y los clientes no ven lo que
+// solo es de Empire, y la contabilidad solo la ven las empresas propias (Prioridad 1.1) o un cliente marcado.
+export const pestanasEn = (pestanas: string[] | null, empire: boolean, contabilidad = false): string[] | null =>
+  empire ? pestanas : (pestanas ?? TODAS_LAS_PESTANAS).filter((r) => !PESTANAS_SOLO_PROPIA.includes(r) && (contabilidad || !PESTANAS_CONTABLES.includes(r)));
 
 // Lo que ve un rol en un cliente: null = todo (administrador). Un rol sin lista ve todo menos lo privado.
 export function pestanasDelRol(pestanas: string[] | null, administrador: boolean): string[] | null {

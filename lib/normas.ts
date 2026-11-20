@@ -7,8 +7,8 @@ export type Empresa = { id: string; nombre: string; propia: boolean };
 
 // Todas las empresas de la firma, la propia incluida (también lleva tasas).
 export const empresasDeFirma = (firmaId: string) => db()<Empresa[]>`
-  SELECT e.id, e.nombre, e.id = f.empresa_propia_id AS propia FROM empresas e JOIN firmas f ON f.id = e.firma_id
-   WHERE e.firma_id = ${firmaId} ORDER BY (e.id = f.empresa_propia_id) DESC, e.nombre`;
+  SELECT e.id, e.nombre, e.contabilidad_propia AS propia FROM empresas e JOIN firmas f ON f.id = e.firma_id
+   WHERE e.firma_id = ${firmaId} ORDER BY e.contabilidad_propia DESC, e.nombre`;
 
 const filasDe = (tx: Tx) => tx<FilaTasa[]>`
   SELECT 'impuesto' AS clase, nombre, tipo, tasa::text AS tasa, vigente_desde::text AS desde, vigente_hasta::text AS hasta, activo FROM impuestos

@@ -7,7 +7,7 @@ import { CATEGORIAS, ESTADOS_CLIENTE, esPrime, MODALIDADES, TIPOS_CLIENTE } from
 import { clientesDeFirma } from "@/lib/firma";
 import { filtrarClientes, leerFiltrosLista, resumenLista } from "@/lib/lista-maestra";
 import { hoyISO, verFecha } from "@/lib/montos";
-import { asignarResponsable, guardarFirma, marcarEmpresaPropia } from "../../acciones";
+import { asignarResponsable, guardarFirma } from "../../acciones";
 
 export const metadata = { title: "Empresas Empire · Empire Tax & Legal" };
 
@@ -26,10 +26,10 @@ export default async function Clientes({ params, searchParams }: {
   ]);
   const f = leerFiltrosLista(sp);
   const filtrando = Object.values(f).some(Boolean);
-  // La empresa propia no es un cliente (rediseño R2): no sale en la lista; se elige abajo y se trabaja en Contabilidad Empire.
+  // Las empresas de la dueña no son clientes (Prioridad 1.1): no salen en la lista; se trabajan en Contabilidad.
   const clientes = filtrarClientes(todos.filter((c) => !c.propia), f);
   const r = resumenLista(todos, hoyISO());
-  const propia = todos.find((c) => c.propia);
+  const propias = todos.filter((c) => c.propia);
   const filtro = (campo: string, valor: string) => `/firma/${fid}/clientes?${new URLSearchParams({ [campo]: valor })}`;
   const opciones = (mapa: Record<string, string>) => Object.entries(mapa).map(([k, v]) => <option key={k} value={k}>{v}</option>);
 
@@ -108,25 +108,19 @@ export default async function Clientes({ params, searchParams }: {
       </div>
 
       <div className="tarjeta" id="empresa-propia" style={{ maxWidth: 640, marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Empresa propia de la firma</h2>
+        <h2 style={{ marginTop: 0 }}>Tus empresas</h2>
         <p className="sub">
-          La contabilidad de la firma se lleva como un cliente más. Al elegirla, cada cliente de la firma queda registrado en su
-          facturación con los datos de su ficha (y se pone al día solo cuando la ficha cambia). También se le crean las unidades de
-          negocio (Firma contable, Laboratorio de Imperios y Sistema), sus cuentas de ingreso, las cuentas de Banco Popular,
-          Banreservas y BHD y la cuenta corriente de cada socia (cuenta por cobrar). Elegir otra vez la misma solo completa lo que falte.
+          Tus empresas no son clientes: llevan contabilidad completa y se trabajan en «Contabilidad»
+          {propias.length ? `: ${propias.map((p) => p.nombre).join(", ")}.` : "."} Ahí se agregan, se pasan desde esta lista o se elige
+          cuál factura a los clientes.
         </p>
-        <Formulario accion={marcarEmpresaPropia.bind(null, fid)} boton="Guardar empresa propia" className="fila">
-          <select name="empresa" defaultValue={propia?.id ?? ""} aria-label="Empresa propia" style={{ flex: "2 1 260px" }}>
-            <option value="">Ninguna</option>
-            {todos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.rnc ? ` · ${c.rnc}` : ""}</option>)}
-          </select>
-        </Formulario>
+        <Link className="boton" href={`/firma/${fid}/contabilidad`}>Ir a Contabilidad</Link>
       </div>
 
       <div className="tarjeta" id="datos-firma" style={{ maxWidth: 640 }}>
         <h2 style={{ marginTop: 0 }}>Datos de la firma</h2>
         <p className="sub">El nombre sale arriba en todas las pantallas y en los correos de acceso.</p>
-        {!firma.rnc && <p className="aviso">Falta el RNC de la firma. Para Empire: Empire Tax’N Legal SRL, RNC 133-09734-6.</p>}
+        {!firma.rnc && <p className="aviso">Falta el RNC de la firma. Para Empire: 133-09734-6.</p>}
         <Formulario accion={guardarFirma.bind(null, fid)} boton="Guardar datos de la firma" className="fila">
           <label style={{ flex: "2 1 260px" }}>Nombre<input name="nombre" defaultValue={firma.nombre} required /></label>
           <label style={{ flex: "1 1 160px" }}>RNC<input name="rnc" defaultValue={firma.rnc ?? ""} inputMode="numeric" /></label>

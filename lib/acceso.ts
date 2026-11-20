@@ -21,6 +21,8 @@ export type Acceso = {
   usuario: Usuario; empresa: Empresa; permisos: Permiso[]; perfil: string; adminFirma: boolean;
   pestanas: string[] | null; // pestañas que ve su rol; null = todas
   paraClientes: boolean;     // rol de usuario de la empresa cliente (no del equipo de la firma)
+  propia?: boolean;          // una de las empresas de la dueña (Contabilidad, Prioridad 1.1), no un cliente
+  empire?: boolean;          // la que factura a los clientes de la firma (firmas.empresa_propia_id)
   supervision?: Supervision; // la dueña de la plataforma supervisando en solo lectura, con permiso de la firma
 };
 
@@ -32,12 +34,12 @@ export const esUuid = (v: string) => UUID.test(v);
 export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> => {
   const usuario = await exigirUsuario();
   if (!UUID.test(empresaId)) notFound();
-  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean; lleva_contabilidad: boolean;
+  const [fila] = await db()<(Empresa & { exigir_dos_pasos: boolean; suspendida: boolean; administrador: boolean; perfil: string | null; permisos: string[] | null; pestanas: string[] | null; para_clientes: boolean | null; rol_administrador: boolean | null; es_propia: boolean; es_empire: boolean; lleva_contabilidad: boolean;
     responsable_id: string | null; mf_permisos_clientes: string[] | null; mf_pestanas_clientes: string[] | null; mf_alcance: string; mf_clientes: string[];
     mf_permisos_empire: string[] | null; mf_pestanas_empire: string[] | null })[]>`
     SELECT e.id, e.nombre, e.rnc, e.moneda, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.firma_id,
            f.nombre AS firma, e.requiere_aprobacion, e.activa, f.exigir_dos_pasos, f.suspendida_en IS NOT NULL AS suspendida, mf.administrador, p.nombre AS perfil, p.permisos, p.pestanas, p.para_clientes,
-           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.id = f.empresa_propia_id AS es_propia, e.lleva_contabilidad, e.responsable_id,
+           (p.sistema AND p.nombre = 'Administrador') AS rol_administrador, e.contabilidad_propia AS es_propia, e.id IS NOT DISTINCT FROM f.empresa_propia_id AS es_empire, e.lleva_contabilidad, e.responsable_id,
            mf.permisos_clientes AS mf_permisos_clientes, mf.pestanas_clientes AS mf_pestanas_clientes, mf.alcance AS mf_alcance,
            mf.clientes::text[] AS mf_clientes, mf.permisos_empire AS mf_permisos_empire, mf.pestanas_empire AS mf_pestanas_empire
       FROM empresas e
@@ -51,14 +53,14 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     if (s) return s;
     notFound();
   }
-  // Permisos propios de la persona (rediseño R6): en la empresa propia, los de Contabilidad Empire; en un cliente de su alcance, los de la
+  // Permisos propios de la persona (rediseño R6): en una empresa propia (Contabilidad, Prioridad 1.1), los de Contabilidad; en un cliente de su alcance, los de la
   // Firma. Mandan sobre el rol que tenga en esa empresa. Sin permisos propios, sigue su rol cliente por cliente.
   const propios = fila.administrador ? null
     : fila.es_propia ? (fila.mf_permisos_empire ? { permisos: fila.mf_permisos_empire, pestanas: fila.mf_pestanas_empire ?? [""] } : null)
     : fila.mf_permisos_clientes && alcanceIncluye({ alcance: fila.mf_alcance, clientes: fila.mf_clientes ?? [] }, fila, usuario.id)
       ? { permisos: fila.mf_permisos_clientes, pestanas: fila.mf_pestanas_clientes ?? [""] } : null;
   if (!fila.administrador && !fila.permisos && !propios) notFound();
-  const { administrador, perfil, permisos: permisosRol, pestanas: pestanasRol, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, lleva_contabilidad,
+  const { administrador, perfil, permisos: permisosRol, pestanas: pestanasRol, para_clientes, exigir_dos_pasos, suspendida, rol_administrador, es_propia, es_empire, lleva_contabilidad,
     responsable_id: _r, mf_permisos_clientes: _a, mf_pestanas_clientes: _b, mf_alcance: _c, mf_clientes: _d, mf_permisos_empire: _e, mf_pestanas_empire: _f, ...empresa } = fila;
   void [_r, _a, _b, _c, _d, _e, _f];
   const permisos = propios ? propios.permisos : permisosRol;
@@ -66,14 +68,14 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
   // Firma suspendida desde la Consola de la plataforma: nadie de la firma entra (los datos se conservan).
   if (suspendida) redirect("/suspendida");
   exigirDosPasos(usuario, exigir_dos_pasos);
-  const visibles = pestanasEn(propios ? pestanas : pestanasDelRol(pestanas, administrador || !!rol_administrador), es_propia, lleva_contabilidad);
+  const visibles = pestanasEn(propios ? pestanas : pestanasDelRol(pestanas, administrador || !!rol_administrador), es_empire, es_propia || lleva_contabilidad);
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
   const pestana = resto === null ? null : pestanaDeRuta(resto);
   if (pestana !== null && !puedeVer(visibles, pestana)) {
-    // Igualas, recurrentes, propuestas y lo de la socia solo existen en la empresa propia (rediseño R2).
-    if (!es_propia && PESTANAS_SOLO_PROPIA.includes(pestana)) redirect(`/e/${empresaId}?solo_empire=1`);
+    // Igualas, recurrentes, propuestas y lo de la socia solo existen en Empire, la que factura a los clientes (rediseño R2).
+    if (!es_empire && PESTANAS_SOLO_PROPIA.includes(pestana)) redirect(`/e/${empresaId}?solo_empire=1`);
     // Asientos, libros, catálogo, bancos y cierre: a los clientes no se les lleva contabilidad (rediseño R3).
     if (!es_propia && !lleva_contabilidad && PESTANAS_CONTABLES.includes(pestana)) redirect(`/e/${empresaId}?sin_contabilidad=1`);
     const primera = visibles?.[0];
@@ -88,6 +90,8 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
     permisos: administrador ? TODOS_LOS_PERMISOS : (permisos!.filter((p) => (TODOS_LOS_PERMISOS as string[]).includes(p)) as Permiso[]),
     pestanas: visibles,
     paraClientes: !administrador && !propios && !!para_clientes,
+    propia: es_propia,
+    empire: es_empire,
   };
 });
 

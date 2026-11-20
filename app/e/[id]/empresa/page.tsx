@@ -26,9 +26,9 @@ const v = (x: unknown) => (x === null || x === undefined ? "" : String(x));
 export default async function Ficha({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ seccion?: string }> }) {
   const { id } = await params;
   const { seccion: s } = await searchParams;
-  const { permisos, usuario, empresa } = await accesoEmpresa(id);
+  const { permisos, usuario, empresa, propia: deLaDuena } = await accesoEmpresa(id);
   const propiaId = (await misFirmas(usuario.id)).find((x) => x.id === empresa.firma_id)?.empresa_propia_id ?? null;
-  const esPropia = propiaId === id;
+  const esPropia = !!deLaDuena; // una de las empresas de la dueña (Contabilidad): no es cliente
   const editable = puede(permisos, "empresa");
   const verEmpleados = editable;
   const seccion = s && s in SECCIONES && (s !== "empleados" || verEmpleados) ? s : "general";

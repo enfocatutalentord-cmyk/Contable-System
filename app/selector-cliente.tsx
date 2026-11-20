@@ -21,7 +21,7 @@ export function SelectorCliente({ firmaId, clientes, actual, todos }: { firmaId:
       <span>Viendo</span>
       <select value={actual ?? ""} onChange={(e) => ir(e.target.value)} aria-label="Cliente">
         {todos && <option value="">Todos los clientes</option>}
-        {clientes.filter((c) => c.propia && c.id === actual).map((c) => <option key={c.id} value={c.id}>Contabilidad Empire</option>)}
+        {clientes.filter((c) => c.propia && c.id === actual).map((c) => <option key={c.id} value={c.id}>Contabilidad · {c.nombre}</option>)}
         {clientes.filter((c) => !c.propia).map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
       </select>
     </label>
