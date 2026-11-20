@@ -1057,6 +1057,23 @@ No se pasa a la siguiente sin su autorización expresa.
   en esta computadora `npm test` da tiempos vencidos al azar con todos los archivos a la vez: pasan con `--test-concurrency=4`). Probado en
   pantalla. En `main` y producción el 20-nov-2026 («sí» de Patricia, `ac0568b`). Falta en producción: crear o pasar Empire, Rojas y Mora
   en Contabilidad y subir el certificado en cada una. Next.js 16.4.2 tiene 7 avisos moderados (corregidos en 16.4.6): propuesto aparte.
+  **P1b · Clientes sin contabilidad ni facturación; menú corto** (migración 062): `PESTANAS_CONTABLES` suma facturas, clientes, servicios,
+  compras, proveedores y certificado (solo en las propias; `SOLO_EMPRESAS_PROPIAS`, `seccionesDe` en `lib/pestanas.ts`). El registro de una
+  factura o compra de cliente (`/facturas/<id>`, `/compras/<id>`, `esRegistroDeCliente`) se abre con la pestaña «/facturas-subidas»
+  (`accesoEmpresa`) y sus acciones (registrar pendiente, anular, nota de crédito, cobro, pago, revisión) usan `exigirPermisoRegistro`; en
+  el registro de factura se esconden correo, anticipo, recurrente y XML e-CF y el «volver» lleva a Facturas del cliente. `aprobarSubida`
+  con `registrar` (quien tiene «contabilizar») registra la compra o emite la venta de una vez (`autorizada`); sin el permiso queda
+  pendiente. La 062 apaga `lleva_contabilidad` de todos los no propios (datos guardados) y deja «Cliente · Factura» con pestañas de
+  aplicación; `ROLES_ESCONDIDOS` lo saca de Roles y de Personas. Ficha sin la casilla «lleva contabilidad». Vendario: aceptar ya no la
+  enciende, sin mapeo ni asientos en clientes (la prueba de asientos usa una empresa propia), textos «por registrar». Inicio de la firma:
+  `resumenCliente` cuenta facturas por revisar, aprobadas sin registrar, documentos, trámites a 5 días, solicitudes, notificaciones y
+  gestiones; sin por cobrar, por pagar, cerrado hasta ni banco. Impuestos del mes sin «Cerrar el mes» ni columna Mes; filtros Todos /
+  Con pendientes / Al día; cada casilla abre `AbrirEnPanel` (`app/panel-formulario.tsx`, `<dialog>` con iframe y `?panel=1`; `EnPanel` en
+  el Marco esconde menú y barra dentro del panel y `data-cerrar-panel` en «Volver» lo cierra). Roles y permisos: cuadro de clientes y
+  cuadro «Solo en tus empresas». Menú: grupos de Firma como `<details class="subseccion">`, todo cerrado al entrar (`LimpiarMenu` en
+  /entrar), abiertos recordados en `sessionStorage` (`CLAVE_MENU`); en escritorio `.menu` sticky con su propio desplazamiento. Pruebas
+  309. Probado en pantalla (menú, inicio, panel del 606, cliente sin Facturas/Compras, aprobar y registrar con pago, roles). En `main` y
+  producción el 20-nov-2026 («sí» de Patricia, `4de65da`, migración 062 aplicada). Sigue la P1c (cuentas por cobrar de Empire).
 - **Nueva navegación** (aprobada por Joannie el 28-oct-2026, en 3 partes; dijo que la firma se llama **Empire Tax’N Legal**:
   lo cambia ella en Clientes de la firma › Datos de la firma, no se toca la base a mano). Parte 1 (marco único, Inicio de la
   firma, Actividad, Clientes) en `main` (`b328ea3`, 29-oct). Parte 2 (roles con pestañas, roles definidos, Facturación y menú
