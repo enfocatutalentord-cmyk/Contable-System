@@ -7,7 +7,7 @@ import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { verMonto } from "@/lib/montos";
 import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
-export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string; categoria: string | null };
+export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string; categoria: string | null; tipo_cliente?: string | null };
 export type ServicioFactura = {
   id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null;
   unidad_id: string | null; precios: Record<string, string>; // precio por categoría de cliente (lista de precios)
@@ -133,6 +133,14 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
         </label>
         {moneda === "USD" && <label style={{ width: 120 }}>Tasa<input name="tasa" inputMode="decimal" placeholder="60.50" defaultValue={inicial?.tasa} required /></label>}
       </div>
+      {cliente && (
+        <p className="sub" style={{ margin: "0 0 8px" }}>
+          {cliente.tipo_cliente === "iguala" ? <><strong>Cliente fijo con iguala:</strong> su iguala del mes se prepara sola en Igualas. Esta factura es aparte, por un servicio extra.</>
+            : cliente.tipo_cliente === "por_trabajo" ? <><strong>Cliente por trabajo:</strong> se factura cada trabajo.</>
+            : cliente.tipo_cliente === "esporadico" ? <><strong>Cliente esporádico o nuevo:</strong> se factura el trabajo puntual.</>
+            : <>Este cliente no tiene tipo (fijo con iguala, por trabajo o esporádico). Se pone en la ficha de su empresa.</>}
+        </p>
+      )}
       {(disponibles[tipo] ?? 0) === 0 && <p className="aviso">No tienes comprobantes {tipo} disponibles. Puedes guardar el borrador; para emitir, agrega el rango en Comprobantes fiscales.</p>}
       {cliente && servicios.some((s) => Object.keys(s.precios).length) && (
         <p className="sub">

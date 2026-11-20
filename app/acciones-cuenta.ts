@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cerrarPendiente, cerrarSesion, cifrarClave, claveCorrecta, continuarEntrada, entradaPendiente, exigirUsuario, iniciarSesion, MAX_FALLOS_CODIGO } from "@/lib/auth";
 import { avisarCambio, comprobarSegundoPaso } from "@/lib/cuenta-dos-pasos";
-import { db, mensajeError } from "@/lib/db";
+import { conEmpresa, db, mensajeError } from "@/lib/db";
+import { abrirConstitucion } from "@/lib/tramites";
 import { accesoFirma } from "@/lib/acceso";
 import { crearEmpresa, crearFirma, leerFicha, limpiarRnc, rncValido } from "@/lib/empresas";
 import { crearEnlace, enviarEnlace, recuperacionesRecientes, usarEnlace } from "@/lib/enlaces";
@@ -100,6 +101,8 @@ export async function nuevaEmpresa(firmaId: string, _: Estado, fd: FormData): Pr
   let id: string;
   try {
     id = await crearEmpresa({ firmaId, usuarioId: usuario.id, ficha });
+    // En constitución: se abre la lista de pasos (nombre provisional, sin RNC hasta que ONAPI y la DGII aprueben).
+    if (ficha.provisional) await conEmpresa(id, (tx) => abrirConstitucion(tx, id));
     // Quien lo crea sin ser administradora queda como responsable y, si trabaja con clientes elegidos, con este en su lista.
     if (!firma.administrador) {
       await db()`UPDATE empresas SET responsable_id = COALESCE(responsable_id, ${usuario.id}) WHERE id = ${id}`;

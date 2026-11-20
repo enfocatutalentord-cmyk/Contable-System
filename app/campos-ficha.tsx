@@ -8,9 +8,15 @@ export type DatosFicha = {
 
 // Campos de la ficha de una empresa cliente (alta y edición). La casilla de aprobación de asientos solo va en la empresa propia: a los
 // clientes no se les hacen asientos (rediseño R3, n.º 14).
-export function CamposFicha({ d = {}, edicion = false, deshabilitado = false, conAprobacion = false }: { d?: DatosFicha; edicion?: boolean; deshabilitado?: boolean; conAprobacion?: boolean }) {
+export function CamposFicha({ d = {}, edicion = false, deshabilitado = false }: { d?: DatosFicha; edicion?: boolean; deshabilitado?: boolean }) {
   return (
     <fieldset disabled={deshabilitado} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 14 }}>
+      {!edicion && (
+        <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" name="en_constitucion" style={{ minHeight: 0 }} />
+          Empresa en constitución: nombre provisional y sin RNC todavía (se actualiza cuando ONAPI y la DGII aprueben)
+        </label>
+      )}
       <div className="fila">
         <label style={{ flex: "2 1 280px" }}>Razón social o nombre<input name="nombre" defaultValue={d.nombre} required /></label>
         <label style={{ flex: "1 1 220px" }}>Nombre comercial<input name="nombre_comercial" defaultValue={d.nombre_comercial ?? ""} /></label>
@@ -43,12 +49,6 @@ export function CamposFicha({ d = {}, edicion = false, deshabilitado = false, co
         <label>Inicio de operaciones<input name="inicio_operaciones" type="date" defaultValue={d.inicio_operaciones ?? ""} /></label>
         <label>Moneda<input value="Peso dominicano (DOP)" disabled /></label>
       </div>
-      {conAprobacion && (
-        <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" name="requiere_aprobacion" defaultChecked={d.requiere_aprobacion} style={{ minHeight: 0 }} />
-          Los asientos requieren aprobación: quien registra deja un borrador y otra persona con permiso lo contabiliza
-        </label>
-      )}
       {edicion && (
         <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <input type="hidden" name="activa_presente" value="1" />

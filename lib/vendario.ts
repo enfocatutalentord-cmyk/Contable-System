@@ -284,7 +284,7 @@ export async function aceptar(d: { firmaId: string; clienteId: string; usuarioId
           nombre: e.legal_name || e.trade_name || "Empresa de Vendario", nombre_comercial: e.trade_name ?? null,
           tipo_identificacion: rnc && rnc.length === 11 ? "cedula" : "rnc", rnc, actividad_economica: null, regimen: "ordinario",
           direccion: e.address ?? null, telefono: e.phone ?? null, correo: c.contacto.email ?? null, mes_cierre: 12, inicio_operaciones: null,
-          requiere_aprobacion: false, activa: true,
+          requiere_aprobacion: false, activa: true, provisional: false,
         },
       }, tx);
       if (c.contacto.name) {

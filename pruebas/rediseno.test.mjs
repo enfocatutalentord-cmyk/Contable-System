@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
-import { esPrime } from "../lib/ficha.ts";
+import { ORIGENES } from "../lib/ficha.ts";
 import { esDeCobro } from "../lib/mensajes.ts";
 import { PESTANAS_CONTABLES, pestanasEn, PESTANAS_SOLO_PROPIA, TODAS_LAS_PESTANAS } from "../lib/pestanas.ts";
 
@@ -22,13 +22,10 @@ test("igualas, recurrentes, propuestas y lo de la socia solo en la empresa propi
   assert.deepEqual(pestanasEn(["", "/igualas"], true), ["", "/igualas"]);
 });
 
-test("mensajes de cobro y clientes Prime", () => {
+test("mensajes de cobro y etiqueta del cliente", () => {
   for (const c of ["cobro_iguala", "envio_factura", "pago_atrasado", "pago_recibido", "cuenta_bancaria", "correo_factura"]) assert.ok(esDeCobro(c), c);
   for (const c of ["bienvenida", "constancia", "reporte_mensual", "ajuste_iguala"]) assert.ok(!esDeCobro(c), c);
-  assert.equal(esPrime("sistema_propio"), true);
-  assert.equal(esPrime("independiente"), true);
-  assert.equal(esPrime("aplicacion"), false);
-  assert.equal(esPrime(null), false);
+  assert.deepEqual(Object.keys(ORIGENES), ["vendario", "aplicacion", "manual"]);
 });
 
 const url = process.env.DATABASE_URL;

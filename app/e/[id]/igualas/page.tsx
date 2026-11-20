@@ -9,6 +9,7 @@ import { puede } from "@/lib/permisos";
 import { confirmarAumentoIguala, emitirMes, guardarAcuerdo, prepararMes } from "../igualas-acciones";
 import { enviarIgualasPorCorreo } from "../correo-acciones";
 import { estadoCorreos } from "@/lib/correo-facturas";
+import { TIPOS_CLIENTE } from "@/lib/ficha";
 
 // Igualas (bloque 2b, Documento maestro, sección 4): el acuerdo de cada cliente y las facturas del mes. Desde el día de
 // facturación de cada cliente su iguala se prepara sola como borrador al abrir esta pantalla; se revisa y se emite con un clic.
@@ -33,7 +34,7 @@ export default async function Igualas({ params, searchParams }: {
     return {
       acuerdos: await listarAcuerdos(tx),
       mes: await igualasDelPeriodo(tx, periodo),
-      clientes: await tx<{ id: string; nombre: string }[]>`SELECT id, nombre FROM clientes WHERE activo ORDER BY nombre`,
+      clientes: await tx<{ id: string; nombre: string; tipo_cliente: string | null }[]>`SELECT id, nombre, tipo_cliente FROM clientes WHERE activo ORDER BY (tipo_cliente = 'iguala') DESC NULLS LAST, nombre`,
       servicios: await tx<{ id: string; nombre: string; precio: string }[]>`SELECT id, nombre, precio::text FROM servicios WHERE activo ORDER BY nombre`,
     };
   });
@@ -140,7 +141,7 @@ export default async function Igualas({ params, searchParams }: {
             <label style={{ flex: "2 1 240px" }}>Cliente
               <select name="cliente" defaultValue={enEdicion?.cliente_id ?? ""} required>
                 <option value="" disabled>Elige el cliente…</option>
-                {datos.clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                {datos.clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.tipo_cliente === "iguala" ? "" : c.tipo_cliente ? ` (${TIPOS_CLIENTE[c.tipo_cliente]})` : " (sin tipo)"}</option>)}
               </select>
             </label>
             <label>Tipo de acuerdo

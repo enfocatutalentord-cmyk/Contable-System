@@ -13,6 +13,7 @@ export type Ficha = {
   nombre: string; nombre_comercial: string | null; tipo_identificacion: "rnc" | "cedula" | "pasaporte"; rnc: string | null;
   actividad_economica: string | null; regimen: string; direccion: string | null; telefono: string | null; correo: string | null;
   mes_cierre: number; inicio_operaciones: string | null; requiere_aprobacion: boolean; activa: boolean;
+  provisional: boolean; // en constitución: nombre provisional y sin RNC hasta que ONAPI y la DGII aprueben (Prioridad 2.2)
 };
 
 // Lee y valida la ficha de la empresa desde un formulario. Devuelve un mensaje si algo no es válido.
@@ -35,7 +36,7 @@ export function leerFicha(fd: FormData): Ficha | string {
     nombre: t("nombre"),
     nombre_comercial: t("nombre_comercial") || null,
     tipo_identificacion: tipo,
-    rnc: id || null,
+    rnc: fd.get("en_constitucion") === "on" ? null : id || null,
     actividad_economica: t("actividad_economica") || null,
     regimen: t("regimen") || "ordinario",
     direccion: t("direccion") || null,
@@ -43,7 +44,8 @@ export function leerFicha(fd: FormData): Ficha | string {
     correo: correo || null,
     mes_cierre: mes,
     inicio_operaciones: inicio || null,
-    requiere_aprobacion: fd.get("requiere_aprobacion") === "on",
+    requiere_aprobacion: false, // la casilla ya no existe: las aprobaciones son por persona (permisos con aprobación)
+    provisional: fd.get("en_constitucion") === "on",
     activa: fd.has("activa_presente") ? fd.get("activa") === "on" : true,
   };
 }
@@ -72,10 +74,10 @@ export async function crearEmpresa(datos: { firmaId: string; usuarioId: string; 
     const [{ id }] = await t<{ id: string }[]>`
       INSERT INTO empresas (firma_id, nombre, nombre_comercial, tipo_identificacion, rnc, actividad_economica, regimen,
                             direccion, telefono, correo, mes_cierre, inicio_operaciones, requiere_aprobacion,
-                            tipo_persona, agente_retencion)
+                            tipo_persona, agente_retencion, nombre_provisional)
       VALUES (${datos.firmaId}, ${f.nombre}, ${f.nombre_comercial}, ${f.tipo_identificacion}, ${f.rnc}, ${f.actividad_economica},
               ${f.regimen}, ${f.direccion}, ${f.telefono}, ${f.correo}, ${f.mes_cierre}, ${f.inicio_operaciones}, ${f.requiere_aprobacion},
-              ${persona}, ${persona === "juridica"})
+              ${persona}, ${persona === "juridica"}, ${f.provisional})
       RETURNING id`;
     await t`SELECT set_config('app.empresa_id', ${id}, true)`;
     await cargarCatalogo(t, id);

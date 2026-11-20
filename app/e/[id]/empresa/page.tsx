@@ -35,10 +35,10 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
   const [d] = await db()<{
     nombre: string; nombre_comercial: string | null; tipo_identificacion: string; rnc: string | null; actividad_economica: string | null;
     regimen: string; direccion: string | null; telefono: string | null; correo: string | null; mes_cierre: number;
-    inicio_operaciones: string | null; requiere_aprobacion: boolean; activa: boolean; creada: Date; lleva_contabilidad: boolean;
+    inicio_operaciones: string | null; requiere_aprobacion: boolean; activa: boolean; creada: Date; lleva_contabilidad: boolean; nombre_provisional: boolean;
   }[]>`
     SELECT nombre, nombre_comercial, tipo_identificacion, rnc, actividad_economica, regimen, direccion, telefono, correo, mes_cierre,
-           to_char(inicio_operaciones, 'YYYY-MM-DD') AS inicio_operaciones, requiere_aprobacion, activa, creada, lleva_contabilidad
+           to_char(inicio_operaciones, 'YYYY-MM-DD') AS inicio_operaciones, requiere_aprobacion, activa, creada, lleva_contabilidad, nombre_provisional
       FROM empresas WHERE id = ${id}`;
   // La iguala del cliente sale de su acuerdo en Contabilidad Empire (rediseño R3, n.º 14). Se lee con la conexión de la firma
   // fijando la empresa propia, como el resto de la cuenta con la firma.
@@ -88,6 +88,12 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
         Una sola ficha por cliente: de aquí salen los datos de facturas, documentos y mensajes. Cliente desde el {d.creada.toLocaleDateString("es-DO")}.
         {" "}{formalizado ? "Formalizado (ficha, hoja de acuerdo y contrato firmados)." : "Sin formalizar del todo."}
       </p>
+      {d.nombre_provisional && (
+        <p className="aviso">
+          Empresa en constitución: el nombre es provisional y todavía no tiene RNC. Cuando ONAPI apruebe el nombre y la DGII dé el RNC, actualízalos aquí en Datos generales:
+          al guardar el RNC deja de ser provisional. El avance está en <Link href={`/e/${id}/expediente`}>Expediente</Link>.
+        </p>
+      )}
       <nav className="fila" style={{ marginBottom: 12 }} aria-label="Secciones de la ficha">
         {Object.entries(SECCIONES).filter(([k]) => k !== "empleados" || verEmpleados).map(([k, t]) => (
           <Link key={k} className={`boton${k === seccion ? " primario" : ""}`} href={`/e/${id}/empresa?seccion=${k}`}>{t}</Link>
@@ -96,8 +102,8 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
 
       <div className="tarjeta">
         {seccion === "general" && (editable ? (
-          <Formulario accion={actualizarFicha.bind(null, id)} boton="Guardar cambios" className=""><CamposFicha d={d} edicion conAprobacion={esPropia} /></Formulario>
-        ) : <CamposFicha d={d} edicion deshabilitado conAprobacion={esPropia} />)}
+          <Formulario accion={actualizarFicha.bind(null, id)} boton="Guardar cambios" className=""><CamposFicha d={d} edicion /></Formulario>
+        ) : <CamposFicha d={d} edicion deshabilitado />)}
         {seccion === "general" && <Logo />}
 
         {seccion === "sociedad" && (

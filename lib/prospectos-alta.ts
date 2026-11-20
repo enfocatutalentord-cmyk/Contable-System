@@ -37,7 +37,7 @@ export async function registrarProspecto(firmaId: string, d: DatosAlta, ip: stri
       ficha: {
         nombre: d.negocio, nombre_comercial: null, tipo_identificacion: d.tipo ?? "rnc", rnc: d.identificacion, actividad_economica: null,
         regimen: "ordinario", direccion: null, telefono: d.telefono, correo: d.email, mes_cierre: 12, inicio_operaciones: null,
-        requiere_aprobacion: false, activa: true,
+        requiere_aprobacion: false, activa: true, provisional: false,
       },
     }, tx);
     await tx`UPDATE empresas SET estado_cliente = 'prospecto', alta_app = now() WHERE id = ${empresaId}`;

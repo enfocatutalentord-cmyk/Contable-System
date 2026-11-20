@@ -243,7 +243,8 @@ export async function actualizarFicha(empresaId: string, _: Estado, fd: FormData
       UPDATE empresas SET nombre = ${f.nombre}, nombre_comercial = ${f.nombre_comercial}, tipo_identificacion = ${f.tipo_identificacion},
              rnc = ${f.rnc}, actividad_economica = ${f.actividad_economica}, regimen = ${f.regimen}, direccion = ${f.direccion},
              telefono = ${f.telefono}, correo = ${f.correo}, mes_cierre = ${f.mes_cierre}, inicio_operaciones = ${f.inicio_operaciones},
-             requiere_aprobacion = ${f.requiere_aprobacion}, activa = ${f.activa}
+             requiere_aprobacion = false, activa = ${f.activa},
+             nombre_provisional = CASE WHEN ${f.rnc}::text IS NOT NULL THEN false ELSE nombre_provisional END
        WHERE id = ${empresaId}`);
     void usuario;
   } catch (e) {

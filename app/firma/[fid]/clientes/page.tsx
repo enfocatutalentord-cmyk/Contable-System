@@ -3,7 +3,7 @@ import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { urlApp } from "@/lib/enlaces";
 import { db } from "@/lib/db";
-import { CATEGORIAS, ESTADOS_CLIENTE, esPrime, MODALIDADES, TIPOS_CLIENTE } from "@/lib/ficha";
+import { CATEGORIAS, ESTADOS_CLIENTE, MODALIDADES, ORIGENES, TIPOS_CLIENTE } from "@/lib/ficha";
 import { clientesDeFirma } from "@/lib/firma";
 import { filtrarClientes, leerFiltrosLista, resumenLista } from "@/lib/lista-maestra";
 import { hoyISO, verFecha } from "@/lib/montos";
@@ -40,7 +40,7 @@ export default async function Clientes({ params, searchParams }: {
           <h1>Empresas Empire</h1>
           <p className="sub">
             La lista maestra: los datos salen de la ficha de cada cliente. El responsable es la persona del equipo que se ocupa de cada uno.
-            «Prime» marca a los clientes con la modalidad 2 o 3 (los que usan el sistema Empire Prime).
+            La etiqueta dice de dónde llegan sus datos: Vendario, Aplicación o Manual.
           </p>
         </div>
         <Link className="boton primario" href={`/firma/${fid}/clientes/nuevo`}>+ Nuevo cliente</Link>
@@ -60,6 +60,7 @@ export default async function Clientes({ params, searchParams }: {
         <label>Categoría<select name="categoria" defaultValue={f.categoria}><option value="">Todas</option>{opciones(CATEGORIAS)}<option value="ninguno">Sin categoría</option></select></label>
         <label>Tipo de cliente<select name="tipo" defaultValue={f.tipo}><option value="">Todos</option>{opciones(TIPOS_CLIENTE)}<option value="ninguno">Sin tipo</option></select></label>
         <label>Estado<select name="estado" defaultValue={f.estado}><option value="">Todos</option>{opciones(ESTADOS_CLIENTE)}</select></label>
+        <label>Origen<select name="origen" defaultValue={f.origen}><option value="">Todos</option>{opciones(ORIGENES)}</select></label>
         <label>Modalidad<select name="modalidad" defaultValue={f.modalidad}><option value="">Todas</option>{opciones(MODALIDADES)}<option value="ninguno">Sin modalidad</option></select></label>
         <label>Formalización<select name="formalizacion" defaultValue={f.formalizacion}><option value="">Todas</option><option value="si">Formalizados</option><option value="no">Sin formalizar</option></select></label>
         <label>Responsable
@@ -83,8 +84,8 @@ export default async function Clientes({ params, searchParams }: {
               <tr key={c.id} style={c.activa ? undefined : { opacity: 0.6 }}>
                 <td>
                   <Link href={`/e/${c.id}`}><strong>{c.nombre}</strong></Link>
-                  {esPrime(c.modalidad) && <span className="etiqueta-prime" title="Modalidad 2 o 3: usa el sistema Empire Prime">Prime</span>}
-                  <div className="sub" style={{ margin: 0 }}>{c.rnc ?? "Sin RNC"} · <Link href={`/e/${c.id}/empresa`}>Ficha</Link></div>
+                  <span className="etiqueta-prime" title="De dónde llegan los datos de este cliente">{ORIGENES[c.origen]}</span>
+                  <div className="sub" style={{ margin: 0 }}>{c.nombre_provisional ? "Nombre provisional · en constitución" : (c.rnc ?? "Sin RNC")} · <Link href={`/e/${c.id}/empresa`}>Ficha</Link></div>
                 </td>
                 <td>{c.categoria ? CATEGORIAS[c.categoria] : "—"}</td>
                 <td>{c.tipo_cliente ? TIPOS_CLIENTE[c.tipo_cliente] : "—"}</td>

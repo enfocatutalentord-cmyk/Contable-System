@@ -11,7 +11,7 @@ export type ClienteFirma = {
   propia: boolean; // una empresa de la dueña: va en Contabilidad, no es un cliente (Prioridad 1.1)
   empire: boolean; // la propia que factura a los clientes de la firma (bloque 1b)
   // Lista maestra (ficha del cliente, bloque 1a).
-  categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null;
+  categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null; origen: "vendario" | "aplicacion" | "manual"; nombre_provisional: boolean;
   fecha_inicio_contrato: string | null; formalizado: boolean; creada: string;
 };
 
@@ -31,7 +31,8 @@ export async function clientesDeFirma(firmaId: string, usuarioId: string, admini
   return db()<ClienteFirma[]>`
     SELECT e.id, e.nombre, e.rnc, e.activa, to_char(e.fecha_bloqueo, 'YYYY-MM-DD') AS fecha_bloqueo, e.responsable_id, r.nombre AS responsable,
            e.contabilidad_propia AS propia, e.id IS NOT DISTINCT FROM f.empresa_propia_id AS empire, e.categoria, e.tipo_cliente, e.estado_cliente, e.modalidad,
-           to_char(e.fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato,
+           CASE WHEN EXISTS (SELECT 1 FROM vendario_clientes v WHERE v.empresa_id = e.id) THEN 'vendario' WHEN e.alta_app IS NOT NULL THEN 'aplicacion' ELSE 'manual' END AS origen,
+           e.nombre_provisional, to_char(e.fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato,
            (e.ficha_firmada IS NOT NULL AND e.hoja_firmada IS NOT NULL AND e.contrato_firmado IS NOT NULL) AS formalizado,
            to_char(e.creada AT TIME ZONE 'America/Santo_Domingo', 'YYYY-MM-DD') AS creada
       FROM empresas e

@@ -3,11 +3,11 @@
 
 export type ClienteLista = {
   propia: boolean; activa: boolean; nombre: string; rnc: string | null; responsable_id: string | null;
-  categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null;
+  categoria: string | null; tipo_cliente: string | null; estado_cliente: string; modalidad: string | null; origen?: string;
   fecha_inicio_contrato: string | null; formalizado: boolean; creada: string;
 };
 export type FiltrosLista = {
-  categoria: string; tipo: string; estado: string; modalidad: string; formalizacion: "" | "si" | "no"; responsable: string; buscar: string;
+  categoria: string; tipo: string; estado: string; modalidad: string; origen: string; formalizacion: "" | "si" | "no"; responsable: string; buscar: string;
 };
 
 const valor = (sp: Record<string, string | undefined>, k: string) => (sp[k] ?? "").trim().slice(0, 80);
@@ -15,7 +15,7 @@ const valor = (sp: Record<string, string | undefined>, k: string) => (sp[k] ?? "
 export function leerFiltrosLista(sp: Record<string, string | undefined>): FiltrosLista {
   const f = valor(sp, "formalizacion");
   return {
-    categoria: valor(sp, "categoria"), tipo: valor(sp, "tipo"), estado: valor(sp, "estado"), modalidad: valor(sp, "modalidad"),
+    categoria: valor(sp, "categoria"), tipo: valor(sp, "tipo"), estado: valor(sp, "estado"), modalidad: valor(sp, "modalidad"), origen: valor(sp, "origen"),
     formalizacion: f === "si" || f === "no" ? f : "", responsable: valor(sp, "responsable"), buscar: valor(sp, "buscar"),
   };
 }
@@ -29,7 +29,7 @@ export function filtrarClientes<T extends ClienteLista>(clientes: T[], f: Filtro
   const buscar = sinAcentos(f.buscar);
   return clientes.filter((c) =>
     coincide(f.categoria, c.categoria) && coincide(f.tipo, c.tipo_cliente) && coincide(f.modalidad, c.modalidad)
-    && coincide(f.responsable, c.responsable_id) && (!f.estado || c.estado_cliente === f.estado)
+    && coincide(f.responsable, c.responsable_id) && (!f.origen || c.origen === f.origen) && (!f.estado || c.estado_cliente === f.estado)
     && (!f.formalizacion || c.formalizado === (f.formalizacion === "si"))
     && (!buscar || sinAcentos(c.nombre).includes(buscar) || (c.rnc ?? "").includes(buscar.replace(/\D/g, "") || "\0")));
 }
