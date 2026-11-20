@@ -6,9 +6,10 @@ import { conEmpresa } from "@/lib/db";
 import { listarUnidades } from "@/lib/empresa-propia";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { categoriasPresupuesto } from "@/lib/presupuesto";
 import { esEmpresaPropia } from "@/lib/propia";
 import { fechaValida, primerDiaMes, ultimoDiaMes } from "@/lib/reportes";
-import { CATEGORIAS_PERSONALES, cuentasParaSalida, esTipoSalida, listarSalidas, TIPOS_SALIDA, totalesPorTipo, type TipoSalida } from "@/lib/salidas";
+import { cuentasParaSalida, esTipoSalida, listarSalidas, TIPOS_SALIDA, totalesPorTipo, type TipoSalida } from "@/lib/salidas";
 import { anularSalidaAccion, registrarSalidaAccion } from "../socia-acciones";
 import { FormularioSalida } from "./formulario-salida";
 
@@ -26,9 +27,10 @@ export default async function Salidas({ params, searchParams }: { params: Promis
   const desde = fechaValida(sp.desde) ? sp.desde : primerDiaMes(hoy);
   const hasta = fechaValida(sp.hasta) ? sp.hasta : ultimoDiaMes(hoy);
   const tipo = sp.tipo && esTipoSalida(sp.tipo) ? sp.tipo : null;
-  const { cuentas, unidades, salidas } = await conEmpresa(id, async (tx) => ({
-    cuentas: await cuentasParaSalida(tx), unidades: await listarUnidades(tx), salidas: await listarSalidas(tx, desde, hasta, tipo),
+  const { cuentas, unidades, categorias, salidas } = await conEmpresa(id, async (tx) => ({
+    cuentas: await cuentasParaSalida(tx), unidades: await listarUnidades(tx), categorias: await categoriasPresupuesto(tx), salidas: await listarSalidas(tx, desde, hasta, tipo),
   }));
+  const categoriasPersonal = categorias.personal, categoriasOficina = categorias.oficina;
   const totales = totalesPorTipo(salidas);
   const registra = puede(permisos, "contabilizar");
   const anula = puede(permisos, "revertir");
@@ -49,7 +51,7 @@ export default async function Salidas({ params, searchParams }: { params: Promis
       {registra && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>
           <FormularioSalida accion={registrarSalidaAccion.bind(null, id)} tipos={Object.entries(TIPOS_SALIDA) as [TipoSalida, { nombre: string; efecto: string }][]}
-            efectivo={cuentas.efectivo} gastos={cuentas.gastos} socias={cuentas.socias} unidades={unidades} categorias={CATEGORIAS_PERSONALES}
+            efectivo={cuentas.efectivo} gastos={cuentas.gastos} socias={cuentas.socias} unidades={unidades} categorias={categoriasPersonal} categoriasOficina={categoriasOficina}
             hoy={empresa.fecha_bloqueo && empresa.fecha_bloqueo >= hoy ? siguienteDia(empresa.fecha_bloqueo) : hoy}
             minimo={empresa.fecha_bloqueo ? siguienteDia(empresa.fecha_bloqueo) : undefined} />
         </div>

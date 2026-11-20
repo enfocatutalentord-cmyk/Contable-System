@@ -108,7 +108,7 @@ export async function registrarSalida(tx: Tx, empresaId: string, usuarioId: stri
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO salidas (empresa_id, numero, fecha, tipo, cuenta_origen_id, cuenta_destino_id, monto, categoria, acreedor, descripcion,
                          referencia, unidad_id, asiento_id, creado_por)
-    VALUES (${empresaId}, ${numero}, ${d.fecha}, ${d.tipo}, ${d.origenId}, ${d.destinoId}, ${deCentavos(d.monto)}, ${categoria},
+    VALUES (${empresaId}, ${numero}, ${d.fecha}, ${d.tipo}, ${d.origenId}, ${d.destinoId}, ${deCentavos(d.monto)}, ${d.tipo === "oficina" ? d.categoria?.trim() || null : categoria},
             ${d.tipo === "deuda" ? d.acreedor ?? null : null}, ${d.descripcion ?? null}, ${d.referencia ?? null},
             ${d.tipo === "oficina" ? d.unidadId ?? null : null}, ${asiento.id}, ${usuarioId})
     RETURNING id`;

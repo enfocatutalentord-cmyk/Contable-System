@@ -10,10 +10,10 @@ type Opcion = { id: string; codigo: string; nombre: string };
 type Tipo = "oficina" | "personal" | "deuda" | "ahorro" | "traspaso";
 
 // Registrar una salida: se elige el tipo y el sistema arma el asiento con la cuenta que le toca; se ve antes de guardarlo.
-export function FormularioSalida({ accion, tipos, efectivo, gastos, socias, unidades, categorias, hoy, minimo }: {
+export function FormularioSalida({ accion, tipos, efectivo, gastos, socias, unidades, categorias, categoriasOficina, hoy, minimo }: {
   accion: (e: Estado, fd: FormData) => Promise<Estado>;
   tipos: [Tipo, { nombre: string; efecto: string }][];
-  efectivo: Opcion[]; gastos: Opcion[]; socias: Opcion[]; unidades: UnidadOpcion[]; categorias: string[]; hoy: string; minimo?: string;
+  efectivo: Opcion[]; gastos: Opcion[]; socias: Opcion[]; unidades: UnidadOpcion[]; categorias: string[]; categoriasOficina: string[]; hoy: string; minimo?: string;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const form = useRef<HTMLFormElement>(null);
@@ -82,6 +82,12 @@ export function FormularioSalida({ accion, tipos, efectivo, gastos, socias, unid
           <label style={{ flex: "1 1 220px" }}>Categoría
             <input name="categoria" list="categorias-personales" required value={categoria} onChange={(e) => setCategoria(e.target.value)} maxLength={80} placeholder="Ej.: Alimentación" />
             <datalist id="categorias-personales">{categorias.map((c) => <option key={c} value={c} />)}</datalist>
+          </label>
+        )}
+        {tipo === "oficina" && (
+          <label style={{ flex: "1 1 220px" }}>Categoría del presupuesto
+            <input name="categoria" list="categorias-oficina" value={categoria} onChange={(e) => setCategoria(e.target.value)} maxLength={80} placeholder="Ej.: Electricidad oficina" />
+            <datalist id="categorias-oficina">{categoriasOficina.map((c) => <option key={c} value={c} />)}</datalist>
           </label>
         )}
         {tipo === "deuda" && (
