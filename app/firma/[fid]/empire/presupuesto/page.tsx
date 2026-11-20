@@ -11,11 +11,15 @@ import {
 import {
   cuentasDePresupuesto, ingresosPorCliente, listarDeudas, listarMetas, saldosDeBancos, TIPOS_DEUDA, TIPOS_META, TIPO_DEUDA_NEGOCIO,
 } from "@/lib/presupuesto-metas";
+import { listarPendientes, totalPendiente } from "@/lib/presupuesto-pendientes";
+import { cuentasParaSalida } from "@/lib/salidas";
 import { feriadosDe } from "@/lib/tramites";
 import {
   agregarCategoriaAccion, copiarAnioAccion, guardarDeudaAccion, guardarMetaAccion, guardarPresupuestoAccion, quitarCategoriaAccion, quitarDeudaAccion,
   quitarMetaAccion, renombrarCategoriaAccion,
 } from "../../../presupuesto-acciones";
+import { agregarPendienteAccion, descartarPendienteAccion, marcarPagadoAccion } from "../../../pendientes-acciones";
+import { NuevoPendiente } from "./nuevo-pendiente";
 
 export const metadata = { title: "Presupuesto · Empire Tax & Legal" };
 
@@ -49,6 +53,7 @@ export default async function Presupuesto({ params, searchParams }: {
     return {
       oficina: await categoriasDe(tx, "oficina"), personal: await categoriasDe(tx, "personal"),
       montos: await montosDelAnio(tx, anio), real: await realDelAnio(tx, anio), ingresos: await ingresosDelAnio(tx, anio),
+      pendientes: await listarPendientes(tx), opciones: await cuentasParaSalida(tx),
       metas: await listarMetas(tx, hoy), deudas: await listarDeudas(tx, hoy), cuentas: await cuentasDePresupuesto(tx),
       bancos: await saldosDeBancos(tx, `${anio}-${String(mes).padStart(2, "0")}-01`, `${anio}-${String(mes).padStart(2, "0")}-${String(diasDelMes(anio, mes)).padStart(2, "0")}`),
       clientes: await ingresosPorCliente(tx, `${anio}-${String(mes).padStart(2, "0")}-01`, `${anio}-${String(mes).padStart(2, "0")}-${String(diasDelMes(anio, mes)).padStart(2, "0")}`),
@@ -57,6 +62,7 @@ export default async function Presupuesto({ params, searchParams }: {
 
   const presup = (lista: string, categoria: string, m = mes) => d.montos.get(claveMonto(lista, categoria, m)) ?? 0n;
   const presupTotal = (lista: ListaPresupuesto, m: number) => (lista === "oficina" ? d.oficina : d.personal).reduce((a, c) => a + presup(lista, c.nombre, m), 0n);
+  const pendientesMes = totalPendiente(d.pendientes, anio, mes);
   const real = d.real[mes - 1];
   const ing = d.ingresos[mes - 1];
   const realOficina = sumar(real.oficina), realPersonal = sumar(real.personal);
@@ -218,6 +224,42 @@ export default async function Presupuesto({ params, searchParams }: {
           <input type="checkbox" name="todos" style={{ width: "auto" }} /> Repetir estos montos en los 12 meses de {anio}
         </label>
       </Formulario>
+
+      <h2>Gastos pendientes de pago</h2>
+      <p className="sub">
+        Lo que ya se sabe que hay que pagar. Mientras esté pendiente no resta del presupuesto, ni del banco, ni de la contabilidad: al marcarlo «Pagado» se registra la salida con su asiento y recién ahí cuenta.
+        {pendientesMes > 0n && <> Por pagar con fecha de este mes: <strong>RD$ {verMonto(pendientesMes)}</strong>.</>}
+      </p>
+      <div className="tabla-envoltura" style={{ marginBottom: 12 }}>
+        <table>
+          <thead><tr><th>Toca el</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th className="num">Monto (RD$)</th><th>Pagado</th></tr></thead>
+          <tbody>
+            {d.pendientes.map((g) => (
+              <tr key={g.id}>
+                <td style={g.fecha < hoy ? { color: "var(--peligro)", fontWeight: 600 } : undefined}>{g.fecha}</td>
+                <td>{g.tipo === "oficina" ? "Oficina" : "Personal"}</td><td>{g.categoria ?? "—"}</td>
+                <td>{g.descripcion ?? ""}<div className="sub" style={{ margin: 0 }}>{g.cuenta}</div></td>
+                <td className="num">{verMonto(g.monto)}</td>
+                <td>
+                  <Formulario accion={marcarPagadoAccion.bind(null, fid, g.id)} boton="Marcar pagado" className="fila">
+                    <select name="origen" aria-label="Sale de" defaultValue={d.opciones.efectivo[0]?.id}>{d.opciones.efectivo.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+                    <input type="date" name="fecha" defaultValue={hoy} aria-label="Fecha del pago" />
+                  </Formulario>
+                  <Formulario accion={descartarPendienteAccion.bind(null, fid, g.id)} boton="Descartar" className="fila boton-chico"><></></Formulario>
+                </td>
+              </tr>
+            ))}
+            {d.pendientes.length === 0 && <tr><td colSpan={6} className="sub">No hay gastos pendientes.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <details className="tarjeta" style={{ marginBottom: 16 }}>
+        <summary><strong>Anotar un gasto pendiente</strong></summary>
+        <div style={{ marginTop: 10 }}>
+          <NuevoPendiente accion={agregarPendienteAccion.bind(null, fid)} gastos={d.opciones.gastos} socias={d.opciones.socias}
+            categoriasOficina={d.oficina.map((c) => c.nombre)} categoriasPersonal={d.personal.map((c) => c.nombre)} hoy={hoy} />
+        </div>
+      </details>
 
       <h2>Mes por mes · {anio}</h2>
       <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
