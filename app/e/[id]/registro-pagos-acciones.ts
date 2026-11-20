@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso } from "@/lib/acceso";
+import { esUuid, exigirPermisoRegistro } from "@/lib/acceso";
 import { leerTasa } from "@/lib/calculos";
 import { anularPago, FORMAS_PAGO, registrarPago, saldoCompra } from "@/lib/compras";
 import { conEmpresa, mensajeError } from "@/lib/db";
@@ -10,6 +10,7 @@ import { aCentavos, leerMonto } from "@/lib/montos";
 import { fechaValida } from "@/lib/reportes";
 import { anularCobro, registrarCobro, saldoFactura } from "@/lib/ventas";
 import type { Estado } from "../../acciones-cuenta";
+
 
 // Rediseño, n.º 9: en un cliente sin contabilidad no hay pantallas de cobros ni pagos. El cobro de una factura y el pago de una compra
 // se anotan dentro del documento (fecha, forma, retenciones y referencia): es lo que piden el 606, el 607, el IT-1 y el IR-17.
@@ -32,7 +33,7 @@ function leerRetenciones(fd: FormData): { retencionId: string; monto: bigint }[]
 }
 
 export async function cobrarFactura(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas");
   if (!esUuid(facturaId)) return { error: "Factura no válida." };
   const fecha = texto(fd, "fecha"), forma = texto(fd, "forma_pago");
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
@@ -65,7 +66,7 @@ export async function cobrarFactura(empresaId: string, facturaId: string, _: Est
 }
 
 export async function anularCobroDeFactura(empresaId: string, facturaId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/facturas");
   const motivo = texto(fd, "motivo");
   if (motivo.length < 3) return { error: "Escribe el motivo." };
   try {
@@ -78,7 +79,7 @@ export async function anularCobroDeFactura(empresaId: string, facturaId: string,
 }
 
 export async function pagarCompra(empresaId: string, compraId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/compras");
   if (!esUuid(compraId)) return { error: "Compra no válida." };
   const fecha = texto(fd, "fecha"), forma = texto(fd, "forma_pago");
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
@@ -111,7 +112,7 @@ export async function pagarCompra(empresaId: string, compraId: string, _: Estado
 }
 
 export async function anularPagoDeCompra(empresaId: string, compraId: string, numero: number, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/compras");
   const motivo = texto(fd, "motivo");
   if (motivo.length < 3) return { error: "Escribe el motivo." };
   try {

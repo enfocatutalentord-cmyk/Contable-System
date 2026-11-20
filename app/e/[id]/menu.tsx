@@ -13,6 +13,7 @@ const NOMBRES_CLIENTE: Record<string, string> = {
 };
 
 type Clave = "firma" | "empire" | "talleres" | "administracion";
+export const CLAVE_MENU = "menu-abiertos";
 
 // Menú en cuatro secciones con desplegables (rediseño R1, «Lista de rediseños» de Patricia del 6-nov-2026): Firma (el trabajo a los
 // clientes), Contabilidad (las empresas de la dueña, Prioridad 1.1 del prompt del 20-nov-2026), Talleres (reservada) y Administración.
@@ -29,6 +30,19 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const firma = `/firma/${firmaId}`;
   const base = empresaId ? `/e/${empresaId}` : null;
   const propia = propias.find((p) => p.id === empresaId) ?? null; // la empresa propia abierta
+  // Menú en dos niveles (Prioridad 1.4 del prompt de Patricia): todo empieza cerrado al entrar; lo que la persona abre se recuerda mientras
+  // trabaja (en esa pestaña del navegador) y se borra al volver a entrar.
+  const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    try { setAbiertas(JSON.parse(sessionStorage.getItem(CLAVE_MENU) ?? "{}")); } catch { /* sin almacenamiento: queda cerrado */ }
+  }, []);
+  const alternar = (clave: string, abierta: boolean) => setAbiertas((a) => {
+    if (!!a[clave] === abierta) return a;
+    const nuevo = { ...a, [clave]: abierta };
+    try { sessionStorage.setItem(CLAVE_MENU, JSON.stringify(nuevo)); } catch { /* sin almacenamiento */ }
+    return nuevo;
+  });
   const enPropia = !!propia;
 
   const deLaFirma: [string, string][] = [
@@ -80,15 +94,13 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
       { firma: `${firma}/reportes`, nombre: "Reportes del mes" }, { firma: `${firma}/bitacora`, nombre: "Bitácora de la firma" },
       { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],
     ["Facturas y documentos", [{ firma: `${firma}/documentos`, nombre: "Documentos recibidos" }, { firma: `${firma}/facturas-subidas`, nombre: "Facturas del cliente" },
-      { cliente: "/facturas" }, { cliente: "/compras" }, { cliente: "/clientes" }, { cliente: "/proveedores" }, { cliente: "/servicios" }]],
-    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { cliente: "/certificado" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
+    ]],
+    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
       { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
     ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }]],
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
     ["Vendario", [{ firma: `${firma}/vendario`, nombre: "Solicitudes y clientes" }, { firma: `${firma}/vendario/salud`, nombre: "Salud de la integración" }]],
-    ["Cobros y pagos", [{ cliente: "/cobros" }, { cliente: "/anticipos" }, { cliente: "/cxc" }, { cliente: "/pagos" }, { cliente: "/cxp" }]],
-    ["Contabilidad del cliente", PESTANAS_CONTABLES.filter((r) => !/^\/(cobros|anticipos|cxc|pagos|cxp)/.test(r)).map((r) => ({ cliente: r }))],
   ];
   // Lo de un cliente que no tenga su lugar arriba (una pestaña nueva) no se pierde: va en «Otros».
   const ubicadas = new Set(trabajos.flatMap(([, t]) => t.map((x) => ("cliente" in x ? x.cliente : ""))));
@@ -98,13 +110,13 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     const items = lista.filter((t) => !("cliente" in t) || deCliente.has(t.cliente));
     if (!items.length) return null;
     return (
-      <div key={grupo} className="subgrupo">
-        <div className="grupo">{grupo}</div>
+      <details key={grupo} className="subseccion" open={!!abiertas[`g:${grupo}`]} onToggle={(e) => alternar(`g:${grupo}`, (e.currentTarget as HTMLDetailsElement).open)}>
+        <summary>{grupo}</summary>
         {items.map((t) => "firma" in t ? enlaceFirma([t.firma, t.nombre]) : (
           <Link key={t.cliente} href={clienteElegido ? clienteElegido + t.cliente : `${firma}/elegir?a=${encodeURIComponent(t.cliente || "/")}`}
             aria-current={clienteElegido && activoEmpresa(t.cliente) ? "page" : undefined}>{t.nombre ?? nombreDe.get(t.cliente) ?? t.cliente}</Link>
         ))}
-      </div>
+      </details>
     );
   });
   const enlacesEmpresa = (soloNombres = false) => grupos.map((s, i) => (
@@ -130,16 +142,11 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const enAdmin = deLaFirma.some(([h]) => activoFirma(h)) || deEmpresa.some((r) => activoEmpresa(r));
   const actual: Clave = enAdmin ? "administracion"
     : enPropia || ruta.startsWith(`${firma}/empire`) || ruta.startsWith(`${firma}/contabilidad`) ? "empire" : "firma";
-  const [abiertas, setAbiertas] = useState<Record<Clave, boolean>>({ firma: actual === "firma", empire: actual === "empire", talleres: false, administracion: actual === "administracion" });
-  useEffect(() => { setAbiertas((a) => (a[actual] ? a : { ...a, [actual]: true })); }, [actual]);
 
   if (soloCliente) return <>{enlacesEmpresa(true)}</>;
 
   const seccion = (clave: Clave, titulo: string, contenido: React.ReactNode) => (
-    <details className="seccion" open={abiertas[clave]} onToggle={(e) => {
-      const abierta = (e.currentTarget as HTMLDetailsElement).open;
-      setAbiertas((a) => (a[clave] === abierta ? a : { ...a, [clave]: abierta }));
-    }}>
+    <details className="seccion" open={!!abiertas[`s:${clave}`]} onToggle={(e) => alternar(`s:${clave}`, (e.currentTarget as HTMLDetailsElement).open)}>
       <summary aria-current={actual === clave ? "true" : undefined}>{titulo}</summary>
       <div className="seccion-cuerpo">{contenido}</div>
     </details>

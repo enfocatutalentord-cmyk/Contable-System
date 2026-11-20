@@ -29,6 +29,7 @@ export default async function FacturasSubidas({ params, searchParams }: { params
   }));
   const sube = puede(permisos, "adjuntar");
   const revisa = !paraClientes && puede(permisos, "registrar");
+  const registra = revisa && puede(permisos, "contabilizar"); // al aprobar queda registrada en el 606 o el 607 (Prioridad 1.3)
   const doc = (did: string) => `/e/${id}/documentos/${did}`;
   const ia = revisa && iaDisponible();
   // Amarillo: un dato que la IA marcó como dudoso o distinto de lo que había (8c).
@@ -78,9 +79,15 @@ export default async function FacturasSubidas({ params, searchParams }: { params
       <h1>Facturas subidas</h1>
       <p className="sub">
         Las facturas de gastos y de ventas que {empresa.nombre} sube desde la aplicación. Se revisan solas al subirlas (RNC, NCF, repetidas, a nombre de
-        otra empresa, sin crédito fiscal); aquí se completan, se aprueban (pasan a borrador de compra o de venta), se rechazan para que la suba de nuevo
-        o se desestiman. Si el NCF está vencido o fuera de rango lo dice la DGII: este sistema no la consulta.
+        otra empresa, sin crédito fiscal); aquí se completan, se aprueban (quedan registradas en el 606 o el 607), se rechazan para que la suba de nuevo
+        o se desestiman. También se cargan aquí las que trae la oficina. Si el NCF está vencido o fuera de rango lo dice la DGII: este sistema no la consulta.
       </p>
+      {sp.hecho === "registrada" && (
+        <p className="exito" role="status">
+          Aprobada y registrada {sp.compra ? "en el 606" : "en el 607"}. {sp.compra ? <Link href={`/e/${id}/compras/${sp.compra}`}>Anotar el pago y las retenciones</Link>
+            : sp.venta ? <Link href={`/e/${id}/facturas/${sp.venta}`}>Anotar el cobro y las retenciones</Link> : null}
+        </p>
+      )}
       {sp.hecho === "aprobada" && (
         <p className="exito" role="status">
           Aprobada. {sp.compra ? <>Quedó el borrador de la compra: <Link href={`/e/${id}/compras/${sp.compra}`}>revisarlo y registrarlo</Link>.</>
@@ -125,7 +132,7 @@ export default async function FacturasSubidas({ params, searchParams }: { params
           {f.estado === "recibida" && revisa ? (
             <>
               {ia && f.documento && <div style={{ marginBottom: 8 }}><Formulario accion={leerSubidaConIa.bind(null, id, f.id)} boton="Leer con IA" className="fila"><span /></Formulario></div>}
-              <Formulario key={[f.rnc_contraparte, f.nombre_contraparte, f.ncf, f.fecha, f.subtotal, f.itbis].join("|")} accion={aprobarSubidaAccion.bind(null, id, f.id)} boton="Aprobar">
+              <Formulario key={[f.rnc_contraparte, f.nombre_contraparte, f.ncf, f.fecha, f.subtotal, f.itbis].join("|")} accion={aprobarSubidaAccion.bind(null, id, f.id)} boton={registra ? "Aprobar y registrar" : "Aprobar"}>
                 <div className="fila">
                   <label style={{ flex: "1 1 150px" }}>{f.tipo === "gasto" ? "RNC del proveedor" : "RNC del cliente"}<input name="rnc" defaultValue={f.rnc_contraparte ?? ""} inputMode="numeric" style={dudoso(f, "rnc")} /></label>
                   <label style={{ flex: "2 1 200px" }}>Nombre<input name="nombre" defaultValue={f.nombre_contraparte ?? ""} maxLength={200} style={dudoso(f, "nombre")} /></label>
@@ -145,8 +152,10 @@ export default async function FacturasSubidas({ params, searchParams }: { params
                   </>}
                 </div>
                 <p className="sub" style={{ margin: 0 }}>
-                  {f.tipo === "gasto" ? "Queda el borrador de la compra (con el proveedor, el NCF y el archivo) para revisarlo y registrarlo en Compras."
-                    : "Queda el borrador de la venta con este NCF; al emitirlo no toma número del rango y va al 607."}
+                  {registra ? (f.tipo === "gasto" ? "Queda registrada en el 606 con el proveedor, el NCF y el archivo. El pago y las retenciones se anotan después en el registro."
+                    : "Queda registrada en el 607 con este NCF (no toma número del rango). El cobro y las retenciones se anotan después en el registro.")
+                    : (f.tipo === "gasto" ? "Queda pendiente de registrar: la registra quien tiene el permiso «Contabilizar»."
+                    : "Queda pendiente de registrar con este NCF: la registra quien tiene el permiso «Contabilizar».")}
                   {f.ncf && TIPOS_NCF[f.ncf.slice(0, 3)] && <> Comprobante {f.ncf.slice(0, 3)}: {TIPOS_NCF[f.ncf.slice(0, 3)].toLowerCase()}.</>}
                 </p>
               </Formulario>
@@ -171,8 +180,8 @@ export default async function FacturasSubidas({ params, searchParams }: { params
               {f.nombre_contraparte && ` · ${f.nombre_contraparte}`}
               {f.motivo && <> · <span className="sub">Motivo: {f.motivo}</span></>}
               {f.revisado_por && <span className="sub"> · revisó {f.revisado_por}</span>}
-              {f.compra_id && <> · <Link href={`/e/${id}/compras/${f.compra_id}`}>Ver la compra</Link></>}
-              {f.factura_id && <> · <Link href={`/e/${id}/facturas/${f.factura_id}`}>Ver la venta</Link></>}
+              {f.compra_id && <> · <Link href={`/e/${id}/compras/${f.compra_id}`}>Ver el registro y el pago</Link></>}
+              {f.factura_id && <> · <Link href={`/e/${id}/facturas/${f.factura_id}`}>Ver el registro y el cobro</Link></>}
             </p>
           )}
         </section>

@@ -36,7 +36,7 @@ export default async function Vendario({ params }: { params: Promise<{ fid: stri
   const tabla = (lista: Fila[], vacio: string, solicitud = false) => (
     <div className="tabla-envoltura">
       <table>
-        <thead><tr><th>Empresa</th><th>Servicios</th><th>{solicitud ? "Llegó" : "Responsable"}</th><th>{solicitud ? "Estado" : "Al día hasta"}</th><th>Eventos por contabilizar</th></tr></thead>
+        <thead><tr><th>Empresa</th><th>Servicios</th><th>{solicitud ? "Llegó" : "Responsable"}</th><th>{solicitud ? "Estado" : "Al día hasta"}</th><th>Eventos por registrar</th></tr></thead>
         <tbody>
           {lista.map((f) => (
             <tr key={f.id}>

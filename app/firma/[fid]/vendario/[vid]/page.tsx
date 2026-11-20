@@ -51,9 +51,11 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
       SELECT seq, lead(seq) OVER (ORDER BY seq) AS siguiente FROM vendario_eventos WHERE vendario_cliente_id = ${vid} AND seq IS NOT NULL) x
      WHERE siguiente > seq + 1 LIMIT 20`;
   const equipo = await equipoDe(fid);
-  // Mapeo de cuentas: las del acuerdo y las que usen sus eventos (cada gasto por categoría).
+  // Mapeo de cuentas: solo si la empresa lleva contabilidad. A los clientes no se les lleva (Prioridad 1.3): de Vendario se toman las facturas,
+  // las compras y las ventas sin comprobante para impuestos, estados y reportes, sin asientos ni mapeo.
   const usadas = await cuentasUsadas(vid);
-  const m = c.empresa_id ? await mapeoDe(c.empresa_id) : null;
+  const conAsientos = c.empresa_id ? (await db()<{ si: boolean }[]>`SELECT lleva_contabilidad(${c.empresa_id}) AS si`)[0].si : false;
+  const m = c.empresa_id && conAsientos ? await mapeoDe(c.empresa_id) : null;
   const porCodigo = new Map((m?.cuentas ?? []).map((x) => [x.codigo, x.id]));
   const neutrales = [...new Set([...Object.keys(CUENTAS_NEUTRALES).filter((k) => !k.startsWith("RETENCION") || usadas.includes(k)), ...usadas])];
   const sinMapear = usadas.filter((k) => !m?.mapeo[k]);
@@ -80,7 +82,7 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
         {c.empresa_id && <> · en Empire: <Link href={`/e/${c.empresa_id}`}>{c.empresa}</Link></>}
         {c.responsable && ` · responsable: ${c.responsable}`}{c.al_dia_hasta && ` · al día hasta ${c.al_dia_hasta}`}
       </p>
-      {c.estado === "finalizada" && <p className="aviso">Vendario dio de baja este servicio el {fechaHora(c.baja_en)}{c.baja_motivo && ` (${c.baja_motivo})`}. Lo que llegue después no se contabiliza.</p>}
+      {c.estado === "finalizada" && <p className="aviso">Vendario dio de baja este servicio el {fechaHora(c.baja_en)}{c.baja_motivo && ` (${c.baja_motivo})`}. Lo que llegue después no se registra.</p>}
       {c.nota && <p className="aviso">Última nota enviada al cliente: {c.nota}</p>}
 
       <div className="fila" style={{ gap: 16, alignItems: "stretch" }}>
@@ -169,7 +171,7 @@ export default async function SolicitudVendario({ params }: { params: Promise<{ 
             {eventos.map((x) => (
               <tr key={`${x.tipo}-${x.historico}-${x.estado}`}>
                 <td><code>{x.tipo}</code></td><td>{x.historico ? "Sí" : "—"}</td>
-                <td>{{ esperando: "Por contabilizar", contabilizado: "Contabilizado", pendiente: "Pendiente", despues_de_baja: "Después de la baja", descartado: "Descartado" }[x.estado] ?? x.estado}</td>
+                <td>{{ esperando: "Por registrar", contabilizado: "Registrado", pendiente: "Pendiente", despues_de_baja: "Después de la baja", descartado: "Descartado" }[x.estado] ?? x.estado}</td>
                 <td>{x.n}</td><td>{x.total ? verMonto(x.total) : "—"}</td>
               </tr>
             ))}

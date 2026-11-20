@@ -5,6 +5,7 @@ import { Menu } from "./e/[id]/menu";
 import { MarcaMenu } from "./marca";
 import { MenuMovil } from "./menu-movil";
 import { SelectorCliente } from "./selector-cliente";
+import { EnPanel } from "./panel-formulario";
 import { nombreCorto } from "@/lib/nombre-corto";
 
 // Marco único de la aplicación: el mismo menú en toda la firma y, arriba, el selector de cliente.
@@ -28,6 +29,7 @@ export function Marco({ firma, clientes, actual, usuario, perfil, admin, auditor
   const propias = soloCliente ? [] : clientes.filter((c) => c.propia).map((p) => ({ id: p.id, nombre: nombreCorto(p.nombre), empire: !!p.empire }));
   return (
     <div className="app">
+      <EnPanel />
       <nav className="menu" aria-label="Menú principal">
         <MenuMovil marca={<MarcaMenu />}>
           <Menu firmaId={firma.id} empresaId={actual} admin={admin} auditoria={auditoria} pestanas={pestanas} soloCliente={soloCliente} propias={propias}

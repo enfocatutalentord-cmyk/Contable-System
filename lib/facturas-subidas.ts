@@ -1,11 +1,11 @@
 import { ErrorContable } from "./asientos.ts";
-import { guardarBorradorCompra, TIPOS_GASTO, type TipoCompra } from "./compras.ts";
+import { guardarBorradorCompra, registrarCompra, TIPOS_GASTO, type TipoCompra } from "./compras.ts";
 import type { Tx } from "./db";
 import { huella, nombreSeguro } from "./documentos.ts";
 import { listarImpuestos } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
 import { leerNcf, revisarFactura, TIPOS_NCF, type DatosQr, type Marca } from "./validar-fiscal.ts";
-import { esTipoVenta, guardarBorradorFactura, type TipoFactura } from "./ventas.ts";
+import { emitir, esTipoVenta, guardarBorradorFactura, type TipoFactura } from "./ventas.ts";
 
 // Bloque 8, entrega 8b: facturas de ingresos y de gastos que el cliente sube desde la aplicación (documento «Sistema Empire ·
 // Fase 2», sección 3). Recibida → aprobada (pasa a borrador de compra o de venta), rechazada (la sube de nuevo) o desestimada.
@@ -113,12 +113,13 @@ async function impuestoDeLinea(tx: Tx, fecha: string, conItbis: boolean): Promis
   return i.id;
 }
 
-// Aprobar: con los datos ya revisados, el gasto pasa a borrador de compra y el ingreso a borrador de venta con el NCF del cliente.
-// El archivo queda copiado como soporte del borrador. Quien revisa completa o corrige los datos antes.
+// Aprobar: con los datos ya revisados, el gasto pasa a compra y el ingreso a venta con el NCF del cliente. Con «registrar» (quien
+// tiene «Contabilizar», Prioridad 1.3 del prompt de Patricia) quedan registradas de una vez y entran al 606 o al 607; si no, en borrador
+// para que las registre quien aprueba. El archivo queda copiado como soporte. Quien revisa completa o corrige los datos antes.
 export async function aprobarSubida(tx: Tx, d: {
   empresaId: string; usuarioId: string; id: string; rnc: string | null; nombre: string | null; ncf: string; fecha: string; subtotal: bigint; itbis: bigint;
-  tipoGasto: string; clase: "bien" | "servicio";
-}): Promise<{ compraId: string | null; facturaId: string | null }> {
+  tipoGasto: string; clase: "bien" | "servicio"; registrar?: boolean;
+}): Promise<{ compraId: string | null; facturaId: string | null; registrada: boolean }> {
   const [s] = await tx<{ tipo: "gasto" | "ingreso"; estado: string; numero: number }[]>`SELECT tipo, estado, numero FROM facturas_subidas WHERE id = ${d.id} FOR UPDATE`;
   if (!s) throw new ErrorContable("La factura no existe");
   if (s.estado !== "recibida") throw new ErrorContable("Esa factura ya se revisó.");
@@ -174,7 +175,11 @@ export async function aprobarSubida(tx: Tx, d: {
                                        rnc_contraparte = ${d.rnc}, nombre_contraparte = ${d.nombre}, ncf = ${n.ncf}, fecha = ${d.fecha},
                                        subtotal = ${deCentavos(d.subtotal)}, itbis = ${deCentavos(d.itbis)}, total = ${deCentavos(d.subtotal + d.itbis)}
             WHERE id = ${d.id}`;
-  return { compraId, facturaId };
+  if (d.registrar) {
+    if (compraId) await registrarCompra(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, compraId }, { autorizada: true });
+    else await emitir(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, facturaId: facturaId! }, { autorizada: true });
+  }
+  return { compraId, facturaId, registrada: !!d.registrar };
 }
 
 export const montoOpcional = (v: string | null) => (v ? aCentavos(v) : null);

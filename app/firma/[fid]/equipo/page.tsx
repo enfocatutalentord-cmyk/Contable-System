@@ -5,7 +5,7 @@ import Link from "next/link";
 import { SupervisionFirma } from "./supervision";
 import { PermisosPersona } from "./permisos-persona";
 import { PERMISOS } from "@/lib/permisos";
-import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, PESTANAS_SOLO_PROPIA } from "@/lib/pestanas";
+import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, ROLES_ESCONDIDOS, SOLO_EMPRESAS_PROPIAS } from "@/lib/pestanas";
 import { agregarPersona, enviarAcceso, guardarAccesos, guardarPermisosPersona, quitarDeFirma, reiniciarDosPasos } from "../../acciones";
 
 export const metadata = { title: "Personas y accesos · Empire Tax & Legal" };
@@ -25,7 +25,7 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
        WHERE mf.firma_id = ${fid} ORDER BY mf.administrador DESC, u.nombre`,
     db()<{ id: string; nombre: string }[]>`SELECT id, nombre FROM empresas WHERE firma_id = ${fid} AND activa ORDER BY nombre`,
     db()<{ id: string; nombre: string; para_clientes: boolean; permisos: string[]; pestanas: string[] | null }[]>`
-      SELECT id, nombre, para_clientes, permisos, pestanas FROM perfiles WHERE firma_id = ${fid} ORDER BY sistema DESC, nombre`,
+      SELECT id, nombre, para_clientes, permisos, pestanas FROM perfiles WHERE firma_id = ${fid} ORDER BY sistema DESC, nombre`.then((ps) => ps.filter((p) => !ROLES_ESCONDIDOS.includes(p.nombre))),
     db()<{ usuario_id: string; empresa_id: string; perfil_id: string }[]>`
       SELECT m.usuario_id, m.empresa_id, m.perfil_id FROM miembros m JOIN empresas e ON e.id = m.empresa_id WHERE e.firma_id = ${fid}`,
   ]);
@@ -38,7 +38,7 @@ export default async function Equipo({ params }: { params: Promise<{ fid: string
   };
   // Casillas por sección (rediseño R6): las pantallas de un cliente (sin lo que es solo de Empire) y las de Contabilidad Empire.
   const nombreGrupo = (g?: string) => (g === "Cliente elegido" ? "General" : g ?? "General");
-  const gruposClientes = PESTANAS_CLIENTE.map((s) => ({ grupo: nombreGrupo(s.grupo), enlaces: s.enlaces.filter(([r]) => !PESTANAS_SOLO_PROPIA.includes(r)) }))
+  const gruposClientes = PESTANAS_CLIENTE.map((s) => ({ grupo: nombreGrupo(s.grupo), enlaces: s.enlaces.filter(([r]) => !SOLO_EMPRESAS_PROPIAS.includes(r)) }))
     .filter((g) => g.enlaces.length);
   const gruposEmpire = PESTANAS_CLIENTE.map((s) => ({ grupo: nombreGrupo(s.grupo), enlaces: s.enlaces }));
   const roles = perfiles.filter((p) => !p.para_clientes).map((p) => ({ nombre: p.nombre, permisos: p.permisos, pestanas: p.pestanas }));

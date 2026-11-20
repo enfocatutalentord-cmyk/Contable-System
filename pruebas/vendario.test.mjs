@@ -182,7 +182,7 @@ test("vista, pedir información y aceptar: cada paso va a Vendario con el contab
   await v.cambiarEstado({ firmaId: firma, clienteId: c.id, usuarioId: ana, estado: "necesita_info", nota: "Falta el estado de cuenta.", pedidos: ["estado_cuenta_banco"] });
   const empresaId = await v.aceptar({ firmaId: firma, clienteId: c.id, usuarioId: ana, responsableId: ana, empresaId: null });
   const [e] = await sql`SELECT nombre, rnc, estado_cliente, lleva_contabilidad, responsable_id FROM empresas WHERE id = ${empresaId}`;
-  assert.deepEqual([e.nombre, e.rnc, e.estado_cliente, e.lleva_contabilidad, e.responsable_id], ["ALL IN ONE FERRETERIA Y SERVICIOS SRL", "133833964", "activo", true, ana]);
+  assert.deepEqual([e.nombre, e.rnc, e.estado_cliente, e.lleva_contabilidad, e.responsable_id], ["ALL IN ONE FERRETERIA Y SERVICIOS SRL", "133833964", "activo", false, ana]); // a los clientes no se les lleva contabilidad (Prioridad 1.3)
   await assert.rejects(v.aceptar({ firmaId: firma, clienteId: c.id, usuarioId: ana, responsableId: ana, empresaId: null }), /ya no se puede aceptar/);
   await v.enviarPendientes({ pedir: vendarioSimulado() });
   const estados = recibidos.slice(-3).map((r) => [r.cuerpo.data.status, r.cuerpo.data.accountant?.name ?? null]);

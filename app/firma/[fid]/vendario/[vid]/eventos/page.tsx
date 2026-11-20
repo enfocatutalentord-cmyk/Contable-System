@@ -10,7 +10,7 @@ import { reprocesarVendario } from "../../../../vendario-acciones";
 export const metadata = { title: "Eventos de Vendario · Empire Tax & Legal" };
 
 const ESTADO: Record<string, string> = {
-  esperando: "Por contabilizar", contabilizado: "Contabilizado", pendiente: "Pendiente", despues_de_baja: "Después de la baja", descartado: "Descartado",
+  esperando: "Por registrar", contabilizado: "Registrado", pendiente: "Pendiente", despues_de_baja: "Después de la baja", descartado: "Descartado",
 };
 
 // Eventos recibidos de un cliente de Vendario, por mes: qué se creó con cada uno y, si quedó pendiente, el motivo y «Reprocesar».

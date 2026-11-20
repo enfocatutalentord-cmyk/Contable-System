@@ -240,13 +240,7 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
                 <label>Contrato firmado el<input name="contrato_firmado" type="date" defaultValue={v(f.contrato_firmado)} /></label>
               </div>
               <label>Quién custodia los accesos de DGII y TSS (nunca se guardan las claves)<input name="custodio_accesos" defaultValue={v(f.custodio_accesos)} /></label>
-              {!esPropia && (
-                <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" name="lleva_contabilidad" defaultChecked={d.lleva_contabilidad} style={{ minHeight: 0 }} />
-                  Lleva contabilidad completa en el sistema (asientos, libros, catálogo y bancos). Sin marcar, sus facturas y compras
-                  sirven para los impuestos y los reportes.
-                </label>
-              )}
+              {/* La casilla «Lleva contabilidad completa» se quitó (Prioridad 1.3): a los clientes no se les lleva contabilidad. */}
               {!esPropia && (
                 <div>
                   <strong>Iguala y servicios incluidos</strong>

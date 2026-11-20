@@ -130,3 +130,13 @@ test("ingreso: al aprobarlo queda la venta con el NCF del cliente y al emitirla 
     subtotal: 1n, itbis: 0n, total: 1n, qr: null, empresaId: empresa, usuarioId: ana, archivo: null }));
   assert.ok(otra.marcas.some((m) => m.nivel === "error"), "ya está registrada como venta");
 });
+
+test("Prioridad 1.3: al aprobar con «registrar» la compra queda registrada (606) sin asiento en un cliente", conBase, async () => {
+  const s = await leer((tx) => subirFactura(tx, { tipo: "gasto", rncContraparte: "132151119", nombreContraparte: "Goemhy Services", ncf: "B0100000901",
+    fecha: "2026-11-05", subtotal: 100000n, itbis: 18000n, total: 118000n, qr: null, empresaId: empresa, usuarioId: ana, archivo: null }));
+  const r = await leer((tx) => aprobarSubida(tx, { empresaId: empresa, usuarioId: ana, id: s.id, rnc: "132151119", nombre: "Goemhy Services", ncf: "B0100000901",
+    fecha: "2026-11-05", subtotal: 100000n, itbis: 18000n, tipoGasto: "02", clase: "servicio", registrar: true }));
+  assert.equal(r.registrada, true);
+  const [c] = await leer((tx) => tx`SELECT estado, ncf, asiento_id FROM compras WHERE id = ${r.compraId}`);
+  assert.deepEqual({ ...c }, { estado: "registrada", ncf: "B0100000901", asiento_id: null });
+});

@@ -10,14 +10,15 @@ import { PESTANAS_CONTABLES, pestanasEn, PESTANAS_SOLO_PROPIA, TODAS_LAS_PESTANA
 test("igualas, recurrentes, propuestas y lo de la socia solo en la empresa propia", () => {
   const enCliente = pestanasEn(null, false);
   for (const r of PESTANAS_SOLO_PROPIA) assert.ok(!enCliente.includes(r), r);
-  assert.ok(enCliente.includes("/facturas"));
+  assert.ok(!enCliente.includes("/facturas"), "a los clientes no se les factura (Prioridad 1.3)");
+  assert.ok(enCliente.includes("/facturas-subidas"));
   for (const r of PESTANAS_CONTABLES) assert.ok(!enCliente.includes(r), `${r}: a los clientes no se les lleva contabilidad (R3)`);
   assert.equal(enCliente.length, TODAS_LAS_PESTANAS.length - PESTANAS_SOLO_PROPIA.length - PESTANAS_CONTABLES.length);
   const conContabilidad = pestanasEn(null, false, true);
   for (const r of PESTANAS_CONTABLES) assert.ok(conContabilidad.includes(r), `${r} con «lleva contabilidad»`);
   assert.ok(!conContabilidad.includes("/igualas"));
   assert.equal(pestanasEn(null, true), null, "en la propia, el administrador ve todo");
-  assert.deepEqual(pestanasEn(["", "/igualas", "/facturas"], false), ["", "/facturas"]);
+  assert.deepEqual(pestanasEn(["", "/igualas", "/facturas-subidas"], false), ["", "/facturas-subidas"]);
   assert.deepEqual(pestanasEn(["", "/igualas"], true), ["", "/igualas"]);
 });
 

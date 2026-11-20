@@ -326,3 +326,27 @@ form.it1 .tabla-envoltura { margin-bottom: 12px; }
 .formulario-cliente legend { padding: 0 6px; }
 .revision-formulario fieldset { border: 1px solid var(--borde); border-radius: 8px; margin: 0 0 10px; padding: 8px 12px; }
 .revision-formulario table { width: 100%; }
+
+/* Impuestos del mes (Prioridad 1.3): cada formulario se abre en un panel encima del tablero. */
+.panel-formulario { width: min(1180px, 96vw); height: 92vh; padding: 0; border: 1px solid var(--borde); border-radius: 10px; }
+.panel-formulario::backdrop { background: rgba(0, 20, 8, 0.45); }
+.panel-formulario[open] { display: flex; flex-direction: column; }
+.panel-formulario .panel-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 2px solid var(--dorado); }
+.panel-formulario iframe { flex: 1; width: 100%; border: 0; }
+html.en-panel .menu, html.en-panel .barra-cliente { display: none; }
+html.en-panel .app { display: block; min-height: 0; }
+
+/* Menú fijo (Prioridad 1.4): en escritorio el menú se desplaza por su cuenta y la pantalla de trabajo queda a su lado. */
+@media (min-width: 761px) {
+  .menu { position: sticky; top: 0; height: 100vh; overflow-y: auto; overscroll-behavior: contain; }
+}
+/* Segundo nivel del menú: cada grupo de Firma se abre con un clic. */
+.menu .subseccion > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 8px 10px 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); border-radius: 6px; }
+.menu .subseccion > summary::-webkit-details-marker { display: none; }
+.menu .subseccion > summary::after { content: "▸"; color: var(--dorado); font-size: 0.7rem; transition: transform 0.15s; }
+.menu .subseccion[open] > summary::after { transform: rotate(90deg); }
+.menu .subseccion > summary:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.menu .subseccion > summary:focus-visible { outline: 2px solid var(--dorado); outline-offset: 2px; }
+.menu .subseccion { display: flex; flex-direction: column; gap: 2px; }
+.menu .subseccion > a { padding-left: 18px; }

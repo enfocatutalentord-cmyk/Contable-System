@@ -47,7 +47,14 @@ export const PESTANAS_SOLO_PROPIA = ["/igualas", "/recurrentes", "/propuestas", 
 // marcada «lleva contabilidad» en su ficha. Lo que ya tenga guardado se conserva.
 export const PESTANAS_CONTABLES = ["/asientos", "/plantillas", "/cierres", "/diario", "/mayor", "/balanza", "/catalogo", "/configuracion", "/bancos",
   // n.º 9: cobros, pagos, cuentas por cobrar y por pagar son del sistema del cliente. El cobro y el pago se anotan en la factura y la compra.
-  "/cobros", "/anticipos", "/cxc", "/cxc/estado", "/pagos", "/cxp", "/cxp/estado"];
+  "/cobros", "/anticipos", "/cxc", "/cxc/estado", "/pagos", "/cxp", "/cxp/estado",
+  // Prioridad 1.3 del prompt de Patricia (20-nov-2026): a los clientes tampoco se les factura ni se les registran compras. Sus facturas y
+  // compras se cargan en «Facturas del cliente»; el registro de cada una se abre desde ahí (ver `esRegistroDeCliente`).
+  "/facturas", "/clientes", "/servicios", "/compras", "/proveedores", "/certificado"];
+
+// El registro de una factura o compra de un cliente (el que quedó al aprobarla en «Facturas del cliente»): se abre con el permiso de esa
+// pantalla para ver sus datos y anotar el cobro o el pago con sus retenciones (606, 607, IT-1, IR-17). No es facturar.
+export const esRegistroDeCliente = (resto: string) => /^\/(facturas|compras)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/|$)/.test(resto);
 
 // Lo que ve un rol en una empresa: Empire (la que factura a los clientes) lo ve todo; las otras propias y los clientes no ven lo que
 // solo es de Empire, y la contabilidad solo la ven las empresas propias (Prioridad 1.1) o un cliente marcado.
@@ -87,3 +94,13 @@ export function pestanaDeRuta(resto: string): string | null {
 }
 
 export const puedeVer = (pestanas: string[] | null, ruta: string) => pestanas === null || pestanas.includes(ruta);
+
+// Lo que solo existe en las empresas de la dueña (Contabilidad): la contabilidad, la facturación y las compras, y lo que solo es de Empire.
+// En «Roles y permisos» va en un cuadro aparte: a los clientes no se les lleva contabilidad (Prioridad 1.3).
+export const SOLO_EMPRESAS_PROPIAS = [...PESTANAS_CONTABLES, ...PESTANAS_SOLO_PROPIA];
+export const seccionesDe = (propias: boolean): Seccion[] => PESTANAS_CLIENTE
+  .map((s) => ({ ...s, enlaces: s.enlaces.filter(([r]) => SOLO_EMPRESAS_PROPIAS.includes(r) === propias) }))
+  .filter((s) => s.enlaces.length);
+
+// Roles escondidos: «Cliente · Factura» (E3a) ya no se ofrece, porque a los clientes no se les factura (respuesta recomendada 1).
+export const ROLES_ESCONDIDOS = ["Cliente · Factura"];

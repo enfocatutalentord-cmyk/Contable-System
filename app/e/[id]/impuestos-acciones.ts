@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { esUuid, exigirPermiso } from "@/lib/acceso";
+import { esUuid, exigirPermiso, exigirPermisoRegistro } from "@/lib/acceso";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { estadoDelMes, finDeMes, revisarCompra } from "@/lib/impuestos-mes";
 import { nombrePeriodo } from "@/lib/igualas";
@@ -12,7 +12,7 @@ import type { Estado } from "../../acciones-cuenta";
 
 // Revisar una compra (permiso «contabilizar», el mismo que registrarla) o pedir que se corrija con una nota.
 export async function revisarCompraAccion(empresaId: string, compraId: string, estado: "revisada" | "corregir", _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/compras");
   if (!esUuid(compraId) || !["revisada", "corregir"].includes(estado)) return { error: "Datos no válidos." };
   const nota = String(fd.get("nota") ?? "").trim().slice(0, 500) || null;
   try {

@@ -44,7 +44,7 @@ export async function contabilizarEvento(eventoId: string): Promise<{ estado: st
     // Errores de la base que explican el motivo (período cerrado, NCF repetido…).
     if (/cerrado|duplicate key|ya está registrado|ya registraste/i.test(m)) return pendiente(m.replace(/duplicate key value violates unique constraint.*/i, "Documento repetido"));
     console.error("vendario contabilizar", eventoId, m);
-    return pendiente(`Error al contabilizar: ${m}`.slice(0, 400));
+    return pendiente(`No se pudo registrar: ${m}`.slice(0, 400));
   }
 }
 

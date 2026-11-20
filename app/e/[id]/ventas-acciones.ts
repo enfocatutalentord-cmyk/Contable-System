@@ -6,7 +6,7 @@ import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso, misFirmas } from "@/lib/acceso";
+import { esUuid, exigirPermiso, exigirPermisoRegistro, misFirmas } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc } from "@/lib/empresas";
@@ -227,7 +227,7 @@ export async function guardarFactura(empresaId: string, facturaId: string | null
 }
 
 export async function emitirBorrador(empresaId: string, facturaId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas");
   try {
     await conEmpresa(empresaId, (tx) => emitir(tx, { empresaId, usuarioId: usuario.id, facturaId }));
   } catch (e) {
@@ -246,7 +246,7 @@ function firmaEcf(fd: FormData): string | null | false {
 
 // Entrega E1: el borrador se emitió fuera como e-CF (Facturador Gratuito o proveedor): se registra con su e-NCF.
 export async function registrarEcf(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/facturas");
   const codigo = leerCodigoEcf(texto(fd, "ecf_codigo"));
   const firmada = firmaEcf(fd);
   if (codigo === false) return { error: "El código de seguridad lleva solo letras y números, como sale en la factura." };
@@ -261,7 +261,7 @@ export async function registrarEcf(empresaId: string, facturaId: string, _: Esta
 }
 
 export async function descartarFactura(empresaId: string, facturaId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "registrar", "/facturas");
   try {
     await conEmpresa(empresaId, async (tx) => {
       await descartarBorradorFactura(tx, facturaId);
@@ -275,7 +275,7 @@ export async function descartarFactura(empresaId: string, facturaId: string): Pr
 }
 
 export async function crearNotaCredito(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/facturas");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/facturas");
   const fecha = texto(fd, "fecha");
   const subtotal = monto(fd, "subtotal");
   const impuestoId = texto(fd, "impuesto");
@@ -303,7 +303,7 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, paraClientes } = await exigirPermiso(empresaId, "revertir", "/facturas");
+  const { usuario, paraClientes } = await exigirPermisoRegistro(empresaId, "revertir", "/facturas");
   // E3a: los usuarios del cliente hacen notas de crédito, pero anular lo hace Empire.
   if (paraClientes) return { error: "Anular un comprobante lo hace Empire: pídelo en Mis solicitudes." };
   const motivo = texto(fd, "motivo");

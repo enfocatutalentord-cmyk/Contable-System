@@ -6,7 +6,7 @@ import { enviarCorreo } from "./correo.ts";
 import { db, type Tx } from "./db.ts";
 import { crearEmpresa, limpiarRnc } from "./empresas.ts";
 import { clavesDe, firmar } from "./vendario-firma.ts";
-import { ESTADOS, PERIODO, SERVICIOS_CONTABLES, sobreEstado, trasRespuesta, type EstadoServicio, type Sobre } from "./vendario-sobre.ts";
+import { ESTADOS, PERIODO, sobreEstado, trasRespuesta, type EstadoServicio, type Sobre } from "./vendario-sobre.ts";
 
 // Dirección de la app para los enlaces de los correos (aquí no hay petición de donde sacarla).
 const baseApp = () => process.env.URL_APP?.replace(/\/$/, "")
@@ -113,10 +113,7 @@ async function aplicar(tx: Tx, s: Sobre): Promise<{ estado: "procesado" | "pendi
                fecha_inicio = coalesce(${fechaO(d.start_date)}::date, fecha_inicio),
                rnc = coalesce(${s.org.rnc}, rnc), actualizado_en = now()
          WHERE id = ${c.id}`;
-      // Los servicios contables deciden si Empire lleva la contabilidad completa de la empresa ya creada.
-      if (c.empresa_id && servicios) {
-        await tx`UPDATE empresas SET lleva_contabilidad = ${servicios.some((x) => SERVICIOS_CONTABLES.includes(x))} WHERE id = ${c.empresa_id}`;
-      }
+      // A los clientes no se les lleva contabilidad (Prioridad 1.3 del prompt de Patricia): los servicios ya no cambian nada en la empresa.
       return { estado: "procesado" };
     }
     case "client.unenroll": {
@@ -139,7 +136,7 @@ async function aplicar(tx: Tx, s: Sobre): Promise<{ estado: "procesado" | "pendi
         INSERT INTO vendario_eventos (id, vendario_cliente_id, seq, tipo, fecha, historico, revierte, total, datos, estado, motivo)
         VALUES (${s.id}, ${c.id}, ${s.seq}, ${String(d.event_type)}, ${fechaO(d.date)}, ${d.historical === true},
                 ${typeof d.reverses === "string" && /^[0-9a-f-]{36}$/i.test(d.reverses) ? d.reverses.toLowerCase() : null}, ${total},
-                ${tx.json(d as never)}, ${despues ? "despues_de_baja" : "esperando"}, ${despues ? "Llegó después de la baja: no se contabiliza" : null})
+                ${tx.json(d as never)}, ${despues ? "despues_de_baja" : "esperando"}, ${despues ? "Llegó después de la baja: no se registra" : null})
         ON CONFLICT (id) DO NOTHING`;
       return { estado: "procesado" };
     }
@@ -272,7 +269,6 @@ export async function aceptar(d: { firmaId: string; clienteId: string; usuarioId
     const [resp] = await tx<{ nombre: string }[]>`
       SELECT u.nombre FROM miembros_firma mf JOIN usuarios u ON u.id = mf.usuario_id WHERE mf.firma_id = ${d.firmaId} AND mf.usuario_id = ${d.responsableId}`;
     if (!resp) throw new ErrorVendario("Elige el responsable entre el equipo de la firma");
-    const contable = SERVICIOS_CONTABLES.some((s) => c.servicios.includes(s));
     let empresaId = d.empresaId;
     if (empresaId) {
       const [e] = await tx<{ id: string }[]>`SELECT id FROM empresas WHERE id = ${empresaId} AND firma_id = ${d.firmaId}`;
@@ -296,7 +292,7 @@ export async function aceptar(d: { firmaId: string; clienteId: string; usuarioId
                  VALUES (${empresaId}, 'principal', ${c.contacto.name}, ${c.contacto.phone ?? null}, ${c.contacto.phone ?? null}, ${c.contacto.email ?? null})`;
       }
     }
-    await tx`UPDATE empresas SET estado_cliente = 'activo', responsable_id = ${d.responsableId}, lleva_contabilidad = lleva_contabilidad OR ${contable},
+    await tx`UPDATE empresas SET estado_cliente = 'activo', responsable_id = ${d.responsableId},
                     fecha_inicio_contrato = coalesce(fecha_inicio_contrato, ${c.fecha_inicio}::date) WHERE id = ${empresaId}`;
     await tx`UPDATE vendario_clientes SET estado = 'aceptada', empresa_id = ${empresaId}, responsable_id = ${d.responsableId}, aceptada_por = ${d.usuarioId},
                     aceptada_en = now(), nota = NULL, actualizado_en = now() WHERE id = ${c.id}`;

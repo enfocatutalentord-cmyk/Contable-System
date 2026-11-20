@@ -35,7 +35,7 @@ export default async function VerCompra({ params, searchParams }: {
   const { id, cid } = await params;
   const sp = await searchParams;
   if (!esUuid(cid)) notFound();
-  const { empresa, permisos, usuario, pestanas } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario, pestanas, propia: deLaDuena } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [c] = await tx<Compra[]>`
       SELECT c.id, c.estado, c.tipo_comprobante, c.ncf, to_char(c.fecha, 'YYYY-MM-DD') AS fecha, to_char(c.vence, 'YYYY-MM-DD') AS vence,
@@ -87,7 +87,8 @@ export default async function VerCompra({ params, searchParams }: {
 
   return (
     <>
-      <p><Link href={`/e/${id}/compras${borrador ? "?estado=borradores&mes=" : ""}`}>← Compras</Link></p>
+      <p>{deLaDuena ? <Link href={`/e/${id}/compras${borrador ? "?estado=borradores&mes=" : ""}`}>← Compras</Link>
+        : <Link href={`/e/${id}/facturas-subidas?estado=todas`}>← Facturas del cliente</Link>}</p>
       {sp.guardada && <p className="exito">Borrador guardado. No tiene asiento hasta que se registre.</p>}
       {sp.registrada && !borrador && <p className="exito">{esNota ? "Nota de crédito registrada" : "Compra registrada"} con NCF {c.ncf}{c.asiento && <> y asiento n.º {c.asiento}</>}.</p>}
       {sp.anulada && <p className="exito">Compra anulada{c.asiento ? "; su asiento también" : ""}.</p>}

@@ -8,7 +8,7 @@ export async function VolverAImpuestos({ id, desde, mes }: { id: string; desde?:
   const m = /^\d{4}-\d{2}$/.test(mes ?? "") ? mes! : "";
   return (
     <p className="no-imprimir">
-      <Link href={`/firma/${empresa.firma_id}/impuestos${m ? `?mes=${m}` : ""}`}>← Volver a Impuestos del mes</Link> · {empresa.nombre}
+      <Link href={`/firma/${empresa.firma_id}/impuestos${m ? `?mes=${m}` : ""}`} data-cerrar-panel>← Volver a Impuestos del mes</Link> · {empresa.nombre}
     </p>
   );
 }

@@ -29,7 +29,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
   const propia = (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
   const avisosArriba = <>
     {solo_empire && <p className="aviso">Igualas, facturas recurrentes y propuestas son lo que Empire le cobra a sus clientes: están en la contabilidad de Empire, no dentro de cada cliente ni de tus otras empresas.</p>}
-    {sin_contabilidad && <p className="aviso">A este cliente no se le lleva contabilidad en el sistema (asientos, libros, catálogo, bancos, cierre, cobros ni pagos): sus facturas y compras sirven para los impuestos y los reportes, y el cobro o el pago se anota dentro de cada una. Si la lleva, márcalo en Ficha › Relación con Empire.</p>}
+    {sin_contabilidad && <p className="aviso">A los clientes no se les lleva contabilidad ni se les factura (asientos, libros, catálogo, bancos, cierre, facturas, compras, cobros ni pagos). Sus facturas y compras se cargan en «Facturas del cliente», que alimenta los impuestos y los reportes; el cobro o el pago se anota en el registro de cada una.</p>}
     {sin_pestana && <p className="aviso">Tus permisos no incluyen esa pantalla. Pídele a una administradora de la firma que te la agregue.</p>}
     {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
   </>;

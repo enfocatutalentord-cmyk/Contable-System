@@ -44,7 +44,9 @@ export default async function VerFactura({ params, searchParams }: {
   const { id, fid } = await params;
   const sp = await searchParams;
   if (!esUuid(fid)) notFound();
-  const { empresa, permisos, usuario, pestanas, paraClientes } = await accesoEmpresa(id);
+  const { empresa, permisos, usuario, pestanas, paraClientes, propia: deLaDuena } = await accesoEmpresa(id);
+  // En un cliente esto es el registro de su factura (Prioridad 1.3): se ve y se anota el cobro; no se factura desde aquí.
+  const registroDeCliente = !deLaDuena;
   const datos = await conEmpresa(id, async (tx) => {
     const [f] = await tx<Factura[]>`
       SELECT f.id, f.estado, f.tipo_ncf, f.ncf, to_char(f.ncf_vence, 'YYYY-MM-DD') AS ncf_vence, f.ncf_externo, to_char(f.fecha, 'YYYY-MM-DD') AS fecha,
@@ -116,7 +118,7 @@ export default async function VerFactura({ params, searchParams }: {
   const propia = (await misFirmas(usuario.id)).some((x) => x.empresa_propia_id === id);
   const whatsapp = propia && !borrador && !esNota && !f.anulada && puede(permisos, "exportar");
   // Correo (entrega A): toda factura o nota emitida y vigente, de la empresa propia o de un cliente; el historial siempre.
-  const conCorreo = !borrador && !paraClientes && puede(permisos, "exportar");
+  const conCorreo = !borrador && !paraClientes && !registroDeCliente && puede(permisos, "exportar");
   const correo = conCorreo ? await conEmpresa(id, async (tx) => ({
     preparado: f.anulada ? null : await prepararCorreo(tx, id, f.id, await plantillaCorreo(empresa.firma_id)),
     enviados: await correosDe(tx, f.id),
@@ -126,7 +128,8 @@ export default async function VerFactura({ params, searchParams }: {
   return (
     <>
       <div className="no-imprimir">
-        <p><Link href={`/e/${id}/facturas${borrador ? "?estado=borradores" : ""}`}>← Facturas</Link></p>
+        <p>{registroDeCliente ? <Link href={`/e/${id}/facturas-subidas?estado=todas`}>← Facturas del cliente</Link>
+          : <Link href={`/e/${id}/facturas${borrador ? "?estado=borradores" : ""}`}>← Facturas</Link>}</p>
         {sp.guardada && <p className="exito">Borrador guardado. No tiene NCF ni asiento hasta que se emita.</p>}
         {sp.emitida && !borrador && <p className="exito">{esNota ? "Nota de crédito emitida" : "Factura emitida"} con NCF {f.ncf}{f.asiento && <> y asiento n.º {f.asiento}</>}.</p>}
         {sp.anulada && <p className="exito">Comprobante anulado. Va en el formato 608 del mes.</p>}
@@ -381,7 +384,7 @@ export default async function VerFactura({ params, searchParams }: {
         </div>
       )}
 
-      {!borrador && !esNota && !f.anulada && f.moneda === "DOP" && saldo > 0 && anticipos.length > 0 && puede(permisos, "contabilizar") && (
+      {!registroDeCliente && !borrador && !esNota && !f.anulada && f.moneda === "DOP" && saldo > 0 && anticipos.length > 0 && puede(permisos, "contabilizar") && (
         <div className="no-imprimir tarjeta" style={{ margin: "16px 0" }}>
           <h2 style={{ marginTop: 0 }}>Aplicar anticipo</h2>
           <p className="sub">El cliente tiene anticipos sin aplicar. Al aplicarlo se rebaja el saldo de esta factura con un cobro desde «Anticipos de clientes».</p>
@@ -397,7 +400,7 @@ export default async function VerFactura({ params, searchParams }: {
         </div>
       )}
 
-      {!esNota && f.moneda === "DOP" && puede(permisos, "registrar") && (
+      {!registroDeCliente && !esNota && f.moneda === "DOP" && puede(permisos, "registrar") && (
         <details className="no-imprimir tarjeta" style={{ margin: "16px 0" }}>
           <summary><strong>Repetir esta factura</strong> · crear una plantilla recurrente</summary>
           <p className="sub">
@@ -417,7 +420,7 @@ export default async function VerFactura({ params, searchParams }: {
         </details>
       )}
 
-      {(conCertificado || envios.length > 0) && ["B01", "B02", "B04", "E31", "E32", "E34"].includes(f.tipo_ncf) && puede(permisos, "contabilizar") && (
+      {!registroDeCliente && (conCertificado || envios.length > 0) && ["B01", "B02", "B04", "E31", "E32", "E34"].includes(f.tipo_ncf) && puede(permisos, "contabilizar") && (
         <details className="no-imprimir tarjeta" id="ecf" style={{ margin: "16px 0" }} open={!!sp.xml || undefined}>
           <summary><strong>Factura electrónica · XML de prueba</strong> · armado y firmado por el sistema</summary>
           <p className="sub">

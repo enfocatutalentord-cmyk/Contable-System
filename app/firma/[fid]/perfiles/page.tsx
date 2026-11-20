@@ -3,7 +3,7 @@ import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { db } from "@/lib/db";
 import { PERMISOS } from "@/lib/permisos";
-import { PESTANAS_CLIENTE, PESTANAS_PRIVADAS, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
+import { PESTANAS_PRIVADAS, ROLES_ESCONDIDOS, seccionesDe, TODAS_LAS_PESTANAS } from "@/lib/pestanas";
 import { eliminarPerfil, guardarPerfil } from "../../acciones";
 
 export const metadata = { title: "Roles y permisos · Empire Tax & Legal" };
@@ -16,14 +16,15 @@ export default async function Perfiles({ params }: { params: Promise<{ fid: stri
   await accesoFirma(fid);
   const perfiles = await db()<Perfil[]>`
     SELECT p.id, p.nombre, p.permisos, p.pestanas, p.para_clientes, p.sistema, (SELECT count(*)::int FROM miembros m WHERE m.perfil_id = p.id) AS usos
-      FROM perfiles p WHERE p.firma_id = ${fid} ORDER BY p.para_clientes, p.sistema DESC, p.nombre`;
+      FROM perfiles p WHERE p.firma_id = ${fid} ORDER BY p.para_clientes, p.sistema DESC, p.nombre`
+    .then((ps) => ps.filter((p) => !(p.sistema && ROLES_ESCONDIDOS.includes(p.nombre))));
   const esAdmin = (p: Perfil) => p.sistema && p.nombre === "Administrador";
   const ve = (p: Perfil, r: string) => esAdmin(p) || (p.pestanas ? p.pestanas.includes(r) : !PESTANAS_PRIVADAS.includes(r));
 
   const casillasPestanas = (p?: Perfil) => (
     <fieldset className="pestanas-rol">
       <legend>Pestañas que ve</legend>
-      {PESTANAS_CLIENTE.map((s) => (
+      {(p?.para_clientes ? seccionesDe(false) : [...seccionesDe(false), ...seccionesDe(true).map((s) => ({ ...s, grupo: `${s.grupo} · solo en tus empresas` }))]).map((s) => (
         <div key={s.grupo} className="grupo-pestanas">
           <strong>{s.grupo}</strong>
           {s.enlaces.map(([r, nombre]) => (
@@ -58,27 +59,36 @@ export default async function Perfiles({ params }: { params: Promise<{ fid: stri
         Asigna los roles en «Personas y accesos».
       </p>
 
-      <h2>Resumen: qué pestañas ve cada rol</h2>
-      <div className="tabla-envoltura" style={{ marginBottom: 24 }}>
-        <table className="matriz-roles">
-          <thead>
-            <tr><th>Pestaña</th>{perfiles.map((p) => <th key={p.id} className="num">{p.nombre}{p.para_clientes && <div className="sub" style={{ margin: 0 }}>cliente</div>}</th>)}</tr>
-          </thead>
-          <tbody>
-            {PESTANAS_CLIENTE.map((s) => (
-              <Fragment key={s.grupo}>
-                <tr className="grupo"><td colSpan={perfiles.length + 1}>{s.grupo}</td></tr>
-                {s.enlaces.map(([r, nombre]) => (
-                  <tr key={s.grupo + r}>
-                    <td>{nombre}</td>
-                    {perfiles.map((p) => <td key={p.id} className="num">{ve(p, r) ? "✓" : <span className="sub">—</span>}</td>)}
-                  </tr>
+      {[
+        { titulo: "Resumen: qué ve cada rol en los clientes", nota: "A los clientes no se les lleva contabilidad: aquí está el trabajo que se les hace.", secciones: seccionesDe(false), roles: perfiles },
+        { titulo: "Solo en tus empresas (Contabilidad)", nota: "Asientos, libros, balanza, catálogo, facturación, compras, pagos, bancos y cierre del mes solo existen en tus empresas.",
+          secciones: seccionesDe(true), roles: perfiles.filter((p) => !p.para_clientes) },
+      ].map((m) => (
+        <Fragment key={m.titulo}>
+          <h2>{m.titulo}</h2>
+          <p className="sub">{m.nota}</p>
+          <div className="tabla-envoltura" style={{ marginBottom: 24 }}>
+            <table className="matriz-roles">
+              <thead>
+                <tr><th>Pestaña</th>{m.roles.map((p) => <th key={p.id} className="num">{p.nombre}{p.para_clientes && <div className="sub" style={{ margin: 0 }}>cliente</div>}</th>)}</tr>
+              </thead>
+              <tbody>
+                {m.secciones.map((s) => (
+                  <Fragment key={s.grupo}>
+                    <tr className="grupo"><td colSpan={m.roles.length + 1}>{s.grupo === "Cliente elegido" ? "Del cliente" : s.grupo}</td></tr>
+                    {s.enlaces.map(([r, nombre]) => (
+                      <tr key={s.grupo + r}>
+                        <td>{nombre}</td>
+                        {m.roles.map((p) => <td key={p.id} className="num">{ve(p, r) ? "✓" : <span className="sub">—</span>}</td>)}
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </tbody>
+            </table>
+          </div>
+        </Fragment>
+      ))}
 
       {perfiles.map((p) => {
         const admin = esAdmin(p);

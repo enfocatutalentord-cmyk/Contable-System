@@ -36,8 +36,8 @@ export default async function DocumentosFirma({ params, searchParams }: {
       </p>
       {(sp.hecho === "gasto" || sp.hecho === "ingreso") && (
         <p className="exito" role="status">
-          Listo: quedó el borrador de la {sp.hecho === "gasto" ? "compra (606)" : "venta (607)"}.{" "}
-          {borrador && <Link href={borrador}>Revisarlo y {sp.hecho === "gasto" ? "registrarlo" : "emitirlo"}</Link>}
+          Listo: quedó la {sp.hecho === "gasto" ? "compra (606)" : "venta (607)"} con su archivo.{" "}
+          {borrador && <Link href={borrador}>Ver el registro y anotar {sp.hecho === "gasto" ? "el pago" : "el cobro"}</Link>}
         </p>
       )}
       {sp.hecho === "descartado" && <p className="exito" role="status">Documento descartado. El cliente ve el motivo.</p>}
@@ -95,7 +95,7 @@ export default async function DocumentosFirma({ params, searchParams }: {
                       <select name="clase" defaultValue="servicio"><option value="servicio">Servicio</option><option value="bien">Bien</option></select>
                     </label>
                   </div>
-                  <p className="sub" style={{ margin: 0 }}>Queda como factura del cliente (revisada: RNC, NCF, repetidas, crédito fiscal) y como borrador de compra o de venta con el archivo.</p>
+                  <p className="sub" style={{ margin: 0 }}>Queda como factura del cliente (revisada: RNC, NCF, repetidas, crédito fiscal) y queda registrada en el 606 o el 607 con el archivo (si tienes «Contabilizar»; si no, pendiente de registrar).</p>
                 </Formulario>
               </details>
             ) : (

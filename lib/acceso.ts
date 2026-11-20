@@ -4,7 +4,7 @@ import { cache } from "react";
 import { exigirUsuario, type Usuario } from "./auth";
 import { db } from "./db";
 import { puede, TODOS_LOS_PERMISOS, type Permiso } from "./permisos";
-import { PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
+import { esRegistroDeCliente, PESTANAS_CONTABLES, PESTANAS_SOLO_PROPIA, pestanaDeRuta, pestanasDelRol, pestanasEn, puedeVer } from "./pestanas";
 import { esDuenaPlataforma, supervisionVigente, type Supervision } from "./plataforma";
 import { alcanceIncluye } from "./permisos-persona.ts";
 
@@ -72,7 +72,8 @@ export const accesoEmpresa = cache(async (empresaId: string): Promise<Acceso> =>
   // Si el rol no ve la pestaña pedida, se le lleva a la primera que sí ve (la revisión es en el servidor, no solo en el menú).
   const ruta = (await headers()).get("x-ruta") ?? "";
   const resto = ruta.startsWith(`/e/${empresaId}`) ? ruta.slice(`/e/${empresaId}`.length) : null;
-  const pestana = resto === null ? null : pestanaDeRuta(resto);
+  // En un cliente, el registro de una factura o compra se abre con el permiso de «Facturas del cliente» (Prioridad 1.3).
+  const pestana = resto === null ? null : !es_propia && esRegistroDeCliente(resto) ? "/facturas-subidas" : pestanaDeRuta(resto);
   if (pestana !== null && !puedeVer(visibles, pestana)) {
     // Igualas, recurrentes, propuestas y lo de la socia solo existen en Empire, la que factura a los clientes (rediseño R2).
     if (!es_empire && PESTANAS_SOLO_PROPIA.includes(pestana)) redirect(`/e/${empresaId}?solo_empire=1`);
@@ -171,4 +172,11 @@ export async function exigirDuena(): Promise<Usuario> {
   if (!(await esDuenaPlataforma(usuario.email))) notFound();
   if (!usuario.dosPasos) redirect("/cuenta?exigido=consola#dos-pasos");
   return usuario;
+}
+
+// Acciones sobre el registro de una factura o compra (registrar un pendiente, anular, nota de crédito, cobro o pago): en una empresa propia
+// piden su pestaña; en un cliente, «Facturas del cliente», que es donde se cargan (Prioridad 1.3 del prompt de Patricia, 20-nov-2026).
+export async function exigirPermisoRegistro(empresaId: string, permiso: Permiso, pestana: "/facturas" | "/compras"): Promise<Acceso> {
+  const { propia } = await accesoEmpresa(empresaId);
+  return exigirPermiso(empresaId, permiso, propia ? pestana : "/facturas-subidas");
 }

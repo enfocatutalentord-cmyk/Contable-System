@@ -2,7 +2,7 @@ import Link from "next/link";
 import { accesoFirma, soloCliente } from "@/lib/acceso";
 import { db } from "@/lib/db";
 import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from "@/lib/firma";
-import { hoyISO, verFecha, verMonto } from "@/lib/montos";
+import { hoyISO } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
 
 export const metadata = { title: "Inicio de la firma · Empire Tax & Legal" };
@@ -24,12 +24,13 @@ export default async function InicioFirma({ params, searchParams }: {
   const [vendario] = await soloCliente(fid, usuario.id) ? [{ n: 0 }] : await db()<{ n: number }[]>`
     SELECT count(*)::int AS n FROM vendario_clientes WHERE firma_id = ${fid} AND estado = 'solicitud'`;
   const suma = (f: (r: (typeof filas)[number]) => bigint | number) => filas.reduce((s, r) => s + BigInt(f(r)), 0n);
+  // El trabajo pendiente de cada cliente (Prioridad 1.3): sin saldos, asientos, cierres ni bancos, que a los clientes no se les llevan.
   const pendientes = (r: (typeof filas)[number]) => [
-    r.borradores && `${r.borradores} asiento${r.borradores > 1 ? "s" : ""} en borrador`,
-    r.facturasBorrador && `${r.facturasBorrador} factura${r.facturasBorrador > 1 ? "s" : ""} sin emitir`,
-    r.comprasBorrador && `${r.comprasBorrador} compra${r.comprasBorrador > 1 ? "s" : ""} sin registrar`,
+    r.facturasPorRevisar && `${r.facturasPorRevisar} factura${r.facturasPorRevisar > 1 ? "s" : ""} por revisar`,
+    r.pendientesDeRegistrar && `${r.pendientesDeRegistrar} factura${r.pendientesDeRegistrar > 1 ? "s" : ""} aprobada${r.pendientesDeRegistrar > 1 ? "s" : ""} sin registrar`,
     r.documentosPorProcesar && `${r.documentosPorProcesar} documento${r.documentosPorProcesar > 1 ? "s" : ""} por procesar`,
-    r.movimientosBanco && `${r.movimientosBanco} movimiento${r.movimientosBanco > 1 ? "s" : ""} del banco por conciliar`,
+    r.tramitesPorVencer && `${r.tramitesPorVencer} trámite${r.tramitesPorVencer > 1 ? "s" : ""} por vencer`,
+    r.solicitudesAbiertas && `${r.solicitudesAbiertas} solicitud${r.solicitudesAbiertas > 1 ? "es" : ""} abierta${r.solicitudesAbiertas > 1 ? "s" : ""}`,
     r.notificaciones && `${r.notificaciones} notificaci${r.notificaciones > 1 ? "ones" : "ón"} de pago por enviar`,
     r.notificacionesPorVencer && `${r.notificacionesPorVencer} notificaci${r.notificacionesPorVencer > 1 ? "ones" : "ón"} sin pagar por vencer`,
     r.gestionesVencidas && `${r.gestionesVencidas} gesti${r.gestionesVencidas > 1 ? "ones" : "ón"} de la bitácora atrasada${r.gestionesVencidas > 1 ? "s" : ""}`,
@@ -61,14 +62,18 @@ export default async function InicioFirma({ params, searchParams }: {
 
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Clientes activos</div><div className="valor">{clientes.length}</div></div>
-        <div className="tarjeta cifra"><div className="etiqueta">Por cobrar vencido (RD$)</div>
-          <div className="valor" style={{ color: suma((r) => r.vencido) > 0n ? "var(--peligro)" : undefined }}>{verMonto(suma((r) => r.vencido))}</div></div>
-        <div className="tarjeta cifra"><div className="etiqueta">Pendiente por procesar</div>
-          <div className="valor">{suma((r) => r.borradores + r.facturasBorrador + r.comprasBorrador).toString()}</div></div>
+        <a className="tarjeta cifra" href={`/firma/${fid}/facturas-subidas`} style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Facturas por revisar</div><div className="valor">{suma((r) => r.facturasPorRevisar + r.pendientesDeRegistrar).toString()}</div>
+        </a>
         <a className="tarjeta cifra" href={`/firma/${fid}/documentos`} style={{ color: "inherit", textDecoration: "none" }}>
           <div className="etiqueta">Documentos por procesar</div><div className="valor">{suma((r) => r.documentosPorProcesar).toString()}</div>
         </a>
-        <div className="tarjeta cifra"><div className="etiqueta">Movimientos del banco por conciliar</div><div className="valor">{suma((r) => r.movimientosBanco).toString()}</div></div>
+        <a className="tarjeta cifra" href={`/firma/${fid}/tramites`} style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Trámites por vencer</div><div className="valor">{suma((r) => r.tramitesPorVencer).toString()}</div>
+        </a>
+        <a className="tarjeta cifra" href={`/firma/${fid}/solicitudes`} style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Solicitudes abiertas</div><div className="valor">{suma((r) => r.solicitudesAbiertas).toString()}</div>
+        </a>
       </div>
 
       {normas.length > 0 && (
@@ -103,23 +108,17 @@ export default async function InicioFirma({ params, searchParams }: {
           <h2>Clientes</h2>
           <div className="tabla-envoltura">
             <table>
-              <thead><tr><th>Cliente</th><th>Responsable</th><th>Pendiente</th><th className="num">Por cobrar</th><th className="num">Por pagar</th><th>Cerrado hasta</th></tr></thead>
+              <thead><tr><th>Cliente</th><th>Responsable</th><th>Trabajo pendiente</th></tr></thead>
               <tbody>
                 {filas.map((c) => (
                   <tr key={c.id}>
                     <td style={{ minWidth: 170 }}><Link href={`/e/${c.id}`}><strong>{c.nombre}</strong></Link>{c.rnc && <div className="sub" style={{ margin: 0 }}>{c.rnc}</div>}</td>
                     <td>{c.responsable ?? <span className="sub">—</span>}</td>
                     <td>{pendientes(c).length ? pendientes(c).join(" · ") : <span className="sub">Al día</span>}</td>
-                    <td className="num">
-                      {verMonto(c.porCobrar)}
-                      {c.vencido > 0n && <div className="error" style={{ margin: 0, fontSize: "0.8rem" }}>{verMonto(c.vencido)} vencido</div>}
-                    </td>
-                    <td className="num">{verMonto(c.porPagar)}</td>
-                    <td>{c.fecha_bloqueo ? verFecha(c.fecha_bloqueo) : "—"}</td>
                   </tr>
                 ))}
                 {filas.length === 0 && (
-                  <tr><td colSpan={6}>
+                  <tr><td colSpan={3}>
                     {firma.administrador
                       ? <>Todavía no hay clientes. Crea el primero con <Link href={`/firma/${fid}/clientes/nuevo`}>+ Nuevo cliente</Link>.</>
                       : "Todavía no tienes clientes asignados. Pídele a un administrador de la firma que te asigne en «Personas y accesos»."}

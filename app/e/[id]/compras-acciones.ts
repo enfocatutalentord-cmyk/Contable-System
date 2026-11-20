@@ -4,7 +4,7 @@ import { leerUnidad } from "@/lib/empresa-propia";
 import { conciliarDesdeBanco } from "@/lib/conciliar-documento";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso } from "@/lib/acceso";
+import { esUuid, exigirPermiso, exigirPermisoRegistro } from "@/lib/acceso";
 import { bitacora, ErrorContable } from "@/lib/asientos";
 import {
   anularCompra, anularPago, descartarBorradorCompra, esNotaProveedor, esTipoCompra, FORMAS_PAGO, guardarBorradorCompra, registrarCompra,
@@ -163,7 +163,7 @@ export async function guardarCompraConDocumento(empresaId: string, recepcionId: 
 }
 
 export async function registrarBorradorCompra(empresaId: string, compraId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "contabilizar", "/compras");
   try {
     await conEmpresa(empresaId, (tx) => registrarCompra(tx, { empresaId, usuarioId: usuario.id, compraId }));
   } catch (e) {
@@ -174,7 +174,7 @@ export async function registrarBorradorCompra(empresaId: string, compraId: strin
 }
 
 export async function descartarCompra(empresaId: string, compraId: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "registrar", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "registrar", "/compras");
   try {
     await conEmpresa(empresaId, async (tx) => {
       await descartarBorradorCompra(tx, compraId);
@@ -188,7 +188,7 @@ export async function descartarCompra(empresaId: string, compraId: string): Prom
 }
 
 export async function anularLaCompra(empresaId: string, compraId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/compras");
+  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/compras");
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {

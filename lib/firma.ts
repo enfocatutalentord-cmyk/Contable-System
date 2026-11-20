@@ -1,7 +1,5 @@
 import { alertasDeEmpresa, type Alerta } from "./alertas";
 import { estadoDelMes } from "./impuestos-mes";
-import { antiguedad } from "./cxc";
-import { antiguedadCxp } from "./cxp";
 import { conEmpresa, db } from "./db";
 import { hoyISO, verFecha, verMonto } from "./montos";
 
@@ -62,31 +60,27 @@ export async function impuestosDeFirma(clientes: ClienteFirma[], periodo: string
 }
 
 export type Resumen = {
-  borradores: number; facturasBorrador: number; comprasBorrador: number; documentosPorProcesar: number; movimientosBanco: number;
-  porCobrar: bigint; vencido: bigint; porPagar: bigint; ultimo: string | null;
+  documentosPorProcesar: number; facturasPorRevisar: number; pendientesDeRegistrar: number; tramitesPorVencer: number; solicitudesAbiertas: number;
   notificaciones: number; notificacionesPorVencer: number; gestionesVencidas: number; // bloque 3a
 };
 
 export async function resumenCliente(empresaId: string): Promise<Resumen> {
   const hoy = hoyISO();
+  // El trabajo pendiente del cliente (Prioridad 1.3 del prompt de Patricia): sin saldos, asientos ni bancos, que no se le llevan.
   return conEmpresa(empresaId, async (tx) => {
-    const [r] = await tx<{ borradores: number; facturas: number; compras: number; documentos: number; banco: number; ultimo: string | null;
+    const [r] = await tx<{ documentos: number; subidas: number; pendientes_registro: number; tramites: number; solicitudes: number;
       notificaciones: number; por_vencer: number; gestiones_vencidas: number }[]>`
-      SELECT (SELECT count(*)::int FROM asientos WHERE estado = 'borrador') AS borradores,
-             (SELECT count(*)::int FROM facturas WHERE estado = 'borrador') AS facturas,
-             (SELECT count(*)::int FROM compras WHERE estado = 'borrador') AS compras,
-             (SELECT count(*)::int FROM recepciones WHERE estado IN ('nuevo', 'en_proceso')) AS documentos,
-             (SELECT count(*)::int FROM movimientos_banco WHERE estado = 'pendiente') AS banco,
-             (SELECT to_char(max(fecha), 'YYYY-MM-DD') FROM asientos WHERE estado = 'contabilizado') AS ultimo,
+      SELECT (SELECT count(*)::int FROM recepciones WHERE estado IN ('nuevo', 'en_proceso')) AS documentos,
+             (SELECT count(*)::int FROM facturas_subidas WHERE estado = 'recibida') AS subidas,
+             (SELECT count(*)::int FROM facturas WHERE estado = 'borrador') + (SELECT count(*)::int FROM compras WHERE estado = 'borrador') AS pendientes_registro,
+             (SELECT count(*)::int FROM tramites WHERE estado = 'abierto' AND plazo <= ${hoy}::date + 5) AS tramites,
+             (SELECT count(*)::int FROM solicitudes WHERE estado IN ('recibida', 'cotizada', 'en_proceso')) AS solicitudes,
              (SELECT count(*)::int FROM notificaciones_pago WHERE estado = 'pendiente') AS notificaciones,
              (SELECT count(*)::int FROM notificaciones_pago WHERE estado <> 'pagada' AND fecha_limite <= ${hoy}::date + 3) AS por_vencer,
              (SELECT count(*)::int FROM gestiones WHERE estado <> 'hecha' AND entrega < ${hoy}::date) AS gestiones_vencidas`;
-    const cxc = await antiguedad(tx, hoy);
-    const cxp = await antiguedadCxp(tx, hoy);
     return {
-      borradores: r.borradores, facturasBorrador: r.facturas, comprasBorrador: r.compras, documentosPorProcesar: r.documentos, movimientosBanco: r.banco,
-      porCobrar: cxc.total, vencido: cxc.totales.slice(1).reduce((s, t) => s + t, 0n), porPagar: cxp.total, ultimo: r.ultimo,
-      notificaciones: r.notificaciones, notificacionesPorVencer: r.por_vencer, gestionesVencidas: r.gestiones_vencidas,
+      documentosPorProcesar: r.documentos, facturasPorRevisar: r.subidas, pendientesDeRegistrar: r.pendientes_registro, tramitesPorVencer: r.tramites,
+      solicitudesAbiertas: r.solicitudes, notificaciones: r.notificaciones, notificacionesPorVencer: r.por_vencer, gestionesVencidas: r.gestiones_vencidas,
     };
   });
 }

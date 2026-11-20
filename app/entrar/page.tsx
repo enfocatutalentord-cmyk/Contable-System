@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LimpiarMenu } from "../limpiar-menu";
 import { entrar } from "../acciones-cuenta";
 import { Formulario } from "../formulario";
 import { LogoCompleto } from "../marca";
@@ -10,6 +11,7 @@ export default function Entrar() {
     <main className="centro">
       <div style={{ width: "100%", maxWidth: 420 }}>
         <LogoCompleto />
+        <LimpiarMenu />
         <div className="tarjeta">
           <h1>Entrar</h1>
           <p className="sub">Accede con el correo y la contraseña de tu usuario.</p>

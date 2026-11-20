@@ -9,6 +9,7 @@ import { aprobarSubida, rechazarSubida, subirFactura } from "@/lib/facturas-subi
 import { aCentavos, leerMonto } from "@/lib/montos";
 import { fechaValida } from "@/lib/reportes";
 import { leerNcf, leerQr } from "@/lib/validar-fiscal";
+import { puede } from "@/lib/permisos";
 import type { Estado } from "../../acciones-cuenta";
 
 const texto = (fd: FormData, campo: string) => String(fd.get(campo) ?? "").trim();
@@ -58,7 +59,7 @@ export async function subirFacturaAccion(empresaId: string, _: Estado, fd: FormD
 }
 
 export async function aprobarSubidaAccion(empresaId: string, id: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, paraClientes } = await exigirPermiso(empresaId, "registrar", "/facturas-subidas");
+  const { usuario, paraClientes, permisos } = await exigirPermiso(empresaId, "registrar", "/facturas-subidas");
   if (paraClientes || !esUuid(id)) return { error: "Esto lo hace el equipo de la firma." };
   const fecha = texto(fd, "fecha");
   const subtotal = monto(texto(fd, "subtotal")), itbis = monto(texto(fd, "itbis")) ?? 0n;
@@ -71,10 +72,10 @@ export async function aprobarSubidaAccion(empresaId: string, id: string, _: Esta
   try {
     const r = await conEmpresa(empresaId, (tx) => aprobarSubida(tx, {
       empresaId, usuarioId: usuario.id, id, rnc, nombre: texto(fd, "nombre").slice(0, 200) || null, ncf: texto(fd, "ncf"), fecha, subtotal, itbis,
-      tipoGasto: texto(fd, "tipo_gasto"), clase,
+      tipoGasto: texto(fd, "tipo_gasto"), clase, registrar: puede(permisos, "contabilizar"),
     }));
     volver(empresaId);
-    redirect(`/e/${empresaId}/facturas-subidas?hecho=aprobada&${r.compraId ? `compra=${r.compraId}` : `venta=${r.facturaId}`}`);
+    redirect(`/e/${empresaId}/facturas-subidas?hecho=${r.registrada ? "registrada" : "aprobada"}&${r.compraId ? `compra=${r.compraId}` : `venta=${r.facturaId}`}`);
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
     return { error: mensajeError(e) };

@@ -115,6 +115,9 @@ test("cliente no aceptado: el evento queda pendiente; al aceptar y mapear se con
   assert.equal((await recibir(temprana)).motivo, "Servicio no aceptado todavía");
   const c = await empresaDe(ORG);
   empresa = await v.aceptar({ firmaId: firma, clienteId: c.id, usuarioId: ana, responsableId: ana, empresaId: null });
+  // A un cliente ya no se le hacen asientos (Prioridad 1.3; lo cubre la prueba «solo el servicio de ITBIS»). Los asientos del «entry» quedan
+  // para una de las empresas de la dueña que use Vendario: esta se pasa a Contabilidad.
+  await sql`UPDATE empresas SET contabilidad_propia = true WHERE id = ${empresa}`;
   cliente = c.id;
   // Sin mapeo: pendiente con las cuentas que faltan.
   assert.match((await r.contabilizarEvento(temprana.id)).motivo, /Cuenta sin mapear/);

@@ -11,7 +11,7 @@ const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Sa
 const FILTROS: Record<string, string> = { recibida: "Por revisar", aprobada: "Aprobadas", rechazada: "Rechazadas", desestimada: "Desestimadas", todas: "Todas" };
 
 // Facturas del cliente (bloque 8b; rediseño R4): las que suben los clientes por la aplicación y las que carga la oficina, de todos los
-// clientes o de uno, la más antigua primero. Se revisan y aprueban en la pantalla del cliente (pasan a borrador de compra o de venta).
+// clientes o de uno, la más antigua primero. Se revisan y aprueban en la pantalla del cliente (quedan registradas en el 606 o el 607).
 export default async function FacturasDelCliente({ params, searchParams }: {
   params: Promise<{ fid: string }>; searchParams: Promise<{ cliente?: string; estado?: string }>;
 }) {
@@ -32,7 +32,7 @@ export default async function FacturasDelCliente({ params, searchParams }: {
           <h1>Facturas del cliente</h1>
           <p className="sub">
             Las facturas de gastos y de ventas que los clientes suben desde la aplicación y las que carga la oficina. Se revisan solas al
-            subirlas (RNC, NCF, repetidas, crédito fiscal); al aprobarlas pasan a borrador de compra o de venta para el 606 y el 607.
+            subirlas (RNC, NCF, repetidas, crédito fiscal); al aprobarlas quedan registradas en el 606 o el 607. Aquí se cargan también las que trae la oficina.
           </p>
         </div>
         {uno && <Link className="boton primario" href={`/e/${uno.id}/facturas-subidas`}>Cargar o revisar las de {uno.nombre}</Link>}
