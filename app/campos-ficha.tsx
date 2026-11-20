@@ -1,3 +1,4 @@
+import { CampoRnc } from "./campo-rnc";
 import { MESES, REGIMENES, TIPOS_IDENTIFICACION } from "@/lib/permisos";
 
 export type DatosFicha = {
@@ -21,13 +22,13 @@ export function CamposFicha({ d = {}, edicion = false, deshabilitado = false }: 
         <label style={{ flex: "2 1 280px" }}>Razón social o nombre<input name="nombre" defaultValue={d.nombre} required /></label>
         <label style={{ flex: "1 1 220px" }}>Nombre comercial<input name="nombre_comercial" defaultValue={d.nombre_comercial ?? ""} /></label>
       </div>
-      <div className="fila">
+      <div className="fila" style={{ alignItems: "flex-start" }}>
         <label>Identificación
           <select name="tipo_identificacion" defaultValue={d.tipo_identificacion ?? "rnc"}>
             {Object.entries(TIPOS_IDENTIFICACION).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>
-        <label style={{ flex: "1 1 160px" }}>Número<input name="rnc" defaultValue={d.rnc ?? ""} inputMode="numeric" placeholder="9 dígitos (RNC) u 11 (cédula)" /></label>
+        <CampoRnc etiqueta="Número" name="rnc" defaultValue={d.rnc ?? ""} placeholder="9 dígitos (RNC) u 11 (cédula)" llena={{ nombre: "nombre", nombre_comercial: "nombre_comercial", actividad: "actividad_economica", fecha_inicio: "inicio_operaciones" }} estilo={{ flex: "1 1 220px" }} />
         <label style={{ flex: "2 1 260px" }}>Régimen tributario
           <select name="regimen" defaultValue={d.regimen ?? "ordinario"}>
             {Object.entries(REGIMENES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

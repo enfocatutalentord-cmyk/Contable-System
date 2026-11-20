@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampoRnc } from "@/app/campo-rnc";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { TIPOS_GASTO } from "@/lib/compras";
@@ -55,7 +56,7 @@ export default async function Proveedores({ params, searchParams }: {
                 {Object.entries(TIPOS_IDENTIFICACION).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
-            <label style={{ flex: "1 1 150px" }}>Número<input name="rnc" defaultValue={enEdicion?.rnc ?? ""} /></label>
+            <CampoRnc etiqueta="Número" name="rnc" defaultValue={enEdicion?.rnc ?? ""} llena={{ nombre: "nombre" }} estilo={{ flex: "1 1 200px" }} />
             <label style={{ width: 130 }}>Días de crédito<input name="dias_credito" type="number" min={0} max={365} defaultValue={enEdicion?.dias_credito ?? 30} /></label>
             <label style={{ flex: "1 1 260px" }}>Tipo de gasto habitual (606)
               <select name="tipo_gasto" defaultValue={enEdicion?.tipo_gasto ?? ""}>

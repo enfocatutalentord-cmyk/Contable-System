@@ -14,7 +14,7 @@ export default async function Consola() {
   const suspendidas = firmas.filter((f) => f.suspendida_en).length;
   return (
     <main className="contenido">
-      <p className="sub" style={{ marginBottom: 4 }}><Link href="/empresas">← Volver al sistema</Link> · <Link href="/plataforma/registro">Registro de la consola</Link></p>
+      <p className="sub" style={{ marginBottom: 4 }}><Link href="/empresas">← Volver al sistema</Link> · <Link href="/plataforma/registro">Registro de la consola</Link> · <Link href="/plataforma/padron">Padrón de la DGII</Link></p>
       <h1>Consola de la plataforma</h1>
       <p className="sub">
         {firmas.length} firma{firmas.length === 1 ? "" : "s"}{suspendidas ? ` · ${suspendidas} suspendida${suspendidas === 1 ? "" : "s"}` : ""}.

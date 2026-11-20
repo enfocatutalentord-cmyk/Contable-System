@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampoRnc } from "@/app/campo-rnc";
 import { Formulario } from "@/app/formulario";
 import { SelectorClienteRapido } from "@/app/selector-cliente-rapido";
 import { accesoFirma } from "@/lib/acceso";
@@ -87,7 +88,7 @@ export default async function DocumentosFirma({ params, searchParams }: {
                         <option value="ingreso">Una venta del cliente (607)</option>
                       </select>
                     </label>
-                    <label style={{ flex: "1 1 150px" }}>RNC o cédula de la otra parte<input name="rnc" inputMode="numeric" /></label>
+                    <CampoRnc etiqueta="RNC o cédula de la otra parte" name="rnc" llena={{ nombre: "nombre" }} estilo={{ flex: "1 1 200px" }} />
                     <label style={{ flex: "2 1 200px" }}>Nombre<input name="nombre" maxLength={200} /></label>
                   </div>
                   <div className="fila">

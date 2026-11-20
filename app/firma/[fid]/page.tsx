@@ -6,6 +6,8 @@ import { puede } from "@/lib/permisos";
 import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from "@/lib/firma";
 import { hoyISO } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
+import { estadoPadron } from "@/lib/padron-db";
+import { esDuenaPlataforma } from "@/lib/plataforma";
 
 export const metadata = { title: "Inicio de la firma · Empire Tax & Legal" };
 
@@ -30,6 +32,8 @@ export default async function InicioFirma({ params, searchParams }: {
   // Solicitudes nuevas de Vendario (aviso al equipo contable, acuerdo §11).
   const [vendario] = await soloCliente(fid, usuario.id) ? [{ n: 0 }] : await db()<{ n: number }[]>`
     SELECT count(*)::int AS n FROM vendario_clientes WHERE firma_id = ${fid} AND estado = 'solicitud'`;
+  // Padrón de la DGII (P2c.3): solo la dueña de la plataforma lo carga, y es a ella a quien se le recuerda cada mes.
+  const padron = await esDuenaPlataforma(usuario.email) ? await estadoPadron() : null;
   const suma = (f: (r: (typeof filas)[number]) => bigint | number) => filas.reduce((s, r) => s + BigInt(f(r)), 0n);
   // El trabajo pendiente de cada cliente (Prioridad 1.3): sin saldos, asientos, cierres ni bancos, que a los clientes no se les llevan.
   const pendientes = (r: (typeof filas)[number]) => [
@@ -57,6 +61,12 @@ export default async function InicioFirma({ params, searchParams }: {
         <p className="aviso">
           {vendario.n === 1 ? "Hay 1 solicitud nueva" : `Hay ${vendario.n} solicitudes nuevas`} desde Vendario.{" "}
           <Link href={`/firma/${fid}/vendario`}>Verlas</Link>
+        </p>
+      )}
+      {padron && (padron.dias === null || padron.dias > 40) && (
+        <p className="aviso">
+          {padron.dias === null ? "El padrón de la DGII todavía no está cargado: al escribir un RNC, el sistema no puede completar el nombre." : `El padrón de la DGII se cargó hace ${padron.dias} días.`}{" "}
+          <Link href="/plataforma/padron">Cargar el archivo de este mes</Link>
         </p>
       )}
       <div className="entre">

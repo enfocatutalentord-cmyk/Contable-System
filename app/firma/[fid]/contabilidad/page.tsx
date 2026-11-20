@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampoRnc } from "@/app/campo-rnc";
 import { Formulario } from "@/app/formulario";
 import { accesoFirma } from "@/lib/acceso";
 import { clientesDeFirma } from "@/lib/firma";
@@ -54,7 +55,7 @@ export default async function Contabilidad({ params }: { params: Promise<{ fid: 
         <Formulario accion={agregarEmpresaPropia.bind(null, fid)} boton="Agregar a Contabilidad" className="formulario">
           <input type="hidden" name="modo" value="nueva" />
           <label>Razón social<input name="nombre" required placeholder="Ej.: Rojas Investment Group GR SRL" /></label>
-          <label>RNC<input name="rnc" required inputMode="numeric" placeholder="9 dígitos" /></label>
+          <CampoRnc etiqueta="RNC" name="rnc" requerido placeholder="9 dígitos" llena={{ nombre: "nombre" }} />
           {firma.empresa_propia_id && <label className="casilla"><input type="checkbox" name="factura" /> Es la que factura a los clientes de la firma</label>}
         </Formulario>
       </div>

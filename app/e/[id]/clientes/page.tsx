@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampoRnc } from "@/app/campo-rnc";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
@@ -51,7 +52,7 @@ export default async function Clientes({ params, searchParams }: {
                 {Object.entries(TIPOS_IDENTIFICACION).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
-            <label style={{ flex: "1 1 150px" }}>Número<input name="rnc" defaultValue={enEdicion?.rnc ?? ""} placeholder="Opcional para consumo (B02)" /></label>
+            <CampoRnc etiqueta="Número" name="rnc" defaultValue={enEdicion?.rnc ?? ""} placeholder="Opcional para consumo (B02)" llena={{ nombre: "nombre" }} estilo={{ flex: "1 1 200px" }} />
             <label>Comprobante habitual
               <select name="ncf_predeterminado" defaultValue={enEdicion?.ncf_predeterminado ?? ""}>
                 <option value="">Según tenga RNC o no</option>

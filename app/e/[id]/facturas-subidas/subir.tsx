@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoRnc } from "@/app/campo-rnc";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Estado } from "@/app/acciones-cuenta";
 import { alEnviar } from "@/app/enviar";
@@ -81,8 +82,8 @@ export function SubirFactura({ accion }: { accion: (e: Estado, fd: FormData) => 
       <details style={{ marginTop: 8 }} open={!!qr}>
         <summary>Escribir los datos (opcional si subiste la foto)</summary>
         <div className="fila" style={{ marginTop: 8 }}>
-          <label style={{ flex: "1 1 160px" }}>{tipo === "gasto" ? "RNC o cédula del proveedor" : "RNC o cédula de tu cliente"}
-            <input name="rnc" inputMode="numeric" value={v.rnc} onChange={(e) => cambiar("rnc", e.target.value)} placeholder={tipo === "ingreso" ? "Vacío si fue a consumidor final" : ""} /></label>
+          <CampoRnc etiqueta={tipo === "gasto" ? "RNC o cédula del proveedor" : "RNC o cédula de tu cliente"} name="rnc" value={v.rnc} onChange={(x) => cambiar("rnc", x)}
+            placeholder={tipo === "ingreso" ? "Vacío si fue a consumidor final" : ""} llena={{ nombre: "nombre" }} estilo={{ flex: "1 1 200px" }} />
           <label style={{ flex: "2 1 220px" }}>Nombre<input name="nombre" maxLength={200} value={v.nombre} onChange={(e) => cambiar("nombre", e.target.value)} /></label>
           <label style={{ flex: "1 1 170px" }}>NCF<input name="ncf" value={v.ncf} onChange={(e) => cambiar("ncf", e.target.value)} placeholder="B0100000001" autoCapitalize="characters" /></label>
           <label>Fecha<input type="date" name="fecha" value={v.fecha} onChange={(e) => cambiar("fecha", e.target.value)} /></label>
