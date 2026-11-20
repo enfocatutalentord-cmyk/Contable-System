@@ -10,7 +10,7 @@ import {
   armarFormato, FORMATOS, periodoAnterior, periodoDe, type Armado, type Detalle606, type Detalle607, type Detalle608, type Formato,
 } from "@/lib/formatos-dgii";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { MOTIVOS_608 } from "@/lib/ventas";
 import { marcarEnviado, quitarEnvio } from "../dgii-acciones";
 
@@ -27,7 +27,7 @@ export default async function ReportesDgii({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { mes, desde } = await searchParams;
-  const { permisos } = await accesoEmpresa(id);
+  const { permisos, conAprobacion } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const p = periodoDe((mes ?? "").replace("-", "")) ?? periodoDe(periodoAnterior(hoy))!;
   const { armados, envios, sinRevisar } = await conEmpresa(id, async (tx) => ({
@@ -40,7 +40,7 @@ export default async function ReportesDgii({ params, searchParams }: {
         FROM envios_dgii e LEFT JOIN usuarios u ON u.id = e.enviado_por WHERE e.periodo = ${p.periodo}`,
   }));
   const vencido = hoy > p.vence;
-  const puedeMarcar = puede(permisos, "impuestos");
+  const puedeMarcar = puedeOPide(permisos, conAprobacion, "impuestos");
   const mesTexto = new Date(`${p.inicio}T12:00:00Z`).toLocaleDateString("es-DO", { month: "long", year: "numeric", timeZone: "UTC" });
 
   return (

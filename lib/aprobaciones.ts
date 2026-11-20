@@ -7,9 +7,9 @@ import { emitir } from "./ventas.ts";
 // lo apruebe (y entonces se ejecuta de verdad) o lo devuelva con lo que hay que corregir. Mientras tanto no sale al cliente ni entra a la
 // contabilidad. Cada trabajo guarda su historial y cuántas veces se devolvió. Esta entrega cubre los borradores: facturas y compras.
 
-export type TipoAprobacion = "factura" | "compra";
-export const TIPOS_APROBACION: Record<TipoAprobacion, string> = { factura: "Factura o nota", compra: "Compra o gasto" };
-export type EstadoAprobacion = "pendiente" | "devuelta" | "aprobada";
+export type TipoAprobacion = "factura" | "compra" | "accion";
+export const TIPOS_APROBACION: Record<TipoAprobacion, string> = { factura: "Factura o nota", compra: "Compra o gasto", accion: "Acción" };
+export type EstadoAprobacion = "pendiente" | "devuelta" | "aprobada" | "cancelada";
 
 export type Aprobacion = {
   id: string; empresaId: string; tipo: TipoAprobacion; referenciaId: string; titulo: string; detalle: string | null; estado: EstadoAprobacion;
@@ -75,6 +75,7 @@ async function pendiente(tx: Tx, id: string): Promise<Aprobacion> {
 export async function aprobar(tx: Tx, d: { empresaId: string; usuarioId: string; id: string }) {
   const a = await pendiente(tx, d.id);
   if (a.solicitadoPorId === d.usuarioId) throw new ErrorContable("Quien lo preparó no puede aprobarlo: tiene que hacerlo otra persona.");
+  if (a.tipo === "accion") throw new ErrorContable("Esta solicitud se aprueba desde la bandeja Por aprobar.");
   if (a.tipo === "factura") await emitir(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, facturaId: a.referenciaId });
   else await registrarCompra(tx, { empresaId: d.empresaId, usuarioId: d.usuarioId, compraId: a.referenciaId });
   await tx`UPDATE aprobaciones SET estado = 'aprobada', resuelto_por = ${d.usuarioId}, resuelto_en = now() WHERE id = ${d.id}`;
@@ -103,7 +104,7 @@ export const historialDe = (tx: Tx, id: string) => tx<EventoAprobacion[]>`
   SELECT e.evento, u.nombre AS quien, e.nota, e.creado AS cuando FROM aprobaciones_eventos e JOIN usuarios u ON u.id = e.usuario_id
    WHERE e.aprobacion_id = ${id} ORDER BY e.creado`;
 
-export const EVENTOS: Record<string, string> = { solicitada: "Pidió la aprobación", reenviada: "Lo volvió a enviar", devuelta: "Lo devolvió", aprobada: "Lo aprobó" };
+export const EVENTOS: Record<string, string> = { solicitada: "Pidió la aprobación", reenviada: "Lo volvió a enviar", devuelta: "Lo devolvió", aprobada: "Lo aprobó", cancelada: "Lo descartó" };
 
 // El título de lo que se pide aprobar, con lo que el aprobador necesita ver de un vistazo.
 export async function tituloDe(tx: Tx, tipo: TipoAprobacion, id: string): Promise<{ titulo: string; detalle: string }> {
@@ -127,4 +128,65 @@ export async function cerrarSiPendiente(tx: Tx, d: { empresaId: string; usuarioI
   for (const x of r) {
     await tx`INSERT INTO aprobaciones_eventos (empresa_id, aprobacion_id, evento, usuario_id, nota) VALUES (${d.empresaId}, ${x.id}, 'aprobada', ${d.usuarioId}, 'Lo emitió o registró directamente quien tiene el permiso completo')`;
   }
+}
+
+// ───── Acciones con sus datos guardados ─────
+// Lo que una persona hace con un permiso «con aprobación» (registrar una salida, anular, cerrar, presentar una declaración, revisar el
+// reporte…) se guarda tal cual —el nombre de la acción, sus datos y los campos del formulario— y se ejecuta cuando alguien con «aprobar»
+// lo aprueba. Si el formulario lleva un archivo no se puede guardar así.
+
+export type PayloadAccion = { accion: string; args: string[]; campos: [string, string][] };
+
+export function capturarCampos(fd: FormData | undefined): [string, string][] {
+  const campos: [string, string][] = [];
+  for (const [k, v] of fd?.entries() ?? []) {
+    if (typeof v !== "string") {
+      if (v.size > 0) throw new ErrorContable("Este paso lleva un archivo y no se puede dejar para aprobación: pídele a quien aprueba que lo haga.");
+      continue;
+    }
+    if (!k.startsWith("$ACTION")) campos.push([k, v]);
+  }
+  return campos;
+}
+
+export function formularioDe(campos: [string, string][]): FormData {
+  const fd = new FormData();
+  for (const [k, v] of campos) fd.append(k, v);
+  return fd;
+}
+
+export async function pedirAccion(tx: Tx, d: {
+  empresaId: string; usuarioId: string; accion: string; args: string[]; fd?: FormData; titulo: string; detalle?: string | null;
+}): Promise<string> {
+  const payload: PayloadAccion = { accion: d.accion, args: d.args, campos: capturarCampos(d.fd) };
+  const [{ id }] = await tx<{ id: string }[]>`
+    INSERT INTO aprobaciones (empresa_id, tipo, referencia_id, titulo, detalle, solicitado_por, payload)
+    VALUES (${d.empresaId}, 'accion', gen_random_uuid(), ${d.titulo}, ${d.detalle ?? null}, ${d.usuarioId}, ${tx.json(payload as never)}) RETURNING id`;
+  await tx`INSERT INTO aprobaciones_eventos (empresa_id, aprobacion_id, evento, usuario_id) VALUES (${d.empresaId}, ${id}, 'solicitada', ${d.usuarioId})`;
+  return id;
+}
+
+// Reclama la solicitud para ejecutarla (nadie más la ejecuta a la vez) y devuelve lo que hay que hacer.
+export async function reclamarAccion(tx: Tx, d: { empresaId: string; usuarioId: string; id: string }): Promise<{ aprobacion: Aprobacion; payload: PayloadAccion }> {
+  const a = await pendiente(tx, d.id);
+  if (a.tipo !== "accion") throw new ErrorContable("Esa solicitud es de un borrador: se aprueba desde su pantalla.");
+  if (a.solicitadoPorId === d.usuarioId) throw new ErrorContable("Quien lo preparó no puede aprobarlo: tiene que hacerlo otra persona.");
+  const [{ payload }] = await tx<{ payload: PayloadAccion }[]>`SELECT payload FROM aprobaciones WHERE id = ${d.id}`;
+  await tx`UPDATE aprobaciones SET estado = 'aprobada', resuelto_por = ${d.usuarioId}, resuelto_en = now() WHERE id = ${d.id}`;
+  return { aprobacion: a, payload };
+}
+
+// Si al ejecutarla falló, vuelve a quedar pendiente.
+export const liberarAccion = (tx: Tx, id: string) =>
+  tx`UPDATE aprobaciones SET estado = 'pendiente', resuelto_por = NULL, resuelto_en = NULL WHERE id = ${id} AND estado = 'aprobada'`;
+
+export const registrarAprobada = (tx: Tx, d: { empresaId: string; usuarioId: string; id: string }) =>
+  tx`INSERT INTO aprobaciones_eventos (empresa_id, aprobacion_id, evento, usuario_id) VALUES (${d.empresaId}, ${d.id}, 'aprobada', ${d.usuarioId})`;
+
+// Quien lo pidió puede descartar lo que le devolvieron.
+export async function cancelarAccion(tx: Tx, d: { empresaId: string; usuarioId: string; id: string }) {
+  const r = await tx`UPDATE aprobaciones SET estado = 'cancelada', resuelto_por = ${d.usuarioId}, resuelto_en = now()
+                      WHERE id = ${d.id} AND tipo = 'accion' AND estado IN ('devuelta', 'pendiente') AND solicitado_por = ${d.usuarioId} RETURNING id`;
+  if (!r.length) throw new ErrorContable("Solo quien lo pidió puede descartarlo, y solo mientras no se apruebe.");
+  await tx`INSERT INTO aprobaciones_eventos (empresa_id, aprobacion_id, evento, usuario_id) VALUES (${d.empresaId}, ${d.id}, 'cancelada', ${d.usuarioId})`;
 }

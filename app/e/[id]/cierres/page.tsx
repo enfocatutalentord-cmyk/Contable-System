@@ -5,7 +5,7 @@ import { listarCuentas } from "@/lib/cuentas";
 import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { ultimoDiaMes } from "@/lib/reportes";
 import { fijarBloqueo } from "../acciones";
 import { cerrarElEjercicio, deshacerElCierre, traspasarElResultado } from "../cierre-ejercicio-acciones";
@@ -21,7 +21,7 @@ export default async function Cierres({ params, searchParams }: {
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { empresa, permisos, conAprobacion } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
     const [{ mes_cierre }] = await tx<{ mes_cierre: number }[]>`SELECT mes_cierre FROM empresas WHERE id = ${id}`;
     const lista = await ejercicios(tx, mes_cierre);
@@ -53,7 +53,7 @@ export default async function Cierres({ params, searchParams }: {
             ? <>Período cerrado hasta el <strong>{verFecha(empresa.fecha_bloqueo)}</strong>.</>
             : <>No hay ningún período cerrado.</>}
         </p>
-        {puede(permisos, "cerrar") ? (
+        {puedeOPide(permisos, conAprobacion, "cerrar") ? (
           <Formulario accion={fijarBloqueo.bind(null, id)} boton="Guardar fecha de cierre" className="fila">
             <label>Cerrar hasta<input type="date" name="fecha" defaultValue={empresa.fecha_bloqueo ?? mesAnterior} /></label>
           </Formulario>
@@ -121,7 +121,7 @@ export default async function Cierres({ params, searchParams }: {
                       </tbody>
                     </table>
                   </div>
-                  {puede(permisos, "cerrar") && propuesta.lineas.length > 0 && (
+                  {puedeOPide(permisos, conAprobacion, "cerrar") && propuesta.lineas.length > 0 && (
                     <Formulario accion={cerrarElEjercicio.bind(null, id, elegido.fin)} boton={`Contabilizar el cierre del ejercicio ${elegido.fin.slice(0, 4)}`} className="fila">
                       <label style={{ flex: "1 1 300px" }}>Cuenta del resultado del ejercicio
                         <select name="cuenta_resultado" required defaultValue={porCodigo("310302")}>

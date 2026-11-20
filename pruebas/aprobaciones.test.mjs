@@ -3,7 +3,10 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
-import { aprobacionDe, aprobar, cerrarSiPendiente, devolver, historialDe, listarAprobaciones, solicitarAprobacion, tituloDe } from "../lib/aprobaciones.ts";
+import {
+  aprobacionDe, aprobar, cancelarAccion, capturarCampos, cerrarSiPendiente, devolver, formularioDe, historialDe, liberarAccion, listarAprobaciones, pedirAccion,
+  reclamarAccion, registrarAprobada, solicitarAprobacion, tituloDe,
+} from "../lib/aprobaciones.ts";
 import { CATALOGO_RD, nivelDeCodigo, TIPO_POR_CLASE } from "../lib/catalogo-rd.ts";
 import { guardarBorradorCompra } from "../lib/compras.ts";
 import { emitir, guardarBorradorFactura } from "../lib/ventas.ts";
@@ -188,4 +191,50 @@ test("si alguien con el permiso completo lo emite directo, la solicitud pendient
   const h = await comoBea((tx) => historialDe(tx, apr));
   assert.deepEqual(h.map((e) => e.evento), ["solicitada", "aprobada"]);
   assert.equal((await comoBea((tx) => listarAprobaciones(tx, ["pendiente"]))).some((a) => a.id === apr), false);
+});
+
+test("los campos de un formulario se guardan y se vuelven a armar tal cual; un archivo no se puede guardar", () => {
+  const fd = new FormData();
+  fd.append("monto", "1,500.00");
+  fd.append("categoria", "Nómina");
+  fd.append("$ACTION_ID_abc", "x");
+  fd.append("vacio", "");
+  fd.append("archivo", new File([], "vacio.pdf"));
+  const campos = capturarCampos(fd);
+  assert.deepEqual(campos, [["monto", "1,500.00"], ["categoria", "Nómina"], ["vacio", ""]], "sin lo interno de Next ni archivos vacíos");
+  const otra = formularioDe(campos);
+  assert.equal(otra.get("monto"), "1,500.00");
+  assert.equal(otra.get("categoria"), "Nómina");
+  const con = new FormData();
+  con.append("constancia", new File(["contenido"], "c.pdf"));
+  assert.throws(() => capturarCampos(con), /lleva un archivo/);
+});
+
+test("una acción guardada espera, otra persona la reclama, si falla vuelve a quedar pendiente y quien la pidió puede descartarla", conBase, async () => {
+  const id = await comoAna((tx) => pedirAccion(tx, {
+    empresaId: empresa, usuarioId: ana, accion: "registrarSalida", args: ["a1"], titulo: "Registrar salida: Gasto de oficina de RD$1,500.00",
+    fd: Object.assign(new FormData(), {}),
+  }));
+  const x = (await comoBea((tx) => listarAprobaciones(tx, ["pendiente"]))).find((a) => a.id === id);
+  assert.deepEqual([x.tipo, x.estado, x.titulo], ["accion", "pendiente", "Registrar salida: Gasto de oficina de RD$1,500.00"]);
+  await assert.rejects(comoAna((tx) => reclamarAccion(tx, { empresaId: empresa, usuarioId: ana, id })), /otra persona/);
+  const r = await comoBea((tx) => reclamarAccion(tx, { empresaId: empresa, usuarioId: bea, id }));
+  assert.deepEqual([r.payload.accion, r.payload.args], ["registrarSalida", ["a1"]]);
+  assert.equal((await comoBea((tx) => aprobacionDe(tx, "accion", x.referenciaId))).estado, "aprobada", "reclamada: nadie más la ejecuta");
+  await assert.rejects(comoBea((tx) => reclamarAccion(tx, { empresaId: empresa, usuarioId: bea, id })), /ya no está pendiente/);
+  // Falló al ejecutarla: vuelve a quedar pendiente.
+  await comoBea((tx) => liberarAccion(tx, id));
+  assert.equal((await comoBea((tx) => aprobacionDe(tx, "accion", x.referenciaId))).estado, "pendiente");
+  await assert.rejects(comoBea((tx) => cancelarAccion(tx, { empresaId: empresa, usuarioId: bea, id })), /Solo quien lo pidió/);
+  await comoAna((tx) => cancelarAccion(tx, { empresaId: empresa, usuarioId: ana, id }));
+  assert.equal((await comoAna((tx) => aprobacionDe(tx, "accion", x.referenciaId))).estado, "cancelada");
+  assert.equal((await comoAna((tx) => listarAprobaciones(tx, ["pendiente", "devuelta"]))).some((a) => a.id === id), false, "descartada ya no sale en la bandeja");
+  // Una aprobada de verdad deja su evento.
+  const otra = await comoAna((tx) => pedirAccion(tx, { empresaId: empresa, usuarioId: ana, accion: "fijarBloqueo", args: [], titulo: "Cerrar el período contable" }));
+  await comoBea(async (tx) => { await reclamarAccion(tx, { empresaId: empresa, usuarioId: bea, id: otra }); await registrarAprobada(tx, { empresaId: empresa, usuarioId: bea, id: otra }); });
+  assert.deepEqual((await comoBea((tx) => historialDe(tx, otra))).map((e) => e.evento), ["solicitada", "aprobada"]);
+  // Las acciones se pueden devolver como cualquier otra solicitud.
+  const dev = await comoAna((tx) => pedirAccion(tx, { empresaId: empresa, usuarioId: ana, accion: "anularCompra", args: ["c1"], titulo: "Anular una compra" }));
+  await comoBea((tx) => devolver(tx, { empresaId: empresa, usuarioId: bea, id: dev, motivo: "Falta el motivo" }));
+  assert.equal((await comoAna((tx) => listarAprobaciones(tx, ["devuelta"]))).find((a) => a.id === dev).motivo, "Falta el motivo");
 });

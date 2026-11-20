@@ -6,6 +6,7 @@ import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { cerrarEjercicio, deshacerCierre, traspasarResultado } from "@/lib/cierre-ejercicio";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -23,7 +24,12 @@ async function hacer(empresaId: string, fin: string, aviso: string, fn: () => Pr
 
 // Cerrar el ejercicio (permiso «cerrar», como el cierre del mes).
 export async function cerrarElEjercicio(empresaId: string, fin: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "cerrar", "/cierres");
+  const acceso = await exigirPermiso(empresaId, "cerrar", "/cierres", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "cerrar", { empresaId, accion: "cerrarEjercicio", args: [fin], fd: fd, titulo: `Cerrar el ejercicio que termina el ${fin}` });
+    if (dif) return dif;
+  }
   const cuenta = texto(fd, "cuenta_resultado");
   if (!esUuid(cuenta)) return { error: "Elige la cuenta del resultado del ejercicio." };
   return hacer(empresaId, fin, "cerrado", () => conEmpresa(empresaId, async (tx) => {

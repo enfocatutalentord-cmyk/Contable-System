@@ -11,11 +11,17 @@ import { fechaValida } from "@/lib/reportes";
 import { anularSalida, esTipoSalida, registrarSalida, TIPOS_SALIDA } from "@/lib/salidas";
 import { deshacerLiquidacion, liquidar } from "@/lib/socia";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 const texto = (fd: FormData, campo: string) => String(fd.get(campo) ?? "").trim();
 
 export async function registrarSalidaAccion(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "contabilizar", "/salidas");
+  const acceso = await exigirPermiso(empresaId, "contabilizar", "/salidas", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "contabilizar", { empresaId, accion: "registrarSalida", args: [], fd: fd, titulo: `Registrar salida: ${TIPOS_SALIDA[texto(fd, "tipo") as keyof typeof TIPOS_SALIDA]?.nombre ?? "salida"} de RD$${texto(fd, "monto")}` });
+    if (dif) return dif;
+  }
   if (!(await esEmpresaPropia(empresaId))) return { error: "Las salidas se registran en la empresa propia de la firma." };
   const tipo = texto(fd, "tipo");
   const fecha = texto(fd, "fecha");
@@ -49,7 +55,12 @@ export async function registrarSalidaAccion(empresaId: string, _: Estado, fd: Fo
 }
 
 export async function anularSalidaAccion(empresaId: string, salidaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "revertir", "/salidas");
+  const acceso = await exigirPermiso(empresaId, "revertir", "/salidas", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "revertir", { empresaId, accion: "anularSalida", args: [salidaId], fd: fd, titulo: "Anular una salida" });
+    if (dif) return dif;
+  }
   if (!esUuid(salidaId)) return { error: "La salida no existe." };
   try {
     await conEmpresa(empresaId, (tx) => anularSalida(tx, salidaId, usuario.id, texto(fd, "motivo").slice(0, 300)));

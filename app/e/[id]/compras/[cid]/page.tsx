@@ -9,7 +9,7 @@ import { conEmpresa } from "@/lib/db";
 import { EstadoAprobacion } from "../../estado-aprobacion";
 import { verFecha, verMonto } from "@/lib/montos";
 import { MOTIVOS_608 } from "@/lib/ventas";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { anularLaCompra, descartarCompra, registrarBorradorCompra } from "../../compras-acciones";
 import { DocumentosSoporte } from "../../documentos/soporte";
 import { HistorialRegistro } from "../../historial/registro";
@@ -223,7 +223,7 @@ export default async function VerCompra({ params, searchParams }: {
         </>
       )}
 
-      {!borrador && !c.anulada && puede(permisos, "revertir") && (
+      {!borrador && !c.anulada && puedeOPide(permisos, conAprobacion, "revertir") && (
         <>
           {!esNota && saldo > 0 && (
             <>

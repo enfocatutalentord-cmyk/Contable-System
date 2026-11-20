@@ -68,3 +68,7 @@ export const REGIMENES: Record<string, string> = {
 export const TIPOS_IDENTIFICACION: Record<string, string> = { rnc: "RNC", cedula: "Cédula", pasaporte: "Pasaporte" };
 
 export const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// Para mostrar un botón de lo que la persona puede hacer en firme o puede pedir con aprobación.
+export const puedeOPide = (permisos: readonly string[], conAprobacion: readonly string[], permiso: Permiso): boolean =>
+  permisos.includes(permiso) || conAprobacion.includes(permiso);

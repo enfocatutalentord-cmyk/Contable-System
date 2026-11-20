@@ -11,11 +11,17 @@ import { deCentavos, leerMonto } from "@/lib/montos";
 import { fechaValida } from "@/lib/reportes";
 import { ErrorImpuestos, guardarPresentacion, leerConstancia, quitarPresentacion } from "@/lib/impuestos-mes";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 // Deja constancia de que el formato se envió por la Oficina Virtual (o en cero), con la referencia que da la DGII.
 // Solo si no tiene errores: la DGII rechaza el archivo completo si un registro está mal.
 export async function marcarEnviado(empresaId: string, formato: string, periodo: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/dgii");
+  const acceso = await exigirPermiso(empresaId, "impuestos", "/dgii", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "impuestos", { empresaId, accion: "marcarEnviado", args: [formato, periodo], fd: fd, titulo: `Marcar como enviado el ${formato} de ${periodo}` });
+    if (dif) return dif;
+  }
   const p = periodoDe(periodo);
   if (!esFormato(formato) || !p) return { error: "Formato o período no válido." };
   const referencia = String(fd.get("referencia") ?? "").trim().slice(0, 60) || null;
@@ -55,7 +61,7 @@ export async function quitarEnvio(empresaId: string, formato: string, periodo: s
 
 // Guarda lo escrito a mano en el borrador (lo que se deja igual a la sugerencia sigue a lo registrado).
 export async function guardarDeclaracion(empresaId: string, formulario: string, periodo: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/dgii");
+  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/dgii", true);
   if (!esFormulario(formulario) || !periodoDe(periodo)) return { error: "Formulario o período no válido." };
   const manuales = leerManuales(fd, FORMULARIOS[formulario].editables);
   if (typeof manuales === "string") return { error: manuales };
@@ -75,7 +81,12 @@ export async function guardarDeclaracion(empresaId: string, formulario: string, 
 // Constancia de que la declaración se presentó en la Oficina Virtual. Guarda sus casillas: el nuevo saldo a favor pasa
 // como saldo a favor anterior al mes siguiente.
 export async function presentarDeclaracion(empresaId: string, formulario: string, periodo: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "impuestos", "/dgii");
+  const acceso = await exigirPermiso(empresaId, "impuestos", "/dgii", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "impuestos", { empresaId, accion: "presentarDeclaracion", args: [formulario, periodo], fd: fd, titulo: `Marcar como presentado el ${formulario} de ${periodo}` });
+    if (dif) return dif;
+  }
   const p = periodoDe(periodo);
   if (!esFormulario(formulario) || !p) return { error: "Formulario o período no válido." };
   const referencia = String(fd.get("referencia") ?? "").trim().slice(0, 60) || null;

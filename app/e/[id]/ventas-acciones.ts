@@ -22,6 +22,7 @@ import {
 import { montoAbono } from "@/lib/cxc";
 import type { Tx } from "@/lib/db";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -328,7 +329,12 @@ export async function descartarFactura(empresaId: string, facturaId: string): Pr
 }
 
 export async function crearNotaCredito(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/facturas");
+  const acceso = await exigirPermisoRegistro(empresaId, "revertir", "/facturas", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "revertir", { empresaId, accion: "notaCredito", args: [facturaId], fd: fd, titulo: "Crear una nota de crédito" });
+    if (dif) return dif;
+  }
   const fecha = texto(fd, "fecha");
   const subtotal = monto(fd, "subtotal");
   const impuestoId = texto(fd, "impuesto");
@@ -356,7 +362,12 @@ export async function crearNotaCredito(empresaId: string, facturaId: string, _: 
 }
 
 export async function anularComprobante(empresaId: string, facturaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, paraClientes } = await exigirPermisoRegistro(empresaId, "revertir", "/facturas");
+  const acceso = await exigirPermisoRegistro(empresaId, "revertir", "/facturas", true);
+  const { usuario, paraClientes } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "revertir", { empresaId, accion: "anularComprobante", args: [facturaId], fd: fd, titulo: "Anular un comprobante" });
+    if (dif) return dif;
+  }
   // E3a: los usuarios del cliente hacen notas de crédito, pero anular lo hace Empire.
   if (paraClientes) return { error: "Anular un comprobante lo hace Empire: pídelo en Mis solicitudes." };
   const motivo = texto(fd, "motivo");

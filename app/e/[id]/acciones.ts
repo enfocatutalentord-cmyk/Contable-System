@@ -18,6 +18,7 @@ import { aCentavos, leerMonto, verFecha } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -360,7 +361,12 @@ export async function editarCuenta(empresaId: string, _: Estado, fd: FormData): 
 }
 
 export async function fijarBloqueo(empresaId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario, empresa } = await exigirPermiso(empresaId, "cerrar", "/cierres");
+  const acceso = await exigirPermiso(empresaId, "cerrar", "/cierres", true);
+  const { usuario, empresa } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "cerrar", { empresaId, accion: "fijarBloqueo", args: [], fd: fd, titulo: "Cerrar el período contable" });
+    if (dif) return dif;
+  }
   const nueva = texto(fd, "fecha") || null;
   if (nueva && !fechaValida(nueva)) return { error: "La fecha no es válida." };
   const actual = empresa.fecha_bloqueo;

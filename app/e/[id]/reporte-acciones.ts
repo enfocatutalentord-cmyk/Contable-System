@@ -6,6 +6,7 @@ import { conEmpresa, mensajeError, type Tx } from "@/lib/db";
 import { hoyISO } from "@/lib/montos";
 import { armarReporte, huellaReporte } from "@/lib/reporte-mensual";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 // Bloque 4, entrega 4b: el paso a paso del reporte mensual. La coordinadora lo prepara («registrar»), la socia o la contadora lo
 // revisa («cerrar»), Patricia lo aprueba («empresa»: solo Administrador lo tiene) y sale por WhatsApp.
@@ -41,7 +42,12 @@ export async function guardarNotasReporte(empresaId: string, periodo: string, _:
 }
 
 export async function revisarReporte(empresaId: string, periodo: string): Promise<Estado> {
-  const { usuario } = await exigirPermiso(empresaId, "cerrar", "/bitacora");
+  const acceso = await exigirPermiso(empresaId, "cerrar", "/bitacora", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "cerrar", { empresaId, accion: "revisarReporte", args: [periodo], fd: undefined, titulo: `Marcar como revisado el reporte de ${periodo}` });
+    if (dif) return dif;
+  }
   return correr(empresaId, periodo, async (tx) => {
     const r = await fila(tx, empresaId, periodo);
     if (r.estado !== "borrador") throw new ErrorReporte("El reporte ya pasó la revisión.");

@@ -8,7 +8,7 @@ import { periodoAnterior, periodoDe } from "@/lib/formatos-dgii";
 import { esRelleno, type Columna, type Resultado } from "@/lib/it1";
 import type { FilaIr6 } from "@/lib/ir17";
 import { deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { montoSugerido } from "@/lib/impuestos-mes";
 import { guardarDeclaracion, presentarDeclaracion, quitarDeclaracion } from "../dgii-acciones";
 
@@ -26,7 +26,7 @@ const fechaHora = (d: Date) => d.toLocaleString("es-DO", { timeZone: "America/Sa
 // ya tiene su título y su selector de período (el IR-2, por ejercicio).
 export async function Declaracion({ id, formulario, mes, incrustada }: { id: string; formulario: Form; mes?: string; incrustada?: boolean }) {
   const def = FORMULARIOS[formulario];
-  const { permisos } = await accesoEmpresa(id);
+  const { permisos, conAprobacion } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const p = periodoDe((mes ?? "").replace("-", "")) ?? periodoDe(periodoAnterior(hoy))!;
   const mesTexto = `${p.periodo.slice(0, 4)}-${p.periodo.slice(4)}`;
@@ -42,7 +42,7 @@ export async function Declaracion({ id, formulario, mes, incrustada }: { id: str
        WHERE e.formato = ${formulario} AND e.periodo = ${p.periodo}`;
     return { r: await def.calcular(tx, p, manuales), manuales, envio: e, guardado: d };
   });
-  const editar = puede(permisos, "impuestos") && !envio;
+  const editar = puedeOPide(permisos, conAprobacion, "impuestos") && !envio;
   const errores = r.avisos.filter((a) => a.nivel === "error");
   const avisos = r.avisos.filter((a) => a.nivel === "aviso");
   const cambio = envio && envio.huella !== r.huella;

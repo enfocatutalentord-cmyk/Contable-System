@@ -5,7 +5,7 @@ import { listarAprobaciones, TIPOS_APROBACION, type Aprobacion } from "@/lib/apr
 import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
 import { puede } from "@/lib/permisos";
-import { aprobarAccion, devolverAccion } from "@/app/e/[id]/aprobaciones-acciones";
+import { aprobarAccion, descartarSolicitudAccion, devolverAccion } from "@/app/e/[id]/aprobaciones-acciones";
 import { notFound } from "next/navigation";
 
 export const metadata = { title: "Por aprobar · Empire Tax & Legal" };
@@ -38,7 +38,7 @@ export default async function PorAprobar({ params }: { params: Promise<{ fid: st
           {lista.map(({ e, a }) => (
             <tr key={a.id}>
               <td>
-                <Link href={enlace(e.id, a)}><strong>{a.titulo}</strong></Link>
+                {a.tipo === "accion" ? <strong>{a.titulo}</strong> : <Link href={enlace(e.id, a)}><strong>{a.titulo}</strong></Link>}
                 <div className="sub" style={{ margin: 0 }}>{TIPOS_APROBACION[a.tipo]}{a.detalle && ` · ${a.detalle}`}</div>
                 {a.estado === "devuelta" && <div style={{ color: "var(--peligro)" }}>Devuelto: {a.motivo}</div>}
                 {a.vecesDevuelta > 0 && <div className="sub" style={{ margin: 0 }}>Devuelto {a.vecesDevuelta} {a.vecesDevuelta === 1 ? "vez" : "veces"}</div>}
@@ -52,7 +52,14 @@ export default async function PorAprobar({ params }: { params: Promise<{ fid: st
                       <input name="motivo" required maxLength={1000} placeholder="Qué hay que corregir" aria-label="Qué hay que corregir" style={{ minWidth: 200 }} />
                     </Formulario>
                   </div>
-                ) : a.estado === "devuelta" ? "A corregir" : "Esperando"}
+                ) : (
+                  <>
+                    {a.estado === "devuelta" ? "A corregir" : "Esperando"}
+                    {a.tipo === "accion" && a.solicitadoPorId === usuario.id && (
+                      <Formulario accion={descartarSolicitudAccion.bind(null, e.id, a.id)} boton="Descartar" className="fila boton-chico"><></></Formulario>
+                    )}
+                  </>
+                )}
               </td>
             </tr>
           ))}

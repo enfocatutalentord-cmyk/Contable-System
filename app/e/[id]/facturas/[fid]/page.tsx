@@ -10,7 +10,7 @@ import { conEmpresa } from "@/lib/db";
 import { EstadoAprobacion } from "../../estado-aprobacion";
 import { verPorcentaje } from "@/lib/fiscal";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { puedeVer } from "@/lib/pestanas";
 import { ECF_DE, esEcf, MOTIVOS_608, NOMBRE_NCF, type TipoNcf } from "@/lib/ventas";
 import { DocumentosSoporte } from "../../documentos/soporte";
@@ -352,7 +352,7 @@ export default async function VerFactura({ params, searchParams }: {
         </div>
       )}
 
-      {!borrador && !f.anulada && puede(permisos, "revertir") && (
+      {!borrador && !f.anulada && puedeOPide(permisos, conAprobacion, "revertir") && (
         <div className="no-imprimir">
           {!esNota && saldo > 0 && (
             <>

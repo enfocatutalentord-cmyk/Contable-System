@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { accesoFirma, soloCliente } from "@/lib/acceso";
-import { db } from "@/lib/db";
+import { accesoEmpresa, accesoFirma, soloCliente } from "@/lib/acceso";
+import { listarAprobaciones } from "@/lib/aprobaciones";
+import { conEmpresa, db } from "@/lib/db";
+import { puede } from "@/lib/permisos";
 import { actividad, alertasDeFirma, clientesDeFirma, hace, resumenCliente } from "@/lib/firma";
 import { hoyISO } from "@/lib/montos";
 import { avisosNormasDeFirma } from "@/lib/normas";
@@ -20,6 +22,11 @@ export default async function InicioFirma({ params, searchParams }: {
   const [resumenes, eventos, alertas, normas] = await Promise.all([Promise.all(clientes.map((c) => resumenCliente(c.id))), actividad(clientes, 12), alertasDeFirma(clientes, hoyISO()),
     avisosNormasDeFirma(fid, hoyISO(), usuario.id, firma.administrador)]);
   const filas = clientes.map((c, i) => ({ ...c, ...resumenes[i] }));
+  // Lo que espera el visto bueno de esta persona (Prioridad 2.1): en cualquier empresa donde pueda aprobar, sin contar lo que ella preparó.
+  const porAprobar = (await Promise.all((await clientesDeFirma(fid, usuario.id, firma.administrador)).map(async (c) => {
+    if (!puede((await accesoEmpresa(c.id)).permisos, "aprobar")) return 0;
+    return (await conEmpresa(c.id, (tx) => listarAprobaciones(tx, ["pendiente"]))).filter((a) => a.solicitadoPorId !== usuario.id).length;
+  }))).reduce((a, b) => a + b, 0);
   // Solicitudes nuevas de Vendario (aviso al equipo contable, acuerdo §11).
   const [vendario] = await soloCliente(fid, usuario.id) ? [{ n: 0 }] : await db()<{ n: number }[]>`
     SELECT count(*)::int AS n FROM vendario_clientes WHERE firma_id = ${fid} AND estado = 'solicitud'`;
@@ -62,6 +69,9 @@ export default async function InicioFirma({ params, searchParams }: {
 
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Clientes activos</div><div className="valor">{clientes.length}</div></div>
+        <a className="tarjeta cifra" href={`/firma/${fid}/aprobaciones`} style={{ color: "inherit", textDecoration: "none" }}>
+          <div className="etiqueta">Por aprobar</div><div className="valor" style={porAprobar ? { color: "var(--dorado)" } : undefined}>{porAprobar}</div>
+        </a>
         <a className="tarjeta cifra" href={`/firma/${fid}/facturas-subidas`} style={{ color: "inherit", textDecoration: "none" }}>
           <div className="etiqueta">Facturas por revisar</div><div className="valor">{suma((r) => r.facturasPorRevisar + r.pendientesDeRegistrar).toString()}</div>
         </a>

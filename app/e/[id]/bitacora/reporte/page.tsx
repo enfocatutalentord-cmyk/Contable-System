@@ -6,7 +6,7 @@ import { accesoEmpresa, soloCliente } from "@/lib/acceso";
 import { moverMes, nombreMes } from "@/lib/bitacora";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { armarReporte, type DatosReporte, ESTADOS_REPORTE, huellaReporte } from "@/lib/reporte-mensual";
 import { aprobarReporte, guardarNotasReporte, quitarAprobacion, revisarReporte } from "../../reporte-acciones";
 
@@ -20,7 +20,7 @@ const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "Am
 export default async function ReporteMensual({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mes?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { empresa, permisos, usuario } = await accesoEmpresa(id);
+  const { empresa, permisos, conAprobacion, usuario } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes ?? "") ? sp.mes! : moverMes(hoy.slice(0, 7), -1);
   const periodo = mes.replace("-", "");
@@ -65,7 +65,7 @@ export default async function ReporteMensual({ params, searchParams }: { params:
         </ol>
         {cambio && <p className="error">Después de aprobarlo cambió algo del mes. Si corresponde, quita la aprobación y vuelve a aprobarlo.</p>}
         <div className="fila" style={{ alignItems: "flex-start" }}>
-          {estado === "borrador" && puede(permisos, "cerrar") && (
+          {estado === "borrador" && puedeOPide(permisos, conAprobacion, "cerrar") && (
             <Formulario accion={revisarReporte.bind(null, id, periodo)} boton="Marcar como revisado" className="fila"><span /></Formulario>
           )}
           {!aprobado && puede(permisos, "empresa") && (

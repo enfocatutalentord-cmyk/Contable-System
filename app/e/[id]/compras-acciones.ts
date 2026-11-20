@@ -18,6 +18,7 @@ import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { leerCantidad, leerTasa } from "@/lib/ventas";
 import type { Estado } from "../../acciones-cuenta";
+import { diferirSiPide } from "./diferir";
 
 function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
@@ -207,7 +208,12 @@ export async function descartarCompra(empresaId: string, compraId: string): Prom
 }
 
 export async function anularLaCompra(empresaId: string, compraId: string, _: Estado, fd: FormData): Promise<Estado> {
-  const { usuario } = await exigirPermisoRegistro(empresaId, "revertir", "/compras");
+  const acceso = await exigirPermisoRegistro(empresaId, "revertir", "/compras", true);
+  const { usuario } = acceso;
+  {
+    const dif = await diferirSiPide(acceso, "revertir", { empresaId, accion: "anularCompra", args: [compraId], fd: fd, titulo: "Anular una compra" });
+    if (dif) return dif;
+  }
   const motivo = texto(fd, "motivo");
   if (!motivo) return { error: "Escribe el motivo." };
   try {

@@ -5,7 +5,7 @@ import { accesoEmpresa } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { listarUnidades } from "@/lib/empresa-propia";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
-import { puede } from "@/lib/permisos";
+import { puede, puedeOPide } from "@/lib/permisos";
 import { categoriasPresupuesto } from "@/lib/presupuesto";
 import { listarDeudas, listarMetas } from "@/lib/presupuesto-metas";
 import { esEmpresaPropia } from "@/lib/propia";
@@ -20,7 +20,7 @@ const siguienteDia = (f: string) => { const d = new Date(`${f}T00:00:00Z`); d.se
 export default async function Salidas({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { empresa, permisos } = await accesoEmpresa(id);
+  const { empresa, permisos, conAprobacion } = await accesoEmpresa(id);
   if (!(await esEmpresaPropia(id))) {
     return (<><h1>Registrar salidas</h1><p className="aviso">Las salidas y la cuenta de la socia son de la empresa propia de la firma. Elígela en «Empresas Empire › Empresa propia de la firma».</p></>);
   }
@@ -33,8 +33,8 @@ export default async function Salidas({ params, searchParams }: { params: Promis
   }));
   const categoriasPersonal = categorias.personal, categoriasOficina = categorias.oficina;
   const totales = totalesPorTipo(salidas);
-  const registra = puede(permisos, "contabilizar");
-  const anula = puede(permisos, "revertir");
+  const registra = puedeOPide(permisos, conAprobacion, "contabilizar");
+  const anula = puedeOPide(permisos, conAprobacion, "revertir");
   const filtros = `desde=${desde}&hasta=${hasta}${tipo ? `&tipo=${tipo}` : ""}`;
 
   return (
