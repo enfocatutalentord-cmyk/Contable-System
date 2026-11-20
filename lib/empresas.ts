@@ -57,6 +57,7 @@ export async function crearFirma(tx: Tx, datos: { nombre: string; rnc: string | 
   await tx`SELECT crear_plantilla_levantamiento(${id})`; // calendario fiscal de la firma (entrega B)
   await tx`SELECT crear_plantillas_mensaje(${id})`; // mensajes de WhatsApp (bloque 3c)
   await tx`SELECT crear_plantillas_mensaje_extra(${id})`; // Solicitud de servicio (bloque 6a)
+  await tx`SELECT crear_feriados(${id})`; // días laborables de los trámites (Prioridad 1.5)
   await tx`INSERT INTO miembros_firma (firma_id, usuario_id, administrador) VALUES (${id}, ${datos.usuarioId}, true)`;
   return id;
 }

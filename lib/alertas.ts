@@ -2,6 +2,7 @@ import { porVencer } from "./bitacora.ts";
 import type { Tx } from "./db";
 import { avisosDe, listarAcuerdos } from "./igualas-db.ts";
 import { verFecha, verMonto } from "./montos.ts";
+import { sumarDias } from "./tramites.ts";
 
 // Bloque 3, entrega 3b: las alertas por cliente de la sección 9 del Documento maestro, calculadas con lo que ya registra el
 // sistema. No se guardan: desaparecen solas cuando se resuelve lo que avisan (se carga el rango, se marca presentada, etc.).
@@ -101,13 +102,29 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
     }
   }
 
-  // Trámites abiertos (bloque 5a): 5 días antes del plazo y cuando vence sin respuesta.
-  for (const t of await tx<{ institucion: string; tipo: string; plazo: string }[]>`
-      SELECT institucion, tipo, to_char(plazo, 'YYYY-MM-DD') AS plazo FROM tramites WHERE estado = 'abierto' AND plazo <= ${hoy}::date + 5`) {
-    const inst = ({ dgii: "DGII", tss: "TSS", camara: "Cámara de Comercio", onapi: "ONAPI" } as Record<string, string>)[t.institucion] ?? "institución";
-    poner("tramite", t.plazo < hoy ? "urgente" : "aviso",
-      `Trámite ante ${inst} (${t.tipo}) ${t.plazo < hoy ? `venció sin respuesta el ${verFecha(t.plazo)}` : faltan(hoy, t.plazo).replace("vence", "vence el plazo")}`,
-      `${base}/expediente?ver=tramites`, t.plazo);
+  // Trámites abiertos (bloque 5a): 5 días antes del plazo y cuando vence sin respuesta. Prioridad 1.5: también cuando termina el tiempo
+  // de espera y cuando toca un paso que no se ha tachado. Cada aviso abre el trámite en «Trámites abiertos».
+  const [{ firma_id: firmaTramites }] = await tx<{ firma_id: string }[]>`SELECT firma_id FROM empresas WHERE id = ${d.empresaId}`;
+  const enlaceTramite = (id: string) => `/firma/${firmaTramites}/tramites/${d.empresaId}/${id}`;
+  for (const t of await tx<{ id: string; institucion: string; tipo: string; plazo: string; espera_hasta: string | null; espera_motivo: string | null }[]>`
+      SELECT id, institucion, tipo, to_char(plazo, 'YYYY-MM-DD') AS plazo, to_char(espera_hasta, 'YYYY-MM-DD') AS espera_hasta, espera_motivo
+        FROM tramites WHERE estado = 'abierto' AND (plazo <= ${hoy}::date + 5 OR (etapa = 'en_espera' AND espera_hasta <= ${hoy}::date))`) {
+    const inst = ({ dgii: "DGII", tss: "TSS", camara: "Cámara de Comercio", onapi: "ONAPI" } as Record<string, string>)[t.institucion];
+    const que = inst ? `Trámite ante ${inst} (${t.tipo})` : `Trámite «${t.tipo}»`;
+    if (t.plazo <= sumarDias(hoy, 5)) {
+      poner("tramite", t.plazo < hoy ? "urgente" : "aviso",
+        `${que} ${t.plazo < hoy ? `venció sin respuesta el ${verFecha(t.plazo)}` : faltan(hoy, t.plazo).replace("vence", "vence el plazo")}`,
+        enlaceTramite(t.id), t.plazo);
+    }
+    if (t.espera_hasta && t.espera_hasta <= hoy) {
+      poner("tramite", "aviso", `${que}: terminó el tiempo de espera (${t.espera_motivo ?? "respuesta"}) el ${verFecha(t.espera_hasta)}`, enlaceTramite(t.id), t.espera_hasta);
+    }
+  }
+  for (const p of await tx<{ tramite_id: string; tipo: string; texto: string; vence: string }[]>`
+      SELECT p.tramite_id, t.tipo, p.texto, to_char(p.vence, 'YYYY-MM-DD') AS vence
+        FROM pendientes_tramite p JOIN tramites t ON t.id = p.tramite_id
+       WHERE NOT p.hecho AND t.estado = 'abierto' AND p.vence <= ${hoy}::date`) {
+    poner("tramite", p.vence < hoy ? "urgente" : "aviso", `Trámite «${p.tipo}»: toca «${p.texto}» (desde el ${verFecha(p.vence)})`, enlaceTramite(p.tramite_id), p.vence);
   }
 
   // Solicitudes del cliente con su fecha pasada y formularios en línea recibidos sin revisar (bloque 6a).

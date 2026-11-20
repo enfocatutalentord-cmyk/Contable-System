@@ -115,10 +115,10 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     return (
       <details key={grupo} className="subseccion" open={!!abiertas[`g:${grupo}`]} onToggle={(e) => alternar(`g:${grupo}`, (e.currentTarget as HTMLDetailsElement).open)}>
         <summary>{grupo}</summary>
-        {items.map((t) => "firma" in t ? enlaceFirma([t.firma, t.nombre]) : (
+        <div className="subseccion-cuerpo">{items.map((t) => "firma" in t ? enlaceFirma([t.firma, t.nombre]) : (
           <Link key={t.cliente} href={clienteElegido ? clienteElegido + t.cliente : `${firma}/elegir?a=${encodeURIComponent(t.cliente || "/")}`}
             aria-current={clienteElegido && activoEmpresa(t.cliente) ? "page" : undefined}>{t.nombre ?? nombreDe.get(t.cliente) ?? t.cliente}</Link>
-        ))}
+        ))}</div>
       </details>
     );
   });

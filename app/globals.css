@@ -348,5 +348,5 @@ html.en-panel .app { display: block; min-height: 0; }
 .menu .subseccion[open] > summary::after { transform: rotate(90deg); }
 .menu .subseccion > summary:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .menu .subseccion > summary:focus-visible { outline: 2px solid var(--dorado); outline-offset: 2px; }
-.menu .subseccion { display: flex; flex-direction: column; gap: 2px; }
-.menu .subseccion > a { padding-left: 18px; }
+.menu .subseccion-cuerpo { display: flex; flex-direction: column; gap: 2px; }
+.menu .subseccion-cuerpo > a { padding-left: 18px; }
