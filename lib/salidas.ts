@@ -48,6 +48,7 @@ export const cuentasDeSocia = (tx: Tx) => tx<CuentaOpcion[]>`
 export type DatosSalida = {
   tipo: TipoSalida; fecha: string; origenId: string; destinoId: string; monto: bigint;
   categoria?: string | null; acreedor?: string | null; descripcion?: string | null; referencia?: string | null; unidadId?: string | null;
+  metaId?: string | null; deudaId?: string | null; interes?: bigint;
 };
 
 // Lo que cada tipo pide además del monto y el banco.
@@ -58,6 +59,8 @@ export function revisarSalida(d: DatosSalida): string | null {
   if (d.origenId === d.destinoId) return "La cuenta de origen y la de destino deben ser distintas.";
   if (d.tipo === "personal" && !d.categoria) return "Elige o escribe la categoría del gasto personal.";
   if (d.tipo === "deuda" && !d.acreedor) return "Escribe a quién se le paga la deuda.";
+  if ((d.interes ?? 0n) < 0n || (d.interes ?? 0n) > d.monto) return "Los intereses no pueden ser más que el monto pagado.";
+  if ((d.interes ?? 0n) > 0n && d.tipo !== "deuda") return "Los intereses solo van en el pago de una deuda.";
   return null;
 }
 
@@ -74,15 +77,35 @@ export function conceptoSalida(d: DatosSalida, destino: string): { concepto: str
 }
 
 // El asiento de la salida: debe a la cuenta de destino, haber al banco o caja.
-export function lineasSalida(d: DatosSalida, categoria: string | null): LineaAsiento[] {
+// Un préstamo de la empresa (cuentaInteres): el capital baja el pasivo y los intereses son gasto. Si no, todo va a la cuenta de destino.
+export function lineasSalida(d: DatosSalida, categoria: string | null, cuentaInteres?: string | null): LineaAsiento[] {
   const descripcion = d.tipo === "deuda" ? `Pago a ${d.acreedor}` : d.descripcion || null;
-  return [
-    { cuentaId: d.destinoId, debe: d.monto, haber: 0n, descripcion, unidadId: d.tipo === "oficina" ? d.unidadId ?? null : null, categoria },
-    { cuentaId: d.origenId, debe: 0n, haber: d.monto, descripcion, unidadId: null, categoria: null },
-  ];
+  const interes = cuentaInteres ? d.interes ?? 0n : 0n;
+  const lineas: LineaAsiento[] = [];
+  if (d.monto - interes > 0n) lineas.push({ cuentaId: d.destinoId, debe: d.monto - interes, haber: 0n, descripcion: interes > 0n ? `Capital: ${descripcion}` : descripcion, unidadId: d.tipo === "oficina" ? d.unidadId ?? null : null, categoria });
+  if (interes > 0n && cuentaInteres) lineas.push({ cuentaId: cuentaInteres, debe: interes, haber: 0n, descripcion: `Intereses: ${descripcion}`, unidadId: null, categoria: null });
+  lineas.push({ cuentaId: d.origenId, debe: 0n, haber: d.monto, descripcion, unidadId: null, categoria: null });
+  return lineas;
 }
 
 export async function registrarSalida(tx: Tx, empresaId: string, usuarioId: string, d: DatosSalida): Promise<{ id: string; numero: number; asiento: number }> {
+  // Meta de ahorro: el dinero va a su cuenta de ahorro. Deuda: usa su nombre; si es un préstamo de la empresa va al pasivo y a los intereses.
+  let cuentaInteres: string | null = null;
+  let prestamo = false;
+  if (d.metaId) {
+    if (d.tipo !== "ahorro") throw new ErrorContable("La meta de ahorro solo va en un ahorro.");
+    const [m] = await tx<{ cuenta_id: string | null; activa: boolean }[]>`SELECT cuenta_id, activa FROM metas_ahorro WHERE id = ${d.metaId}`;
+    if (!m) throw new ErrorContable("La meta de ahorro no existe.");
+    if (m.cuenta_id) d = { ...d, destinoId: m.cuenta_id };
+  }
+  if (d.deudaId) {
+    if (d.tipo !== "deuda") throw new ErrorContable("La deuda solo va en un pago de deuda.");
+    const [x] = await tx<{ acreedor: string; de_negocio: boolean; cuenta_prestamo_id: string | null; cuenta_interes_id: string | null }[]>`
+      SELECT acreedor, de_negocio, cuenta_prestamo_id, cuenta_interes_id FROM deudas_presupuesto WHERE id = ${d.deudaId}`;
+    if (!x) throw new ErrorContable("La deuda no existe.");
+    d = { ...d, acreedor: x.acreedor };
+    if (x.de_negocio) { prestamo = true; d = { ...d, destinoId: x.cuenta_prestamo_id! }; cuentaInteres = x.cuenta_interes_id; }
+  }
   const error = revisarSalida(d);
   if (error) throw new ErrorContable(error);
   const opciones = await cuentasParaSalida(tx);
@@ -90,7 +113,8 @@ export async function registrarSalida(tx: Tx, empresaId: string, usuarioId: stri
   const origen = busca(opciones.efectivo, d.origenId);
   if (!origen) throw new ErrorContable("La cuenta de origen debe ser un banco o caja en pesos.");
   const destino =
-    d.tipo === "oficina" ? busca(opciones.gastos, d.destinoId)
+    prestamo ? (await tx<CuentaOpcion[]>`SELECT id, codigo, nombre FROM cuentas WHERE id = ${d.destinoId} AND de_detalle AND activa`)[0]
+    : d.tipo === "oficina" ? busca(opciones.gastos, d.destinoId)
     : d.tipo === "personal" || d.tipo === "deuda" ? busca(opciones.socias, d.destinoId)
     : busca(opciones.efectivo, d.destinoId);
   if (!destino) {
@@ -99,7 +123,7 @@ export async function registrarSalida(tx: Tx, empresaId: string, usuarioId: stri
       : "La cuenta de destino debe ser un banco, caja o cuenta de ahorro en pesos.");
   }
   const { concepto, categoria } = conceptoSalida(d, destino.nombre);
-  const lineas = lineasSalida(d, categoria);
+  const lineas = lineasSalida(d, categoria, cuentaInteres);
   const asiento = await insertarAsiento(tx, {
     empresaId, usuarioId, fecha: d.fecha, concepto, referencia: d.referencia ?? null, origen: "salida", juntar: false, lineas,
   });
@@ -107,10 +131,11 @@ export async function registrarSalida(tx: Tx, empresaId: string, usuarioId: stri
   const [{ numero }] = await tx<{ numero: number }[]>`SELECT COALESCE(max(numero), 0) + 1 AS numero FROM salidas`;
   const [{ id }] = await tx<{ id: string }[]>`
     INSERT INTO salidas (empresa_id, numero, fecha, tipo, cuenta_origen_id, cuenta_destino_id, monto, categoria, acreedor, descripcion,
-                         referencia, unidad_id, asiento_id, creado_por)
+                         referencia, unidad_id, asiento_id, creado_por, meta_id, deuda_id, interes)
     VALUES (${empresaId}, ${numero}, ${d.fecha}, ${d.tipo}, ${d.origenId}, ${d.destinoId}, ${deCentavos(d.monto)}, ${d.tipo === "oficina" ? d.categoria?.trim() || null : categoria},
             ${d.tipo === "deuda" ? d.acreedor ?? null : null}, ${d.descripcion ?? null}, ${d.referencia ?? null},
-            ${d.tipo === "oficina" ? d.unidadId ?? null : null}, ${asiento.id}, ${usuarioId})
+            ${d.tipo === "oficina" ? d.unidadId ?? null : null}, ${asiento.id}, ${usuarioId},
+            ${d.tipo === "ahorro" ? d.metaId ?? null : null}, ${d.tipo === "deuda" ? d.deudaId ?? null : null}, ${deCentavos(d.interes ?? 0n)})
     RETURNING id`;
   return { id, numero, asiento: asiento.numero! };
 }

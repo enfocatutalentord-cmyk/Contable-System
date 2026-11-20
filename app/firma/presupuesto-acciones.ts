@@ -7,6 +7,8 @@ import { aCentavos, leerMonto } from "@/lib/montos";
 import {
   agregarCategoria, copiarAnio, guardarMonto, quitarCategoria, renombrarCategoria, type ListaPresupuesto,
 } from "@/lib/presupuesto";
+import { ErrorPresupuesto, guardarDeuda, guardarMeta, quitarDeuda, quitarMeta } from "@/lib/presupuesto-metas";
+import { fechaValida } from "@/lib/reportes";
 import type { Estado } from "../acciones-cuenta";
 
 // Prioridad 1.6 del prompt de Patricia (20-nov-2026): el presupuesto de Empire. Solo administradores (lo personal es privado).
@@ -94,5 +96,66 @@ export async function quitarCategoriaAccion(firmaId: string, id: string, _: Esta
     return { ok: "Categoría quitada de las listas. Los años anteriores la conservan." };
   } catch (e) {
     return { error: e instanceof Error && !("code" in e) ? e.message : mensajeError(e) };
+  }
+}
+
+const msg = (e: unknown) => (e instanceof ErrorPresupuesto ? e.message : e instanceof Error && !("code" in e) ? e.message : mensajeError(e));
+const opcional = (v: string) => (v && esUuid(v) ? v : null);
+const montoDe = (v: string) => { const m = leerMonto(v); return m === null ? null : aCentavos(m); };
+
+export async function guardarMetaAccion(firmaId: string, id: string | null, _: Estado, fd: FormData): Promise<Estado> {
+  try {
+    const { empresaId } = await propia(firmaId);
+    const meta = montoDe(texto(fd, "meta"));
+    if (meta === null) return { error: "El monto de la meta no es válido." };
+    const objetivo = texto(fd, "objetivo") || null;
+    if (objetivo && !fechaValida(objetivo)) return { error: "La fecha objetivo no es válida." };
+    await conEmpresa(empresaId, (tx) => guardarMeta(tx, empresaId, {
+      id: id ?? undefined, nombre: texto(fd, "nombre"), tipo: texto(fd, "tipo"), meta, objetivo, cuentaId: opcional(texto(fd, "cuenta")),
+    }));
+    revalidatePath(`/firma/${firmaId}/empire/presupuesto`);
+    return { ok: id ? "Meta cambiada." : "Meta agregada." };
+  } catch (e) {
+    return { error: msg(e) };
+  }
+}
+
+export async function quitarMetaAccion(firmaId: string, id: string, _: Estado): Promise<Estado> {
+  try {
+    const { empresaId } = await propia(firmaId);
+    if (!esUuid(id)) return { error: "La meta no existe." };
+    await conEmpresa(empresaId, (tx) => quitarMeta(tx, id));
+    revalidatePath(`/firma/${firmaId}/empire/presupuesto`);
+    return { ok: "Meta quitada. Lo ahorrado queda en la contabilidad." };
+  } catch (e) {
+    return { error: msg(e) };
+  }
+}
+
+export async function guardarDeudaAccion(firmaId: string, id: string | null, _: Estado, fd: FormData): Promise<Estado> {
+  try {
+    const { empresaId } = await propia(firmaId);
+    const inicial = montoDe(texto(fd, "inicial") || "0"), pagoMensual = montoDe(texto(fd, "pago") || "0");
+    if (inicial === null || pagoMensual === null) return { error: "Los montos no son válidos." };
+    await conEmpresa(empresaId, (tx) => guardarDeuda(tx, empresaId, {
+      id: id ?? undefined, acreedor: texto(fd, "acreedor"), tipo: texto(fd, "tipo"), inicial, pagoMensual,
+      cuentaPrestamoId: opcional(texto(fd, "prestamo")), cuentaInteresId: opcional(texto(fd, "interes")),
+    }));
+    revalidatePath(`/firma/${firmaId}/empire/presupuesto`);
+    return { ok: id ? "Deuda cambiada." : "Deuda agregada." };
+  } catch (e) {
+    return { error: msg(e) };
+  }
+}
+
+export async function quitarDeudaAccion(firmaId: string, id: string, _: Estado): Promise<Estado> {
+  try {
+    const { empresaId } = await propia(firmaId);
+    if (!esUuid(id)) return { error: "La deuda no existe." };
+    await conEmpresa(empresaId, (tx) => quitarDeuda(tx, id));
+    revalidatePath(`/firma/${firmaId}/empire/presupuesto`);
+    return { ok: "Deuda quitada de la lista. Lo pagado queda en la contabilidad." };
+  } catch (e) {
+    return { error: msg(e) };
   }
 }

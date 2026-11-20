@@ -8,9 +8,13 @@ import {
   categoriasDe, claveMonto, desviacion, diasDelMes, estadoPartida, GRUPOS_INGRESO, ingresosDelAnio, MESES, metaDiaria, metaQuincenal,
   montosDelAnio, necesidadDelMes, realDelAnio, sembrarCategorias, sumar, totalIngresos, type GrupoIngreso, type ListaPresupuesto,
 } from "@/lib/presupuesto";
+import {
+  cuentasDePresupuesto, ingresosPorCliente, listarDeudas, listarMetas, saldosDeBancos, TIPOS_DEUDA, TIPOS_META, TIPO_DEUDA_NEGOCIO,
+} from "@/lib/presupuesto-metas";
 import { feriadosDe } from "@/lib/tramites";
 import {
-  agregarCategoriaAccion, copiarAnioAccion, guardarPresupuestoAccion, quitarCategoriaAccion, renombrarCategoriaAccion,
+  agregarCategoriaAccion, copiarAnioAccion, guardarDeudaAccion, guardarMetaAccion, guardarPresupuestoAccion, quitarCategoriaAccion, quitarDeudaAccion,
+  quitarMetaAccion, renombrarCategoriaAccion,
 } from "../../../presupuesto-acciones";
 
 export const metadata = { title: "Presupuesto · Empire Tax & Legal" };
@@ -45,6 +49,9 @@ export default async function Presupuesto({ params, searchParams }: {
     return {
       oficina: await categoriasDe(tx, "oficina"), personal: await categoriasDe(tx, "personal"),
       montos: await montosDelAnio(tx, anio), real: await realDelAnio(tx, anio), ingresos: await ingresosDelAnio(tx, anio),
+      metas: await listarMetas(tx, hoy), deudas: await listarDeudas(tx, hoy), cuentas: await cuentasDePresupuesto(tx),
+      bancos: await saldosDeBancos(tx, `${anio}-${String(mes).padStart(2, "0")}-01`, `${anio}-${String(mes).padStart(2, "0")}-${String(diasDelMes(anio, mes)).padStart(2, "0")}`),
+      clientes: await ingresosPorCliente(tx, `${anio}-${String(mes).padStart(2, "0")}-01`, `${anio}-${String(mes).padStart(2, "0")}-${String(diasDelMes(anio, mes)).padStart(2, "0")}`),
     };
   });
 
@@ -235,6 +242,132 @@ export default async function Presupuesto({ params, searchParams }: {
         </p>
         <div className="valor" style={{ fontSize: "1.3rem" }}>RD$ {verMonto(proyeccion)}</div>
       </div>
+
+      <h2>Ingresos del mes por cliente</h2>
+      <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
+        <table>
+          <thead><tr><th>Cliente</th><th>Grupo</th><th className="num">Cobrado (RD$)</th></tr></thead>
+          <tbody>
+            {d.clientes.map((c, i) => <tr key={i}><td>{c.cliente}</td><td>{GRUPOS_INGRESO[c.grupo]}</td><td className="num">{verMonto(c.cobrado)}</td></tr>)}
+            {d.clientes.length === 0 && <tr><td colSpan={3} className="sub">No se cobró ninguna factura este mes. Los anticipos se cuentan arriba, en su grupo.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Balance por cuenta · fin de {MESES[mes - 1].toLowerCase()}</h2>
+      <p className="sub">Según la contabilidad: cada ingreso cobrado y cada salida ya movió su cuenta. El saldo del banco real se compara en Bancos.</p>
+      <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
+        <table>
+          <thead><tr><th>Cuenta</th><th className="num">Entró en el mes</th><th className="num">Salió en el mes</th><th className="num">Saldo</th></tr></thead>
+          <tbody>
+            {d.bancos.map((b) => <tr key={b.id}><td>{b.codigo} · {b.nombre}</td><td className="num">{verMonto(b.entradas)}</td><td className="num">{verMonto(b.salidas)}</td><td className="num">{verMonto(b.saldo)}</td></tr>)}
+            <tr style={{ fontWeight: 700 }}><td>Total</td><td className="num">{verMonto(d.bancos.reduce((a, b) => a + b.entradas, 0n))}</td><td className="num">{verMonto(d.bancos.reduce((a, b) => a + b.salidas, 0n))}</td><td className="num">{verMonto(d.bancos.reduce((a, b) => a + b.saldo, 0n))}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Metas de ahorro</h2>
+      <p className="sub">Cada aporte se registra en <Link href={`/e/${empresaId}/salidas`}>Registrar salidas</Link> como «Ahorro», eligiendo la meta. El acumulado cuenta todo lo aportado, de cualquier año: los saldos pasan solos al año siguiente.</p>
+      <div className="tabla-envoltura" style={{ marginBottom: 12 }}>
+        <table>
+          <thead><tr><th>Meta</th><th>Tipo</th><th>Fecha objetivo</th><th className="num">Meta (RD$)</th><th className="num">Acumulado</th><th className="num">Falta</th><th className="num">Aporte mensual necesario</th><th>Estado</th></tr></thead>
+          <tbody>
+            {d.metas.filter((m) => m.activa).map((m) => (
+              <tr key={m.id}>
+                <td>{m.nombre}{m.cuenta && <div className="sub" style={{ margin: 0 }}>{m.cuenta}</div>}</td><td>{m.tipo}</td><td>{m.objetivo ?? "—"}</td>
+                <td className="num">{verMonto(m.meta)}</td><td className="num">{verMonto(m.acumulado)}</td><td className="num">{verMonto(m.falta)}</td><td className="num">{verMonto(m.aporte)}</td>
+                <td style={{ fontWeight: 600, color: m.estado === "Vencida" ? "var(--peligro)" : m.estado === "Cumplida" ? "var(--exito, #1d6b3a)" : undefined }}>{m.estado}</td>
+              </tr>
+            ))}
+            {d.metas.every((m) => !m.activa) && <tr><td colSpan={8} className="sub">Todavía no hay metas. Agrega la primera abajo.</td></tr>}
+            {d.metas.some((m) => m.activa) && <tr style={{ fontWeight: 700 }}><td colSpan={6}>Total de aportes mensuales necesarios</td><td className="num">{verMonto(d.metas.reduce((a, m) => a + m.aporte, 0n))}</td><td /></tr>}
+          </tbody>
+        </table>
+      </div>
+      <details className="tarjeta" style={{ marginBottom: 16 }}>
+        <summary><strong>Agregar o cambiar una meta</strong></summary>
+        {d.metas.filter((m) => m.activa).map((m) => (
+          <div key={m.id} className="fila" style={{ alignItems: "flex-end", margin: "10px 0" }}>
+            <Formulario accion={guardarMetaAccion.bind(null, fid, m.id)} boton="Cambiar" className="fila">
+              <label>Nombre<input name="nombre" defaultValue={m.nombre} required maxLength={80} /></label>
+              <label>Tipo<input name="tipo" list="tipos-meta" defaultValue={m.tipo} maxLength={40} /></label>
+              <label style={{ width: 140 }}>Meta (RD$)<input name="meta" inputMode="decimal" defaultValue={verMonto(m.meta)} required /></label>
+              <label>Fecha objetivo<input type="date" name="objetivo" defaultValue={m.objetivo ?? ""} /></label>
+              <label>Cuenta de ahorro
+                <select name="cuenta" defaultValue={m.cuentaId ?? ""}><option value="">Sin cuenta propia</option>{d.cuentas.ahorro.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+              </label>
+            </Formulario>
+            <Formulario accion={quitarMetaAccion.bind(null, fid, m.id)} boton="Quitar" className="fila boton-chico"><></></Formulario>
+          </div>
+        ))}
+        <h3>Meta nueva</h3>
+        <Formulario accion={guardarMetaAccion.bind(null, fid, null)} boton="Agregar meta" className="fila">
+          <label>Nombre<input name="nombre" required maxLength={80} placeholder="Ej.: Fondo de emergencia" /></label>
+          <label>Tipo<input name="tipo" list="tipos-meta" maxLength={40} defaultValue="Otro" /></label>
+          <label style={{ width: 140 }}>Meta (RD$)<input name="meta" inputMode="decimal" required /></label>
+          <label>Fecha objetivo<input type="date" name="objetivo" /></label>
+          <label>Cuenta de ahorro
+            <select name="cuenta" defaultValue=""><option value="">Sin cuenta propia</option>{d.cuentas.ahorro.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+          </label>
+        </Formulario>
+        <datalist id="tipos-meta">{TIPOS_META.map((t) => <option key={t} value={t} />)}</datalist>
+      </details>
+
+      <h2>Deudas</h2>
+      <p className="sub">
+        Cada pago se registra en <Link href={`/e/${empresaId}/salidas`}>Registrar salidas</Link> como «Pago de deuda», eligiendo la deuda y cuánto fue de intereses. El saldo baja solo con el capital.
+        «{TIPO_DEUDA_NEGOCIO}» es un préstamo de Empire: el capital baja el pasivo y los intereses son gasto; las demás van a la cuenta de la socia.
+      </p>
+      <div className="tabla-envoltura" style={{ marginBottom: 12 }}>
+        <table>
+          <thead><tr><th>Acreedor</th><th>Tipo</th><th className="num">Balance inicial</th><th className="num">Pagado</th><th className="num">Intereses</th><th className="num">Capital</th><th className="num">Saldo actual</th><th className="num">% pagado</th><th className="num">Pago objetivo</th><th>Liquida</th><th>Estado</th></tr></thead>
+          <tbody>
+            {d.deudas.filter((x) => x.activa).map((x) => (
+              <tr key={x.id}>
+                <td>{x.acreedor}</td><td>{x.tipo}</td><td className="num">{verMonto(x.inicial)}</td><td className="num">{verMonto(x.pagado)}</td><td className="num">{verMonto(x.intereses)}</td>
+                <td className="num">{verMonto(x.capital)}</td><td className="num">{verMonto(x.saldo)}</td><td className="num">{x.porcentaje.toFixed(1)} %</td><td className="num">{verMonto(x.pagoMensual)}</td>
+                <td>{x.liquidacion ?? "—"}</td><td style={{ fontWeight: 600 }}>{x.estado}</td>
+              </tr>
+            ))}
+            {d.deudas.every((x) => !x.activa) && <tr><td colSpan={11} className="sub">Todavía no hay deudas. Agrega la primera abajo.</td></tr>}
+            {d.deudas.some((x) => x.activa) && (
+              <tr style={{ fontWeight: 700 }}>
+                <td colSpan={2}>Totales</td><td className="num">{verMonto(d.deudas.filter((x) => x.activa).reduce((a, x) => a + x.inicial, 0n))}</td><td className="num">{verMonto(d.deudas.filter((x) => x.activa).reduce((a, x) => a + x.pagado, 0n))}</td>
+                <td className="num">{verMonto(d.deudas.filter((x) => x.activa).reduce((a, x) => a + x.intereses, 0n))}</td><td className="num">{verMonto(d.deudas.filter((x) => x.activa).reduce((a, x) => a + x.capital, 0n))}</td>
+                <td className="num">{verMonto(d.deudas.filter((x) => x.activa).reduce((a, x) => a + x.saldo, 0n))}</td><td colSpan={4} />
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <details className="tarjeta" style={{ marginBottom: 16 }}>
+        <summary><strong>Agregar o cambiar una deuda</strong></summary>
+        {d.deudas.filter((x) => x.activa).map((x) => (
+          <div key={x.id} className="fila" style={{ alignItems: "flex-end", margin: "10px 0" }}>
+            <Formulario accion={guardarDeudaAccion.bind(null, fid, x.id)} boton="Cambiar" className="fila">
+              <label>Acreedor<input name="acreedor" defaultValue={x.acreedor} required maxLength={120} /></label>
+              <label>Tipo<select name="tipo" defaultValue={x.tipo}>{TIPOS_DEUDA.map((t) => <option key={t}>{t}</option>)}</select></label>
+              <label style={{ width: 140 }}>Balance inicial<input name="inicial" inputMode="decimal" defaultValue={verMonto(x.inicial)} /></label>
+              <label style={{ width: 140 }}>Pago mensual objetivo<input name="pago" inputMode="decimal" defaultValue={verMonto(x.pagoMensual)} /></label>
+              {x.deNegocio && <p className="sub">Cuentas: {x.cuentaPrestamo} · {x.cuentaInteres}. Para cambiarlas, quita la deuda y agrégala de nuevo.</p>}
+            </Formulario>
+            <Formulario accion={quitarDeudaAccion.bind(null, fid, x.id)} boton="Quitar" className="fila boton-chico"><></></Formulario>
+          </div>
+        ))}
+        <h3>Deuda nueva</h3>
+        <Formulario accion={guardarDeudaAccion.bind(null, fid, null)} boton="Agregar deuda" className="fila">
+          <label>Acreedor<input name="acreedor" required maxLength={120} placeholder="Ej.: Tarjeta BHD" /></label>
+          <label>Tipo<select name="tipo" defaultValue="Tarjeta de crédito">{TIPOS_DEUDA.map((t) => <option key={t}>{t}</option>)}</select></label>
+          <label style={{ width: 140 }}>Balance inicial<input name="inicial" inputMode="decimal" defaultValue="" /></label>
+          <label style={{ width: 140 }}>Pago mensual objetivo<input name="pago" inputMode="decimal" /></label>
+          <label>Si es «{TIPO_DEUDA_NEGOCIO}»: cuenta del préstamo
+            <select name="prestamo" defaultValue=""><option value="">—</option>{d.cuentas.pasivos.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+          </label>
+          <label>y cuenta de intereses
+            <select name="interes" defaultValue=""><option value="">—</option>{d.cuentas.intereses.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+          </label>
+        </Formulario>
+      </details>
 
       <details className="tarjeta" style={{ marginBottom: 16 }}>
         <summary><strong>Categorías</strong> · agregar, cambiar o quitar</summary>

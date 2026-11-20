@@ -25,6 +25,9 @@ export async function registrarSalidaAccion(empresaId: string, _: Estado, fd: Fo
   if (!fechaValida(fecha)) return { error: "La fecha no es válida." };
   if (monto === null || aCentavos(monto) <= 0n) return { error: "Escribe el monto." };
   if (unidadId === undefined) return { error: "La unidad de negocio no es válida." };
+  const interesLeido = leerMonto(texto(fd, "interes") || "0");
+  if (interesLeido === null) return { error: "Los intereses no son válidos." };
+  const interes = aCentavos(interesLeido);
   const origenId = texto(fd, "origen"), destinoId = texto(fd, "destino");
   if ((origenId && !esUuid(origenId)) || (destinoId && !esUuid(destinoId))) return { error: "Elige las cuentas de la lista." };
   try {
@@ -33,6 +36,7 @@ export async function registrarSalidaAccion(empresaId: string, _: Estado, fd: Fo
         tipo, fecha, origenId, destinoId, monto: aCentavos(monto), unidadId,
         categoria: texto(fd, "categoria").slice(0, 80) || null, acreedor: texto(fd, "acreedor").slice(0, 120) || null,
         descripcion: texto(fd, "descripcion").slice(0, 300) || null, referencia: texto(fd, "referencia").slice(0, 80) || null,
+        metaId: esUuid(texto(fd, "meta")) ? texto(fd, "meta") : null, deudaId: esUuid(texto(fd, "deuda")) ? texto(fd, "deuda") : null, interes,
       });
       await bitacora(tx, empresaId, usuario.id, "salida_registrada", { salida: r.id });
       return r;
