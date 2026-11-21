@@ -7,6 +7,8 @@ import {
   guardarHallazgo, leerAuditoria, leerHallazgo, leerPasosTexto, listarAuditorias, marcarPaso, quitarPaso, retirarEvidencia,
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
+import { deflateSync } from "node:zlib";
+import { docAuditoria, imagenLegible, MAX_FOTOS_POR_HALLAZGO } from "../lib/pdf-auditoria.ts";
 
 const form = (o) => { const fd = new FormData(); for (const [k, v] of Object.entries(o)) for (const x of [].concat(v)) fd.append(k, x); return fd; };
 
@@ -190,4 +192,74 @@ test("el aislamiento: la base solo muestra las auditorías de la empresa en curs
     return tx`SELECT nombre FROM auditorias`;
   });
   assert.deepEqual(aqui.map((r) => r.nombre).sort(), ["Ajena", "De otro cliente"]);
+});
+
+// ───── P3k · informe final en PDF ─────
+const textos = (n) => Array.isArray(n) ? n.flatMap(textos) : typeof n === "string" ? [n] : n && typeof n === "object" ? Object.values(n).flatMap(textos) : [];
+const ev = (id, nombre, tipo = "image/png") => ({ id, nombre, tipo, tamano: 10, descripcion: null, entidad_id: "x" });
+const detalle = (estado) => ({
+  id: "a1", empresa_id: "e1", numero: 3, nombre: "Revisión de compras", objetivo: "Comprobar comprobantes", alcance: "Compras de 2026", periodo_desde: "2026-01-01", periodo_hasta: "2026-06-30",
+  fecha_inicio: "2026-11-23", fecha_fin: "2026-12-04", responsable_id: "u1", responsable: "Ana Pérez", equipo: [], estado, creado_en: new Date(), cerrada_en: estado === "cerrada" ? new Date("2026-12-05T15:00:00Z") : null,
+  cerrada_por: estado === "cerrada" ? "Patricia" : null, equipo_nombres: ["Ana Pérez", "Luis"], evidencias: [ev("g1", "listado.xlsx", "application/vnd.ms-excel")],
+  pasos: [{ id: "p1", orden: 0, descripcion: "Pedir el listado", estado: "hecho", nota: "Llegó el 24", responsable_id: null, responsable: null, quien: "Ana", hecho_en: new Date() },
+          { id: "p2", orden: 1, descripcion: "Contar la bodega 😀", estado: "no_aplica", nota: "No hay bodega", responsable_id: null, responsable: null, quien: "Ana", hecho_en: new Date() }],
+  hallazgos: [
+    { id: "h1", numero: 1, paso_id: "p1", paso: "Pedir el listado", titulo: "Facturas sin NCF", situacion: "Hay 12 sin comprobante", criterio: "Norma 06-18", causa: "Sin control", efecto: "Gasto no deducible", recomendacion: "Pedir NCF",
+      riesgo: "alto", estado: "en_seguimiento", respuesta: "Se comprometió", creado_en: new Date(), evidencias: Array.from({ length: 9 }, (_, i) => ev(`f${i}`, `foto${i}.png`)).concat([ev("doc", "acta.pdf", "application/pdf")]) },
+    { id: "h2", numero: 2, paso_id: null, paso: null, titulo: "Sin conteo", situacion: "No hay acta", criterio: "", causa: "", efecto: "", recomendacion: "", riesgo: "bajo", estado: "abierto", respuesta: "", creado_en: new Date(), evidencias: [] },
+  ],
+});
+const imagenes = new Map(Array.from({ length: 9 }, (_, i) => [`f${i}`, "data:image/png;base64,AAAA"]));
+const base64 = { empresa: "Salón Rosa SRL", rnc: "101234567", firma: "Empire Tax & Legal", preparadoPor: "Ana", logo: "data:image/png;base64,BBBB", imagenes };
+const contarImagenes = (n) => Array.isArray(n) ? n.reduce((s, x) => s + contarImagenes(x), 0) : n && typeof n === "object" ? (typeof n.image === "string" ? 1 : 0) + Object.values(n).reduce((s, x) => s + contarImagenes(x), 0) : 0;
+
+test("informe: auditoría cerrada, con sus partes, su logo, sus fotos y su línea de firmas", () => {
+  const { nombre, doc } = docAuditoria(detalle("cerrada"), base64);
+  const t = textos(doc.content).join("\n");
+  assert.equal(nombre, "informe-auditoria-101234567-n3.pdf");
+  for (const x of ["Informe de auditoría", "Revisión de compras", "Salón Rosa SRL", "RNC 101234567", "Comprobar comprobantes", "Compras de 2026", "Auditoría n.º 3", "01/01/2026 al 30/06/2026",
+    "Ana Pérez, Luis", "Hallazgo 1 · Facturas sin NCF", "Hay 12 sin comprobante", "Norma 06-18", "Gasto no deducible", "Pedir NCF", "Se comprometió", "Procedimientos realizados", "Auditor responsable", "Aprobado por", "listado.xlsx"]) {
+    assert.ok(t.includes(x), `falta «${x}»`);
+  }
+  assert.ok(!t.includes("BORRADOR"));
+  assert.match(t, /1 de 2 pasos|Se hicieron 1 de 2 pasos/);
+  assert.match(t, /2 en total, 2 abiertos o en seguimiento; 1 de riesgo alto, 0 medio y 1 bajo/);
+  assert.match(t, /Contar la bodega \?/, "el emoji no sale garabateado");
+  // logo + 6 fotos como máximo por hallazgo; las demás se nombran
+  assert.equal(contarImagenes(doc.content), 1 + MAX_FOTOS_POR_HALLAZGO);
+  assert.ok(t.includes("Otros archivos de prueba: foto6.png, foto7.png, foto8.png, acta.pdf"));
+  assert.ok(t.includes("Hallazgo 2 · Sin conteo"));
+  assert.equal(t.split("Criterio: ").length - 1, 1, "el hallazgo 2, sin campos escritos, no los inventa");
+});
+
+test("informe: sin cerrar sale marcado como borrador; sin logo ni hallazgos también sale", () => {
+  const d = detalle("en_informe");
+  const { nombre, doc } = docAuditoria(d, { ...base64, logo: null });
+  const t = textos(doc.content).join("\n");
+  assert.equal(nombre, "informe-auditoria-101234567-n3-borrador.pdf");
+  assert.ok(t.includes("BORRADOR") && t.includes("«En informe»"));
+  assert.equal(contarImagenes(doc.content), MAX_FOTOS_POR_HALLAZGO, "sin logo, solo las fotos");
+  assert.ok(textos(doc.footer(1, 2)).join("").includes("BORRADOR"));
+  const vacia = docAuditoria({ ...d, hallazgos: [], pasos: [], evidencias: [] }, { ...base64, logo: null });
+  const v = textos(vacia.doc.content).join("\n");
+  assert.ok(v.includes("No hubo hallazgos.") && v.includes("El plan no tiene pasos."));
+  assert.ok(!v.includes("Hallazgos y recomendaciones"));
+});
+
+// ───── imágenes dañadas: el generador de PDF no las soporta, así que no se dibujan ─────
+const trozo = (tipo, datos) => { const b = Buffer.alloc(12 + datos.length); b.writeUInt32BE(datos.length, 0); b.write(tipo, 4, "latin1"); datos.copy(b, 8); b.writeUInt32BE(0, 8 + datos.length); return b; };
+const pngDe = (idat) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  trozo("IHDR", Buffer.from([0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0])), trozo("IDAT", idat), trozo("IEND", Buffer.alloc(0))]);
+
+test("imagenLegible: acepta PNG y JPG completos; rechaza lo dañado o cortado", () => {
+  const bueno = pngDe(deflateSync(Buffer.from([0, 255, 0, 0])));
+  assert.equal(imagenLegible("image/png", bueno), true);
+  assert.equal(imagenLegible("image/png", pngDe(Buffer.from("esto no es zlib de verdad, es basura"))), false, "datos que no se descomprimen");
+  assert.equal(imagenLegible("image/png", bueno.subarray(0, bueno.length - 20)), false, "cortado");
+  assert.equal(imagenLegible("image/png", new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3])), false, "solo la firma");
+  const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x01, 0x00, 0x01, 0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01, 0xff, 0xd9]);
+  assert.equal(imagenLegible("image/jpeg", jpg), true);
+  assert.equal(imagenLegible("image/jpeg", Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00])), false, "sin marca de tamaño");
+  assert.equal(imagenLegible("image/jpeg", Buffer.from([0xff, 0xd8])), false);
+  assert.equal(imagenLegible("application/pdf", jpg), false);
 });

@@ -69,6 +69,7 @@ export default async function Auditoria({ params, searchParams }: {
             {a.equipo_nombres.length > 0 && ` · equipo: ${a.equipo_nombres.join(", ")}`}
           </p>
         </div>
+        {puede(permisos, "exportar") && <a className="boton" href={`/firma/${fid}/auditoria/${eid}/${aid}/pdf`} target="_blank" rel="noreferrer">Informe en PDF{cerrada ? "" : " (borrador)"}</a>}
       </div>
 
       <div className="cifras">
