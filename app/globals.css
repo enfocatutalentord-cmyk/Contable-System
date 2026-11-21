@@ -410,3 +410,8 @@ html.en-panel .app { display: block; min-height: 0; }
 .etiqueta-cita.cita-programada { background: var(--aviso-fondo); color: var(--aviso-texto); border-color: transparent; }
 .etiqueta-cita.cita-realizada { color: var(--ok); }
 .etiqueta-cita.cita-cancelada { color: var(--peligro); }
+
+/* Documentos y plantillas (P3d): los espacios {{así}} de cada plantilla; en verde los que el sistema llena solo, en amarillo los que se escriben a mano. */
+.chips-espacios { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip-espacio { display: inline-block; padding: 1px 8px; border-radius: 6px; border: 1px solid var(--borde); font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; color: var(--ok); overflow-wrap: anywhere; }
+.chip-espacio.manual { background: var(--aviso-fondo); color: var(--aviso-texto); border-color: transparent; }
