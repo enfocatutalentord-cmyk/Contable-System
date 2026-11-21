@@ -140,32 +140,39 @@ export const GRUPOS_INGRESO = {
   servicios: "Servicios contables (extras)",
   generales: "Ingresos generales (talleres y otros)",
   anticipos: "Anticipos de clientes",
+  cargo_app: "Cargo por la aplicación (cuenta exclusiva)", // P3b: la parte de lo cobrado que es el cargo; sale del grupo de su factura, el total no cambia
 } as const;
 export type GrupoIngreso = keyof typeof GRUPOS_INGRESO;
 
 // Lo cobrado por mes (el Excel suma solo lo «Pagado»): cada cobro aplicado a una factura entra en el grupo de esa factura —iguala, servicio de
-// la unidad «Firma contable» u otro ingreso—; los anticipos entran el día que se reciben y su aplicación posterior no vuelve a contar.
+// la unidad «Firma contable» u otro ingreso—; los anticipos entran el día que se reciben y su aplicación posterior no vuelve a contar. De lo cobrado
+// de las facturas con cargo por la aplicación (P3b), la parte del cargo se muestra aparte, en su propio grupo, y se quita del grupo de la factura.
 export async function ingresosDelAnio(tx: Tx, anio: number): Promise<Record<GrupoIngreso, bigint>[]> {
-  const meses = Array.from({ length: 12 }, () => ({ igualas: 0n, servicios: 0n, generales: 0n, anticipos: 0n }) as Record<GrupoIngreso, bigint>);
-  const filas = await tx<{ mes: number; grupo: GrupoIngreso; total: string }[]>`
+  const meses = Array.from({ length: 12 }, () => ({ igualas: 0n, servicios: 0n, generales: 0n, anticipos: 0n, cargo_app: 0n }) as Record<GrupoIngreso, bigint>);
+  const filas = await tx<{ mes: number; grupo: GrupoIngreso; total: string; cargo: string }[]>`
     SELECT extract(month FROM c.fecha)::int AS mes,
            CASE WHEN f.acuerdo_id IS NOT NULL THEN 'igualas'
                 WHEN EXISTS (SELECT 1 FROM lineas_factura l JOIN unidades_negocio u ON u.id = l.unidad_id
                               WHERE l.factura_id = f.id AND lower(u.nombre) LIKE 'firma contable%') THEN 'servicios'
                 ELSE 'generales' END AS grupo,
-           sum(a.monto)::text AS total
+           sum(a.monto)::text AS total,
+           coalesce(sum(round(a.monto * cargo_de_factura(f.id) / NULLIF(f.total, 0), 2)), 0)::text AS cargo
       FROM cobros c JOIN aplicaciones_cobro a ON a.cobro_id = c.id JOIN facturas f ON f.id = a.factura_id
      WHERE NOT c.anulado AND c.anticipo_id IS NULL AND c.fecha >= make_date(${anio}, 1, 1) AND c.fecha <= make_date(${anio}, 12, 31)
      GROUP BY 1, 2
     UNION ALL
-    SELECT extract(month FROM fecha)::int, 'anticipos', sum(monto)::text FROM anticipos
+    SELECT extract(month FROM fecha)::int, 'anticipos', sum(monto)::text, '0' FROM anticipos
      WHERE NOT anulado AND fecha >= make_date(${anio}, 1, 1) AND fecha <= make_date(${anio}, 12, 31) GROUP BY 1`;
-  for (const f of filas) meses[f.mes - 1][f.grupo] += aCentavos(f.total);
+  for (const f of filas) {
+    const cargo = aCentavos(f.cargo);
+    meses[f.mes - 1][f.grupo] += aCentavos(f.total) - cargo;
+    meses[f.mes - 1].cargo_app += cargo;
+  }
   return meses;
 }
 
 export const sumar = (m: Map<string, bigint>) => [...m.values()].reduce((a, b) => a + b, 0n);
-export const totalIngresos = (i: Record<GrupoIngreso, bigint>) => i.igualas + i.servicios + i.generales + i.anticipos;
+export const totalIngresos = (i: Record<GrupoIngreso, bigint>) => i.igualas + i.servicios + i.generales + i.anticipos + i.cargo_app;
 
 // Las listas para los formularios de «Registrar salidas»: las del presupuesto o, si todavía no se abrió, las del Excel.
 export async function categoriasPresupuesto(tx: Tx): Promise<{ oficina: string[]; personal: string[] }> {

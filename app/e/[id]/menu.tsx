@@ -65,7 +65,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   // Prioridad 1.2: lo que debe cada cliente, a un clic, junto a los cobros de Empire.
   const deCobro: [string, string][] = [...(empire && puedeVer(pestanasPropia === false ? [] : pestanasPropia, "/cxc") ? [[`/e/${empire.id}/cxc`, "Lo que deben los clientes"]] as [string, string][] : []),
     [`${firma}/empire/tareas`, "Tareas de cobro"], [`${firma}/empire/mensajes`, "Mensajes de cobro"],
-    ...(admin ? [[`${firma}/empire/presupuesto`, "Presupuesto"]] as [string, string][] : [])];
+    ...(admin ? [[`${firma}/empire/presupuesto`, "Presupuesto"], [`${firma}/empire/cargo-aplicacion`, "Cargo por la aplicación"]] as [string, string][] : [])];
   const deEmpresa = PESTANAS_ADMINISTRACION.filter(visible);
   const todas = PESTANAS_CLIENTE.flatMap((s) => s.enlaces.map(([r]) => r));
 

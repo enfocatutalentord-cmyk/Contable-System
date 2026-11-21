@@ -2,6 +2,7 @@ import { ErrorContable } from "./asientos.ts";
 import type { Tx } from "./db";
 import { avisosAcuerdo, fechaFacturacion, igualaDelMes, nombrePeriodo, siguienteFecha, type AcuerdoCalculo, type AvisoIguala } from "./igualas.ts";
 import { aCentavos } from "./montos.ts";
+import { cargoDelCliente, conCargo } from "./cargo-aplicacion.ts";
 import { guardarBorradorFactura, type LineaEntrada, type TipoFactura } from "./ventas.ts";
 
 // Bloque 2, entrega 2b: lo que toca la base. Las igualas y las recurrentes se preparan como borradores (decisión de Patricia del
@@ -49,13 +50,14 @@ export async function prepararIgualas(tx: Tx, d: { empresaId: string; usuarioId:
           SELECT impuesto_id, impuesto_adicional_id, unidad_id, activo FROM servicios WHERE id = ${a.servicio_id}`;
         if (!c?.activo) throw new ErrorContable("el cliente está inactivo");
         if (!s?.impuesto_id) throw new ErrorContable("el servicio de la iguala no tiene ITBIS (o exento)");
+        const cargo = await cargoDelCliente(sp, a.cliente_id); // P3b: el cliente que usa la aplicación paga su iguala con el cargo incluido
         const lineas: LineaEntrada[] = mes.lineas.map((l) => ({
-          servicioId: a.servicio_id, descripcion: l.descripcion, cantidad: 10000n, precio: l.precio,
+          servicioId: a.servicio_id, descripcion: l.descripcion, cantidad: 10000n, precio: cargo ? conCargo(l.precio, cargo) : l.precio,
           impuestoIds: [s.impuesto_id!, ...(s.impuesto_adicional_id ? [s.impuesto_adicional_id] : [])], unidadId: s.unidad_id,
         }));
         const facturaId = await guardarBorradorFactura(sp, {
           empresaId: d.empresaId, usuarioId: d.usuarioId, clienteId: a.cliente_id, tipo: tipoHabitual(c), fecha: mes.fecha,
-          vence: vence(mes.fecha, c.dias_credito), moneda: "DOP", tasa: 10000n, notas: mes.nota, lineas, tipoIngreso: c.tipo_ingreso,
+          vence: vence(mes.fecha, c.dias_credito), moneda: "DOP", tasa: 10000n, notas: mes.nota, lineas, tipoIngreso: c.tipo_ingreso, cargoAppPct: cargo,
         });
         await sp`UPDATE facturas SET acuerdo_id = ${a.id}, periodo = ${d.periodo} WHERE id = ${facturaId}`;
       });
@@ -69,12 +71,12 @@ export async function prepararIgualas(tx: Tx, d: { empresaId: string; usuarioId:
 
 export type FilaMes = {
   acuerdo_id: string; cliente: string; tipo: string; factura_id: string | null; estado: string | null; ncf: string | null; total: string | null;
-  notas: string | null;
+  notas: string | null; cargo_app_pct: string | null; // P3b: la iguala ya lleva el cargo por la aplicación
 };
 
 // Las igualas de un período: cada acuerdo activo con su borrador o factura, si ya la tiene.
 export const igualasDelPeriodo = (tx: Tx, periodo: string) => tx<FilaMes[]>`
-  SELECT a.id AS acuerdo_id, c.nombre AS cliente, a.tipo, f.id AS factura_id, f.estado, f.ncf, f.total::text, f.notas
+  SELECT a.id AS acuerdo_id, c.nombre AS cliente, a.tipo, f.id AS factura_id, f.estado, f.ncf, f.total::text, f.notas, f.cargo_app_pct::text
     FROM acuerdos_cliente a JOIN clientes c ON c.id = a.cliente_id
     LEFT JOIN facturas f ON f.acuerdo_id = a.id AND f.periodo = ${periodo} AND NOT f.anulada
    WHERE a.activo OR f.id IS NOT NULL

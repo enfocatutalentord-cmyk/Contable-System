@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { esUuid, exigirPermiso, exigirPermisoRegistro, misFirmas, pideAprobacion } from "@/lib/acceso";
 import { cerrarSiPendiente, solicitarAprobacion, tituloDe } from "@/lib/aprobaciones";
 import { bitacora, ErrorContable } from "@/lib/asientos";
+import { cargoDelCliente } from "@/lib/cargo-aplicacion";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { limpiarRnc } from "@/lib/empresas";
 import { cargarListaP01 } from "@/lib/lista-p01";
@@ -219,7 +220,7 @@ export async function guardarFactura(empresaId: string, facturaId: string | null
     ({ id, ncf } = await conEmpresa(empresaId, async (tx) => {
       const id = await guardarBorradorFactura(tx, {
         facturaId, empresaId, usuarioId: usuario.id, clienteId, tipo, fecha, vence, moneda, tasa, notas: texto(fd, "notas") || null, lineas,
-        tipoIngreso: texto(fd, "tipo_ingreso") || "01",
+        tipoIngreso: texto(fd, "tipo_ingreso") || "01", cargoAppPct: await cargoDelCliente(tx, clienteId), // el formulario ya mostró los precios con el cargo
       });
       return { id, ncf: emitirAhora ? (await emitir(tx, { empresaId, usuarioId: usuario.id, facturaId: id })).ncf : null };
     }));

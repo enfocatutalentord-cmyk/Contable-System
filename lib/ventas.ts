@@ -172,6 +172,8 @@ async function escribirLineas(tx: Tx, empresaId: string, facturaId: string, line
 export type DatosFactura = {
   empresaId: string; usuarioId: string; clienteId: string; tipo: TipoFactura; fecha: string; vence: string;
   moneda: "DOP" | "USD"; tasa: bigint; notas: string | null; lineas: LineaEntrada[]; tipoIngreso?: string;
+  // P3b: el porcentaje del cargo por la aplicación con el que se armó el precio (vacío = sin cargo). Solo cuenta en pesos y con líneas de servicio.
+  cargoAppPct?: string | null;
 };
 
 // Crea o reemplaza un borrador de factura. Devuelve su id.
@@ -190,6 +192,7 @@ export async function guardarBorradorFactura(tx: Tx, d: DatosFactura & { factura
     tipo_ncf: d.tipo, cliente_id: d.clienteId, fecha: d.fecha, vence: d.vence, moneda: d.moneda, tasa: tasaTexto(d.tasa),
     subtotal: deCentavos(t.subtotal), itbis: deCentavos(t.itbis), otros_impuestos: deCentavos(t.otros), total: deCentavos(t.total),
     notas: d.notas, tipo_ingreso: tipoIngreso,
+    cargo_app_pct: d.moneda === "DOP" && lineas.some((l) => l.servicioId) ? (d.cargoAppPct ?? null) : null,
   };
   let id = d.facturaId ?? null;
   if (id) {

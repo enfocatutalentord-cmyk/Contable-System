@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { esUuid, exigirPermiso } from "@/lib/acceso";
 import { conEmpresa, db, mensajeError } from "@/lib/db";
-import { aCentavos, hoyISO } from "@/lib/montos";
+import { cargoDelCliente, conCargo } from "@/lib/cargo-aplicacion";
+import { aCentavos, deCentavos, hoyISO } from "@/lib/montos";
 import { precioPara, preciosVigentes } from "@/lib/precios";
 import { ErrorTrabajo, leerPrecioTrabajo, leerRequisito, requisitosDeServicio } from "@/lib/trabajos";
 import { guardarBorradorFactura, type TipoFactura } from "@/lib/ventas";
@@ -122,12 +123,15 @@ export async function facturarTrabajo(empresaId: string, sid: string, _: Estado)
       const [itbis] = await tx<{ id: string }[]>`SELECT id FROM impuestos WHERE tipo = 'itbis' AND activo ORDER BY tasa DESC LIMIT 1`;
       const impuestoId = sv?.impuesto_id ?? itbis?.id;
       if (!impuestoId) throw new ErrorTrabajo("La empresa propia no tiene configurado el ITBIS.");
-      const precio = s.precio ?? (sv ? precioPara(sv.precio, (await preciosVigentes(tx, hoy)).get(sv.id), c.categoria).precio : "0.00");
-      if (aCentavos(precio) <= 0n) throw new ErrorTrabajo("Escribe el precio del trabajo: el servicio no tiene precio en la lista.");
+      const deLista = s.precio === null && !!sv; // el precio de la lista lleva el cargo por la aplicación si el cliente la usa; el acordado se respeta tal cual
+      const base = s.precio ?? (sv ? precioPara(sv.precio, (await preciosVigentes(tx, hoy)).get(sv.id), c.categoria).precio : "0.00");
+      if (aCentavos(base) <= 0n) throw new ErrorTrabajo("Escribe el precio del trabajo: el servicio no tiene precio en la lista.");
+      const cargo = deLista ? await cargoDelCliente(tx, c.id) : null;
+      const precio = cargo ? deCentavos(conCargo(aCentavos(base), cargo)) : base;
       const vence = new Date(Date.parse(`${hoy}T00:00:00Z`) + c.dias_credito * 86400000).toISOString().slice(0, 10);
       const facturaId = await guardarBorradorFactura(tx, {
         empresaId: propia, usuarioId: usuario.id, clienteId: c.id, tipo: c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02"), fecha: hoy, vence, moneda: "DOP", tasa: 10000n,
-        notas: `Trabajo: ${s.descripcion}`.slice(0, 500), tipoIngreso: c.tipo_ingreso,
+        notas: `Trabajo: ${s.descripcion}`.slice(0, 500), tipoIngreso: c.tipo_ingreso, cargoAppPct: cargo,
         lineas: [{ servicioId: sv?.id ?? null, cantidad: 10000n, precio: aCentavos(precio), unidadId: sv?.unidad_id ?? null,
           impuestoIds: [impuestoId, ...(sv?.impuesto_adicional_id ? [sv.impuesto_adicional_id] : [])], descripcion: sv?.nombre ?? s.servicio ?? s.descripcion.slice(0, 200) }],
       });

@@ -7,14 +7,21 @@ import { TIPOS_INGRESO } from "@/lib/fiscal";
 import { verMonto } from "@/lib/montos";
 import { SelectorUnidad, type UnidadOpcion } from "@/app/unidad";
 
-export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string; categoria: string | null; tipo_cliente?: string | null };
+export type ClienteFactura = { id: string; nombre: string; rnc: string | null; dias_credito: number; ncf_predeterminado: string | null; tipo_ingreso: string; categoria: string | null; tipo_cliente?: string | null;
+  cargo_pct?: string | null; /* P3b: el cliente usa la aplicación y sus precios llevan este cargo (en %) */ };
 export type ServicioFactura = {
   id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null;
   unidad_id: string | null; precios: Record<string, string>; // precio por categoría de cliente (lista de precios)
 };
 const NOMBRE_CATEGORIA: Record<string, string> = { pequena: "Pequeña", mediana: "Mediana", grande: "Grande", emprendedor: "Emprendedor" };
 // El precio de la categoría del cliente o, si no hay, el general.
-const precioDe = (s: ServicioFactura, categoria: string | null | undefined) => (categoria && s.precios[categoria]) || s.precio;
+// Si el cliente usa la aplicación, el precio ya lleva el cargo (P3b); la factura no lo separa.
+const precioDe = (s: ServicioFactura, categoria: string | null | undefined, cargoPct?: string | null) => {
+  const base = (categoria && s.precios[categoria]) || s.precio;
+  if (!cargoPct) return base;
+  const centavos = Math.round(Number(base.replace(/,/g, "")) * 100), p = Math.round(Number(cargoPct) * 100);
+  return (Math.round((centavos * (10000 + p)) / 10000) / 100).toFixed(2);
+};
 export type ImpuestoFactura = { id: string; nombre: string; tipo: string; tasa: string; vigente_desde: string; vigente_hasta: string | null };
 export type Linea = { servicioId: string; descripcion: string; cantidad: string; precio: string; impuesto: string; adicional: string; unidad?: string };
 export type InicialFactura = {
@@ -74,7 +81,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
       // Las líneas con producto toman el precio de la categoría del nuevo cliente.
       setLineas((ls) => ls.map((l) => {
         const s = servicios.find((x) => x.id === l.servicioId);
-        return s ? { ...l, precio: precioDe(s, c.categoria) } : l;
+        return s ? { ...l, precio: precioDe(s, c.categoria, moneda === "DOP" ? c.cargo_pct : null) } : l;
       }));
       setVence(sumarDias(fecha, c.dias_credito));
       setTipo(c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02"));
@@ -86,7 +93,7 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
   const elegirServicio = (i: number, id: string) => {
     const s = servicios.find((x) => x.id === id);
     setLineas((ls) => ls.map((l, j) => j !== i ? l : s
-      ? { ...l, servicioId: id, descripcion: s.nombre, precio: precioDe(s, cliente?.categoria), impuesto: s.impuesto_id ?? impuestoPorDefecto,
+      ? { ...l, servicioId: id, descripcion: s.nombre, precio: precioDe(s, cliente?.categoria, moneda === "DOP" ? cliente?.cargo_pct : null), impuesto: s.impuesto_id ?? impuestoPorDefecto,
           adicional: s.impuesto_adicional_id ?? "", unidad: s.unidad_id ?? l.unidad ?? "" }
       : { ...l, servicioId: "" }));
   };
@@ -147,6 +154,11 @@ export function FormularioFactura({ accion, clientes, servicios, impuestos, impu
           {cliente.categoria
             ? <>Precios de la lista para la categoría <strong>{NOMBRE_CATEGORIA[cliente.categoria]}</strong>; puedes cambiarlos en cada línea.</>
             : <>Este cliente no tiene categoría: se usa el precio general. La categoría se pone en Clientes (o en la ficha de su empresa).</>}
+        </p>
+      )}
+      {cliente?.cargo_pct && moneda === "DOP" && (
+        <p className="aviso">
+          Este cliente usa la aplicación: el precio de sus servicios ya incluye el cargo de {Number(cliente.cargo_pct)} %. La factura no lo muestra separado.
         </p>
       )}
       {sinRnc && <p className="aviso">Este cliente no tiene RNC ni cédula. Para {tipo} hace falta: usa B02 (consumo) o agrega su identificación.</p>}

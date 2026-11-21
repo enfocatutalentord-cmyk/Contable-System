@@ -19,7 +19,8 @@ export async function datosFormulario(tx: Tx, hoy: string) {
     impuestos,
     impuestoPorDefecto: porDefecto?.id ?? impuestos.find((i) => i.tipo === "exento")?.id ?? "",
     clientes: await tx<ClienteFactura[]>`
-      SELECT id, nombre, rnc, dias_credito, ncf_predeterminado, tipo_ingreso, categoria, tipo_cliente FROM clientes WHERE activo ORDER BY nombre`,
+      SELECT id, nombre, rnc, dias_credito, ncf_predeterminado, tipo_ingreso, categoria, tipo_cliente, cargo_aplicacion_de(id)::text AS cargo_pct
+        FROM clientes WHERE activo ORDER BY nombre`,
     // Cada servicio con sus precios por categoría vigentes hoy (lista de precios) y su unidad de negocio.
     servicios: await (async () => {
       const precios = await preciosVigentes(tx, hoy);

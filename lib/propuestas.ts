@@ -3,6 +3,7 @@ import { cantidadTexto, redondearDiv } from "./calculos.ts";
 import type { Tx } from "./db";
 import { aplicarTasa, leerPorcentaje } from "./fiscal.ts";
 import { aCentavos, deCentavos } from "./montos.ts";
+import { cargoDelCliente, conCargo } from "./cargo-aplicacion.ts";
 import { guardarBorradorFactura, type TipoFactura } from "./ventas.ts";
 
 // Bloque 2, entrega 2c: propuestas de servicios (Documento maestro, sección 4). El descuento se ve aparte: precio de lista,
@@ -127,15 +128,16 @@ export async function convertirEnFactura(tx: Tx, d: { empresaId: string; usuario
   if (!c?.activo) throw new ErrorContable("El cliente está inactivo");
   const vence = new Date(`${d.fecha}T00:00:00Z`);
   vence.setUTCDate(vence.getUTCDate() + c.dias_credito);
+  const cargo = await cargoDelCliente(tx, p.cliente_id); // P3b: el cliente que usa la aplicación paga el precio de la propuesta con el cargo incluido
   const lineas = (await lineasDe(tx, d.propuestaId)).map(aLinea).map((l) => ({
-    servicioId: l.servicioId, cantidad: l.cantidad, precio: l.precioLista - l.descuento, unidadId: l.unidadId,
+    servicioId: l.servicioId, cantidad: l.cantidad, precio: cargo && l.servicioId ? conCargo(l.precioLista - l.descuento, cargo) : l.precioLista - l.descuento, unidadId: l.unidadId,
     impuestoIds: [l.impuestoId, ...(l.adicionalId ? [l.adicionalId] : [])],
     descripcion: l.descuento > 0n ? `${l.descripcion} (precio de lista RD$${deCentavos(l.precioLista)}, descuento RD$${deCentavos(l.descuento)})` : l.descripcion,
   }));
   const facturaId = await guardarBorradorFactura(tx, {
     empresaId: d.empresaId, usuarioId: d.usuarioId, clienteId: p.cliente_id, tipo: c.ncf_predeterminado ?? (c.rnc ? "B01" : "B02"),
     fecha: d.fecha, vence: vence.toISOString().slice(0, 10), moneda: "DOP", tasa: 10000n, notas: `Según la propuesta n.º ${p.numero}`,
-    lineas, tipoIngreso: c.tipo_ingreso,
+    lineas, tipoIngreso: c.tipo_ingreso, cargoAppPct: cargo,
   });
   await tx`UPDATE propuestas SET factura_id = ${facturaId} WHERE id = ${d.propuestaId}`;
   return facturaId;

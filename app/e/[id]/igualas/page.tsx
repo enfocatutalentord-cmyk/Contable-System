@@ -113,7 +113,8 @@ export default async function Igualas({ params, searchParams }: {
                   <td>{f.cliente}</td>
                   <td>{TIPOS_ACUERDO[f.tipo]}</td>
                   <td>
-                    {calculo ? <>{verFecha(calculo.fecha)} · RD${verMonto(calculo.total, false)}{calculo.nota && <div className="sub" style={{ margin: 0 }}>{calculo.nota}</div>}</> : "Antes del inicio del contrato"}
+                    {calculo ? <>{verFecha(calculo.fecha)} · RD${verMonto(calculo.total, false)}{calculo.nota && <div className="sub" style={{ margin: 0 }}>{calculo.nota}</div>}
+                      {f.cargo_app_pct && <div className="sub" style={{ margin: 0 }}>La factura suma el cargo por la aplicación ({Number(f.cargo_app_pct)} %)</div>}</> : "Antes del inicio del contrato"}
                   </td>
                   <td>
                     {f.factura_id

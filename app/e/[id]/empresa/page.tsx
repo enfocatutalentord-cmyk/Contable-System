@@ -312,6 +312,14 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
                 <label>Hoja de acuerdo firmada el<input name="hoja_firmada" type="date" defaultValue={v(f.hoja_firmada)} /></label>
                 <label>Contrato firmado el<input name="contrato_firmado" type="date" defaultValue={v(f.contrato_firmado)} /></label>
               </div>
+              {!esPropia && (
+                <label>
+                  <input type="checkbox" name="usa_aplicacion" defaultChecked={!!f.usa_aplicacion} style={{ minHeight: 0 }} /> Usa la aplicación
+                  <small className="sub" style={{ display: "block" }}>
+                    Se le suma el cargo por la aplicación al precio de sus servicios y de su iguala (el porcentaje se pone en Contabilidad Empire › Cargo por la aplicación). La factura no lo muestra separado.
+                  </small>
+                </label>
+              )}
               <label>Quién custodia los accesos de DGII y TSS (nunca se guardan las claves)<input name="custodio_accesos" defaultValue={v(f.custodio_accesos)} /></label>
               {/* La casilla «Lleva contabilidad completa» se quitó (Prioridad 1.3): a los clientes no se les lleva contabilidad. */}
               {!esPropia && (

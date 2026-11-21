@@ -101,6 +101,7 @@ export function leerRelacion(fd: FormData) {
     ficha_firmada: fecha(txt(fd, "ficha_firmada"), "Ficha de registro firmada"), hoja_firmada: fecha(txt(fd, "hoja_firmada"), "Hoja de acuerdo firmada"),
     contrato_firmado: fecha(txt(fd, "contrato_firmado"), "Contrato firmado"), modalidad: opcion(txt(fd, "modalidad"), MODALIDADES, "Modalidad"),
     custodio_accesos: txt(fd, "custodio_accesos"), lleva_contabilidad: fd.get("lleva_contabilidad") === "on",
+    usa_aplicacion: fd.get("usa_aplicacion") === "on", // P3b: se le suma el cargo por la aplicación a sus servicios
   };
 }
 
@@ -165,7 +166,7 @@ export async function leerFicha(tx: Tx, empresaId: string, conEmpleados: boolean
            grupo_whatsapp, ventas_mes::text, facturas_mes, empleados_mes, tiene_tss, emite_ecf, sistema_usa, categoria, tipo_cliente,
            to_char(fecha_inicio_contrato, 'YYYY-MM-DD') AS fecha_inicio_contrato, dia_facturacion, estado_cliente,
            to_char(ficha_firmada, 'YYYY-MM-DD') AS ficha_firmada, to_char(hoja_firmada, 'YYYY-MM-DD') AS hoja_firmada,
-           to_char(contrato_firmado, 'YYYY-MM-DD') AS contrato_firmado, modalidad, custodio_accesos,
+           to_char(contrato_firmado, 'YYYY-MM-DD') AS contrato_firmado, modalidad, custodio_accesos, usa_aplicacion,
            to_char(vence_registro_mercantil, 'YYYY-MM-DD') AS vence_registro_mercantil, to_char(vence_nombre_comercial, 'YYYY-MM-DD') AS vence_nombre_comercial,
            to_char(fecha_asamblea, 'YYYY-MM-DD') AS fecha_asamblea
       FROM empresas WHERE id = ${empresaId}`;
