@@ -350,3 +350,22 @@ html.en-panel .app { display: block; min-height: 0; }
 .menu .subseccion > summary:focus-visible { outline: 2px solid var(--dorado); outline-offset: 2px; }
 .menu .subseccion-cuerpo { display: flex; flex-direction: column; gap: 2px; }
 .menu .subseccion-cuerpo > a { padding-left: 18px; }
+
+/* Chat del equipo (P2b): lista de conversaciones a la izquierda y la abierta a la derecha; en celular, una encima de la otra. */
+.chat { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .chat { grid-template-columns: minmax(0, 1fr); } }
+.chat-lista { display: flex; flex-direction: column; gap: 6px; }
+.chat-hilo { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--superficie); color: var(--texto); text-decoration: none; }
+.chat-hilo[aria-current="page"] { border-color: var(--acento); box-shadow: inset 3px 0 0 var(--acento); }
+.chat-hilo-titulo { display: flex; justify-content: space-between; gap: 8px; font-weight: 650; }
+.chat-hilo-ultimo { color: var(--suave); font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-contador, .menu .contador { background: var(--acento); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 0.75rem; font-weight: 700; line-height: 1.5; min-width: 1.5em; text-align: center; }
+.chat-nueva { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.chat-hilo-abierto { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.chat-mensajes { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; min-height: 160px; overflow-y: auto; padding-right: 4px; }
+.chat-burbuja { max-width: min(560px, 90%); padding: 8px 12px; border-radius: 12px; background: var(--fila-alterna); border: 1px solid var(--borde); align-self: flex-start; }
+.chat-burbuja.mia { align-self: flex-end; background: var(--aviso-fondo); }
+.chat-quien { font-size: 0.78em; color: var(--suave); margin-bottom: 2px; }
+.chat-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-escribir { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.chat-escribir textarea { flex: 1 1 260px; resize: vertical; min-height: 44px; }

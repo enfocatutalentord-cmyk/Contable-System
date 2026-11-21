@@ -29,8 +29,8 @@ export async function anotarGestion(empresaId: string, _: Estado, fd: FormData):
     const g = leerGestion(fd, hoyISO());
     await conEmpresa(empresaId, async (tx) => {
       const [{ id }] = await tx<{ id: string }[]>`
-        INSERT INTO gestiones (empresa_id, fecha, tipo, descripcion, responsable_id, entrega, estado, creado_por)
-        VALUES (${empresaId}, ${g.fecha}, ${g.tipo}, ${g.descripcion}, ${g.responsableId ?? usuario.id}, ${g.entrega}, ${g.estado}, ${usuario.id})
+        INSERT INTO gestiones (empresa_id, fecha, tipo, descripcion, responsable_id, entrega, estado, minutos, creado_por)
+        VALUES (${empresaId}, ${g.fecha}, ${g.tipo}, ${g.descripcion}, ${g.responsableId ?? usuario.id}, ${g.entrega}, ${g.estado}, ${g.minutos}, ${usuario.id})
         RETURNING id`;
       await adjuntar(tx, empresaId, "gestion", id, fd.get("archivo"), usuario.id);
     });

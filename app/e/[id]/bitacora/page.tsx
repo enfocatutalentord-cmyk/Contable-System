@@ -4,7 +4,7 @@ import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, soloCliente } from "@/lib/acceso";
 import { EnviarWhatsApp } from "@/app/whatsapp";
 import { plantillasDe } from "@/lib/mensajes-db";
-import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, moverMes, nombreMes, ORIGENES, TIPOS_GESTION } from "@/lib/bitacora";
+import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, moverMes, nombreMes, ORIGENES, TIPOS_GESTION, verTiempo } from "@/lib/bitacora";
 import { conEmpresa } from "@/lib/db";
 import { equipoDe } from "@/lib/firma";
 import { hoyISO, verFecha } from "@/lib/montos";
@@ -71,6 +71,7 @@ export default async function Bitacora({ params, searchParams }: {
               </select>
             </label>
             <label>Entrega<input type="date" name="entrega" /></label>
+            <label>Tiempo dedicado<span style={{ display: "flex", gap: 6, alignItems: "center" }}><input name="horas" inputMode="numeric" maxLength={2} placeholder="h" style={{ width: 56 }} aria-label="Horas" /> h <input name="minutos" inputMode="numeric" maxLength={3} placeholder="min" style={{ width: 64 }} aria-label="Minutos" /> min</span></label>
             <label>Estado
               <select name="estado" defaultValue="hecha">
                 {Object.entries(ESTADOS_GESTION).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -96,7 +97,7 @@ export default async function Bitacora({ params, searchParams }: {
       <p className="sub">{gestiones.length} {gestiones.length === 1 ? "gestión" : "gestiones"} en el mes{abiertas ? ` · ${abiertas} sin terminar` : ""}.</p>
       <div className="tabla-envoltura">
         <table>
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Qué se hizo</th><th>Responsable</th><th>Entrega</th><th>Estado</th>{registra && <th />}</tr></thead>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Qué se hizo</th><th>Responsable</th><th>Entrega</th><th>Tiempo</th><th>Estado</th>{registra && <th />}</tr></thead>
           <tbody>
             {gestiones.map((g) => (
               <tr key={g.id}>
@@ -105,6 +106,7 @@ export default async function Bitacora({ params, searchParams }: {
                 <td>{g.descripcion}{g.documento_id && <> · <a href={`/e/${id}/documentos/${g.documento_id}`} target="_blank" rel="noreferrer">soporte</a></>}</td>
                 <td>{g.responsable ?? "—"}</td>
                 <td style={g.entrega && g.entrega < hoy && g.estado !== "hecha" ? { color: "var(--peligro)" } : undefined}>{g.entrega ? verFecha(g.entrega) : "—"}</td>
+                <td style={{ whiteSpace: "nowrap" }}>{verTiempo(g.minutos)}</td>
                 <td>{ESTADOS_GESTION[g.estado]}</td>
                 {registra && (
                   <td className="num" style={{ whiteSpace: "nowrap" }}>
@@ -115,7 +117,7 @@ export default async function Bitacora({ params, searchParams }: {
                 )}
               </tr>
             ))}
-            {gestiones.length === 0 && <tr><td colSpan={7}>No hay gestiones en este mes con esos filtros.</td></tr>}
+            {gestiones.length === 0 && <tr><td colSpan={8}>No hay gestiones en este mes con esos filtros.</td></tr>}
           </tbody>
         </table>
       </div>

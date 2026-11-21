@@ -60,6 +60,7 @@ export default async function TrabajoPantalla({ params }: { params: Promise<{ id
         <div>
           <h1>{t.servicio ?? (t.tipo === "requerimiento" ? "Requerimiento" : "Trabajo")}</h1>
           <p className="sub">{empresa.nombre} · {ESTADOS_SOLICITUD[t.estado]} · prioridad {PRIORIDADES[t.prioridad].toLowerCase()} · {ORIGENES_SOLICITUD[t.origen]}, {fechaHora(t.creado)}{t.responsable && ` · ${t.responsable}`}</p>
+          {deLaFirma && <p className="sub" style={{ marginTop: 0 }}><Link href={`/firma/${empresa.firma_id}/chat?hilo=${encodeURIComponent(`t:${id}:${t.id}`)}`}>Conversar con el equipo sobre este trabajo</Link></p>}
         </div>
       </div>
       <section className="tarjeta" style={{ marginBottom: 16 }}>

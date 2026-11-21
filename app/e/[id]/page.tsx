@@ -34,7 +34,7 @@ export default async function InicioEmpresa({ params, searchParams }: {
     {sin_permiso && <p className="aviso">Tu perfil no permite esa acción. Pídele a un administrador de la firma que te dé el permiso.</p>}
   </>;
   // Un cliente sin contabilidad ve el trabajo del mes, no cifras contables (rediseño R3, n.º 15).
-  if (!deLaDuena && !ve("/asientos")) return <>{avisosArriba}<ResumenTrabajo id={id} nombre={empresa.nombre} hoy={hoy} ve={ve} /></>;
+  if (!deLaDuena && !ve("/asientos")) return <>{avisosArriba}<ResumenTrabajo id={id} firmaId={empresa.firma_id} nombre={empresa.nombre} hoy={hoy} ve={ve} /></>;
   const { cuentas, delMes, recientes, cxc, cxp, borradores, avisos } = await conEmpresa(id, async (tx) => {
     const cuentas = await saldosPorCuenta(tx, inicioAnio, hoy);
     const [{ n }] = await tx<{ n: number }[]>`

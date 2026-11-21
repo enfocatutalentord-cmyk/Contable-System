@@ -10,7 +10,7 @@ const fd = (c) => { const f = new FormData(); for (const [k, v] of Object.entrie
 
 test("gestión del formulario: tipo, descripción, fechas y estado", () => {
   assert.deepEqual(leerGestion(fd({ tipo: "tramite", descripcion: "  Certificación   DGII ", estado: "pendiente", entrega: "2026-11-10" }), "2026-11-05"),
-    { fecha: "2026-11-05", tipo: "tramite", descripcion: "Certificación DGII", responsableId: null, entrega: "2026-11-10", estado: "pendiente" });
+    { fecha: "2026-11-05", tipo: "tramite", descripcion: "Certificación DGII", responsableId: null, entrega: "2026-11-10", estado: "pendiente", minutos: null });
   assert.throws(() => leerGestion(fd({ tipo: "x", descripcion: "a" }), "2026-11-05"), /tipo de gestión/);
   assert.throws(() => leerGestion(fd({ tipo: "llamada", descripcion: "" }), "2026-11-05"), /Escribe qué se hizo/);
   assert.throws(() => leerGestion(fd({ tipo: "llamada", descripcion: "a", entrega: "10/11/2026" }), "2026-11-05"), ErrorBitacora);

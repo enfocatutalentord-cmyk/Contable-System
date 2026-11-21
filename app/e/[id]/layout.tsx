@@ -1,4 +1,5 @@
 import { accesoEmpresa, misFirmas, pestanasDePropia, soloCliente } from "@/lib/acceso";
+import { sinLeer } from "@/lib/chat";
 import { clientesDeFirma } from "@/lib/firma";
 import { puede } from "@/lib/permisos";
 import { terminarSupervision } from "@/app/plataforma/acciones";
@@ -13,9 +14,10 @@ export default async function LayoutEmpresa({ children, params }: { children: Re
   ]);
   const propiaId = firmas.find((f) => f.id === empresa.firma_id)?.empresa_propia_id ?? null;
   const pestanasPropia = supervision || cliente ? false : propiaId === id ? pestanas : await pestanasDePropia(propiaId, usuario.id, adminFirma);
+  const chatSinLeer = supervision || cliente ? 0 : await sinLeer(empresa.firma_id, usuario.id, clientes.map((c) => c.id));
   return (
     <Marco firma={{ id: empresa.firma_id, nombre: empresa.firma }} clientes={clientes} actual={id} usuario={usuario} perfil={perfil}
-      admin={adminFirma} auditoria={puede(permisos, "auditoria")} pestanas={pestanas} pestanasPropia={pestanasPropia} soloCliente={cliente}
+      admin={adminFirma} auditoria={puede(permisos, "auditoria")} pestanas={pestanas} pestanasPropia={pestanasPropia} soloCliente={cliente} chatSinLeer={chatSinLeer}
       franja={supervision && (
         <div className="franja-supervision" role="status">
           <span>Supervisión de la plataforma · <b>solo lectura</b> · termina a las {supervision.expira.toLocaleTimeString("es-DO", { timeZone: "America/Santo_Domingo", timeStyle: "short" })} · motivo: {supervision.motivo}</span>

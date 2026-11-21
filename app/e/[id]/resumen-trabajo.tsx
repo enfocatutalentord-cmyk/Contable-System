@@ -15,7 +15,7 @@ const mesAnterior = (periodo: string) => {
 
 // Resumen del cliente (rediseño R3, n.º 15 de la Lista de rediseños): el trabajo del mes, no cifras contables. Facturas subidas y por
 // revisar, impuestos del mes y su estado, trámites abiertos, pendientes de la bitácora y si la iguala con Empire está al día.
-export async function ResumenTrabajo({ id, nombre, hoy, ve }: { id: string; nombre: string; hoy: string; ve: (r: string) => boolean }) {
+export async function ResumenTrabajo({ id, firmaId, nombre, hoy, ve }: { id: string; firmaId: string; nombre: string; hoy: string; ve: (r: string) => boolean }) {
   const mes = hoy.slice(0, 7);
   const periodoImpuestos = mesAnterior(periodoDe(hoy)); // se declara el mes anterior
   const base = `/e/${id}`;
@@ -41,7 +41,7 @@ export async function ResumenTrabajo({ id, nombre, hoy, ve }: { id: string; nomb
   return (
     <>
       <h1>Resumen del cliente</h1>
-      <p className="sub">{nombre} · el trabajo de {nombreMes(mes)} al {verFecha(hoy)}</p>
+      <p className="sub">{nombre} · el trabajo de {nombreMes(mes)} al {verFecha(hoy)} · <Link href={`/firma/${firmaId}/chat?hilo=${encodeURIComponent(`c:${id}`)}`}>Conversar con el equipo sobre este cliente</Link></p>
       <div className="cifras">
         {tarjeta(ve("/facturas-subidas") ? `${base}/facturas-subidas` : null, `Facturas subidas en ${nombreMes(mes)}`, d.facturas.gastos + d.facturas.ingresos,
           `${d.facturas.revision} por revisar · ${d.facturas.gastos} de gastos · ${d.facturas.ingresos} de ventas`, d.facturas.revision > 0)}

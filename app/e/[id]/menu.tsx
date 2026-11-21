@@ -22,9 +22,9 @@ export const CLAVE_MENU = "menu-abiertos";
 // solo ve su aplicación. propias: las empresas de la dueña que la persona puede abrir (Empire es la que factura a los clientes).
 // pestanasPropia: lo que la persona ve en Empire (false = sin acceso), para los cobros de Empire.
 export type Propia = { id: string; nombre: string; empire: boolean };
-export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente, propias = [], pestanasPropia = false }: {
+export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloCliente, propias = [], pestanasPropia = false, chatSinLeer = 0 }: {
   firmaId: string; empresaId: string | null; admin: boolean; auditoria: boolean; pestanas: string[] | null; soloCliente: boolean;
-  propias?: Propia[]; pestanasPropia?: string[] | null | false;
+  propias?: Propia[]; pestanasPropia?: string[] | null | false; chatSinLeer?: number; // mensajes del chat del equipo sin leer (P2b)
 }) {
   const ruta = usePathname();
   const firma = `/firma/${firmaId}`;
@@ -79,7 +79,9 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const activoEmpresa = (r: string) => activoEn(base, r);
   const hrefEmpresa = (r: string) => (base ? base + r : `${firma}/elegir?a=${encodeURIComponent(r || "/")}`);
   const enlaceFirma = ([href, nombre]: [string, string]) => (
-    <Link key={href} href={href} aria-current={activoFirma(href) ? "page" : undefined}>{nombre}</Link>
+    <Link key={href} href={href} aria-current={activoFirma(href) ? "page" : undefined}>
+      {nombre}{href === `${firma}/chat` && chatSinLeer > 0 && <> <span className="contador" aria-label={`${chatSinLeer} mensajes sin leer`}>{chatSinLeer}</span></>}
+    </Link>
   );
   // Firma por trabajos (rediseño R4, n.º 2): se elige primero el trabajo y después el cliente. Lo de todos los clientes abre la
   // pantalla de la firma; lo de un cliente abre el cliente elegido arriba o pide elegirlo. Ya no hay un bloque del cliente con todo.
@@ -92,7 +94,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
   const nombreDe = new Map(PESTANAS_CLIENTE.flatMap((s) => s.enlaces));
   type Trabajo = { firma: string; nombre: string } | { cliente: string; nombre?: string };
   const trabajos: [string, Trabajo[]][] = [
-    ["Trabajo del mes", [{ firma, nombre: "Inicio de la firma" }, { firma: `${firma}/aprobaciones`, nombre: "Por aprobar" }, { cliente: "", nombre: "Resumen del cliente" }, { firma: `${firma}/alertas`, nombre: "Alertas" },
+    ["Trabajo del mes", [{ firma, nombre: "Inicio de la firma" }, { firma: `${firma}/aprobaciones`, nombre: "Por aprobar" }, { firma: `${firma}/chat`, nombre: "Chat del equipo" }, { cliente: "", nombre: "Resumen del cliente" }, { firma: `${firma}/alertas`, nombre: "Alertas" },
       { firma: `${firma}/tareas`, nombre: "Tareas del mes" }, { firma: `${firma}/impuestos`, nombre: "Impuestos del mes" },
       { firma: `${firma}/reportes`, nombre: "Reportes del mes" }, { firma: `${firma}/bitacora`, nombre: "Bitácora de la firma" },
       { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],
@@ -100,7 +102,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ]],
     ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
       { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
-    ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }]],
+    ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }, ...(admin ? [{ firma: `${firma}/rentabilidad`, nombre: "Rentabilidad por cliente" }] : [])]],
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
     ["Vendario", [{ firma: `${firma}/vendario`, nombre: "Solicitudes y clientes" }, { firma: `${firma}/vendario/salud`, nombre: "Salud de la integración" }]],
@@ -114,7 +116,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     if (!items.length) return null;
     return (
       <details key={grupo} className="subseccion" open={!!abiertas[`g:${grupo}`]} onToggle={(e) => alternar(`g:${grupo}`, (e.currentTarget as HTMLDetailsElement).open)}>
-        <summary>{grupo}</summary>
+        <summary>{grupo}{grupo === "Trabajo del mes" && chatSinLeer > 0 && <span className="contador" aria-label="mensajes sin leer">{chatSinLeer}</span>}</summary>
         <div className="subseccion-cuerpo">{items.map((t) => "firma" in t ? enlaceFirma([t.firma, t.nombre]) : (
           <Link key={t.cliente} href={clienteElegido ? clienteElegido + t.cliente : `${firma}/elegir?a=${encodeURIComponent(t.cliente || "/")}`}
             aria-current={clienteElegido && activoEmpresa(t.cliente) ? "page" : undefined}>{t.nombre ?? nombreDe.get(t.cliente) ?? t.cliente}</Link>
@@ -157,7 +159,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
 
   return (
     <>
-      {seccion("firma", "Firma", <>{enlacesTrabajos}</>)}
+      {seccion("firma", chatSinLeer > 0 ? `Firma (${chatSinLeer})` : "Firma", <>{enlacesTrabajos}</>)}
       {seccion("empire", "Contabilidad", <>
         {propias.map((p) => (
           <div key={p.id} className="subgrupo empresa-propia">

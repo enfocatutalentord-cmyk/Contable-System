@@ -28,6 +28,7 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 export type GestionEntrada = {
   fecha: string; tipo: string; descripcion: string; responsableId: string | null; entrega: string | null; estado: string;
+  minutos: number | null; // tiempo dedicado (P2b): alimenta la rentabilidad por cliente
 };
 
 export function leerGestion(fd: FormData, hoy: string): GestionEntrada {
@@ -37,14 +38,27 @@ export function leerGestion(fd: FormData, hoy: string): GestionEntrada {
   const responsable = texto(fd, "responsable");
   const entrega = texto(fd, "entrega");
   const estado = texto(fd, "estado") || "hecha";
+  const minutos = leerMinutos(texto(fd, "horas"), texto(fd, "minutos"));
   if (!FECHA.test(fecha) || (entrega && !FECHA.test(entrega))) throw new ErrorBitacora("Revisa las fechas.");
   if (!(tipo in TIPOS_GESTION)) throw new ErrorBitacora("Elige el tipo de gestión.");
   if (!descripcion) throw new ErrorBitacora("Escribe qué se hizo.");
   if (descripcion.length > 1000) throw new ErrorBitacora("La descripción va hasta 1,000 caracteres.");
   if (responsable && !UUID.test(responsable)) throw new ErrorBitacora("Elige el responsable de la lista.");
   if (!(estado in ESTADOS_GESTION)) throw new ErrorBitacora("Elige el estado.");
-  return { fecha, tipo, descripcion, responsableId: responsable || null, entrega: entrega || null, estado };
+  return { fecha, tipo, descripcion, responsableId: responsable || null, entrega: entrega || null, estado, minutos };
 }
+
+// Tiempo dedicado: horas y minutos escritos por separado (vacío = no se anotó). Hasta 24 horas por gestión.
+export function leerMinutos(horas: string, minutos: string): number | null {
+  if (!horas && !minutos) return null;
+  if (!/^\d{0,2}$/.test(horas) || !/^\d{0,3}$/.test(minutos)) throw new ErrorBitacora("El tiempo se escribe en horas y minutos, con números enteros.");
+  const total = Number(horas || 0) * 60 + Number(minutos || 0);
+  if (total === 0) return null;
+  if (total > 1440) throw new ErrorBitacora("El tiempo de una gestión va hasta 24 horas.");
+  return total;
+}
+
+export const verTiempo = (m: number | null) => (m === null ? "—" : `${Math.floor(m / 60) ? `${Math.floor(m / 60)} h ` : ""}${m % 60 ? `${m % 60} min` : ""}`.trim());
 
 export type FiltrosBitacora = { mes: string; tipo: string; estado: string; responsable: string };
 
@@ -58,7 +72,7 @@ export function leerFiltrosBitacora(sp: Record<string, string | undefined>, hoy:
 
 export type Gestion = {
   id: string; fecha: string; tipo: string; descripcion: string; responsable_id: string | null; responsable: string | null;
-  entrega: string | null; estado: string; origen: string; documento_id: string | null;
+  entrega: string | null; estado: string; origen: string; documento_id: string | null; minutos: number | null;
 };
 
 // Las gestiones del mes con los filtros. El nombre del responsable sale de la firma (lo pasa quien llama).
@@ -66,7 +80,7 @@ export async function listarGestiones(tx: Tx, f: FiltrosBitacora, nombres: Map<s
   const desde = `${f.mes}-01`;
   const filas = await tx<Omit<Gestion, "responsable">[]>`
     SELECT g.id, to_char(g.fecha, 'YYYY-MM-DD') AS fecha, g.tipo, g.descripcion, g.responsable_id, to_char(g.entrega, 'YYYY-MM-DD') AS entrega,
-           g.estado, g.origen,
+           g.estado, g.origen, g.minutos,
            (SELECT d.id FROM documentos d WHERE d.entidad = 'gestion' AND d.entidad_id = g.id AND NOT d.eliminado ORDER BY d.subido_en DESC LIMIT 1) AS documento_id
       FROM gestiones g
      WHERE g.fecha >= ${desde}::date AND g.fecha < (${desde}::date + interval '1 month')
