@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { Fragment } from "react";
+import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
+import { FORMAS_COBRO_CARGO, listarCargos } from "@/lib/cargos";
+import { listarCuentas } from "@/lib/cuentas";
 import { deudaPorCliente, TRAMOS } from "@/lib/cxc";
 import { conEmpresa } from "@/lib/db";
 import { aCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { fechaValida } from "@/lib/reportes";
 import { aPesos, tasaDeTexto } from "@/lib/ventas";
+import { cobrarCargoAccion } from "../pago-impuesto-acciones";
 
 // Cuentas por cobrar (Prioridad 1.2 del prompt de Patricia, 20-nov-2026): qué debe cada cliente, con sus facturas pendientes, los abonos,
 // el saldo y los días de atraso, como el «Aged Receivables» de Xero. Cada cliente abre su estado de cuenta y cada factura su registro.
@@ -19,7 +23,12 @@ export default async function CuentasPorCobrar({ params, searchParams }: {
   const { empresa, permisos } = await accesoEmpresa(id);
   const corte = fechaValida(sp.corte) ? sp.corte : hoyISO();
   const detalle = sp.detalle === "1";
-  const deudas = await conEmpresa(id, (tx) => deudaPorCliente(tx, corte));
+  const { deudas, cargos, bancos } = await conEmpresa(id, async (tx) => ({
+    deudas: await deudaPorCliente(tx, corte), cargos: await listarCargos(tx),
+    bancos: (await listarCuentas(tx)).filter((c) => c.tipo === "activo" && c.de_detalle && c.activa && c.codigo.startsWith("11")),
+  }));
+  const hoy = hoyISO();
+  const porCobrar = cargos.filter((c) => c.estado === "pendiente");
   const suma = (f: (d: (typeof deudas)[number]) => bigint) => deudas.reduce((s, d) => s + f(d), 0n);
   const tramos = TRAMOS.map((_, i) => suma((d) => d.tramos[i]));
   const atraso = (dias: number) => (dias > 0 ? <span style={{ color: dias > 60 ? "var(--peligro)" : undefined }}>{dias} días</span> : <span className="sub">Al día</span>);
@@ -100,6 +109,50 @@ export default async function CuentasPorCobrar({ params, searchParams }: {
           )}
         </table>
       </div>
+
+      {cargos.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 24 }}>Impuestos pagados por cuenta de clientes</h2>
+          <p className="sub">
+            Impuestos que Empire adelantó por un cliente. No llevan comprobante fiscal: se cobran con un recibo propio. Por cobrar: RD${verMonto(porCobrar.reduce((s, c) => s + aCentavos(c.monto), 0n))}.
+          </p>
+          <div className="tabla-envoltura">
+            <table>
+              <thead><tr><th>N.º</th><th>Cliente</th><th>Concepto</th><th>Fecha</th><th className="num">Monto</th><th>Estado</th><th /></tr></thead>
+              <tbody>
+                {cargos.map((c) => (
+                  <Fragment key={c.id}>
+                    <tr style={c.estado === "cobrado" ? { opacity: 0.7 } : undefined}>
+                      <td>{c.numero}</td><td>{c.cliente}</td><td>{c.concepto}</td><td>{verFecha(c.fecha)}</td><td className="num">{verMonto(c.monto)}</td>
+                      <td>{c.estado === "cobrado" ? <>Cobrado el {verFecha(c.cobrado_en)}{c.cobro_forma ? ` · ${FORMAS_COBRO_CARGO[c.cobro_forma] ?? c.cobro_forma}` : ""}</> : "Por cobrar"}</td>
+                      <td className="num">{c.estado === "cobrado" && puede(permisos, "exportar") && <a href={`/e/${id}/exportar/recibo-cargo?id=${c.id}&formato=pdf`}>Recibo PDF</a>}</td>
+                    </tr>
+                    {c.estado === "pendiente" && puede(permisos, "contabilizar") && (
+                      <tr>
+                        <td colSpan={7}>
+                          <details>
+                            <summary>Cobrar el cargo {c.numero}</summary>
+                            <Formulario accion={cobrarCargoAccion.bind(null, id, c.id)} boton="Registrar cobro" className="fila">
+                              <label>Fecha del cobro<input type="date" name="fecha" defaultValue={hoy} max={hoy} required /></label>
+                              <label>Forma
+                                <select name="forma" defaultValue="transferencia">{Object.entries(FORMAS_COBRO_CARGO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                              </label>
+                              <label style={{ flex: "1 1 220px" }}>Entró a
+                                <select name="cuenta_cobro" defaultValue="" required><option value="" disabled>Elige banco o caja</option>{bancos.map((b) => <option key={b.id} value={b.id}>{b.codigo} · {b.nombre}</option>)}</select>
+                              </label>
+                              <label style={{ flex: "1 1 160px" }}>Referencia<input name="referencia" maxLength={100} /></label>
+                            </Formulario>
+                          </details>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </>
   );
 }

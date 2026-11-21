@@ -105,14 +105,18 @@ export function leerNotificacion(fd: FormData): NotificacionEntrada {
 export type Notificacion = {
   id: string; tipo: string; periodo: string; concepto: string | null; monto: string; fecha_limite: string; estado: string;
   enviada_en: Date | null; pagada_en: Date | null; documento_id: string | null; documento: string | null;
+  pago_quien: string | null; pago_fecha: string | null; pago_referencia: string | null; cargo_id: string | null; comprobante_id: string | null; comprobante: string | null;
 };
 
 export const listarNotificaciones = (tx: Tx) => tx<Notificacion[]>`
   SELECT n.id, n.tipo, n.periodo, n.concepto, n.monto::text, to_char(n.fecha_limite, 'YYYY-MM-DD') AS fecha_limite, n.estado,
-         n.enviada_en, n.pagada_en, d.id AS documento_id, d.nombre AS documento
+         n.enviada_en, n.pagada_en, d.id AS documento_id, d.nombre AS documento, n.pago_quien, to_char(n.pago_fecha, 'YYYY-MM-DD') AS pago_fecha, n.pago_referencia, n.cargo_id,
+         p.id AS comprobante_id, p.nombre AS comprobante
     FROM notificaciones_pago n
     LEFT JOIN LATERAL (SELECT id, nombre FROM documentos WHERE entidad = 'notificacion' AND entidad_id = n.id AND NOT eliminado
                         ORDER BY subido_en DESC LIMIT 1) d ON true
+    LEFT JOIN LATERAL (SELECT id, nombre FROM documentos WHERE entidad = 'pago_impuesto' AND entidad_id = n.id AND NOT eliminado
+                        ORDER BY subido_en DESC LIMIT 1) p ON true
    ORDER BY n.estado = 'pagada', n.fecha_limite, n.creado`;
 
 // Por vencer: sin pago y con la fecha límite a 3 días o menos (o ya pasada).

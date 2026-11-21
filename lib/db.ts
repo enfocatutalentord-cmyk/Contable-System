@@ -36,6 +36,17 @@ export async function conEmpresa<T>(empresaId: string, fn: (tx: Tx) => Promise<T
   }) as Promise<T>;
 }
 
+// Una sola transacción que toca dos empresas a la vez (por ejemplo, el pago de un impuesto del cliente que Empire adelanta y su cargo en la empresa
+// propia). Corre con el rol de la aplicación y `en(empresaId)` cambia la empresa activa: cada consulta ve solo los datos de la empresa en turno.
+export async function conEmpresas<T>(fn: (tx: Tx, en: (empresaId: string) => Promise<void>) => Promise<T>): Promise<T> {
+  const usuarioId = await usuarioEnCurso();
+  return db().begin(async (tx) => {
+    await tx`SELECT set_config('app.usuario_id', ${usuarioId}, true)`;
+    await tx`SET LOCAL ROLE contable_app`;
+    return fn(tx, async (empresaId) => { await tx`SELECT set_config('app.empresa_id', ${empresaId}, true)`; });
+  }) as Promise<T>;
+}
+
 // Transacción con el usuario de conexión (para firma, equipo y accesos), registrando quién hace el cambio.
 export async function conUsuario<T>(usuarioId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
   return db().begin(async (tx) => {

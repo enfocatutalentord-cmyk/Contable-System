@@ -1,11 +1,14 @@
+import { Fragment } from "react";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa } from "@/lib/acceso";
 import { EnviarWhatsApp } from "@/app/whatsapp";
 import { ESTADOS_NOTIFICACION, listarNotificaciones, porVencer, TIPOS_NOTIFICACION } from "@/lib/bitacora";
-import { conEmpresa } from "@/lib/db";
+import { listarCuentas } from "@/lib/cuentas";
+import { conEmpresa, db } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { cambiarEstadoNotificacion, registrarNotificacion } from "../bitacora-acciones";
+import { registrarPagoImpuesto } from "../pago-impuesto-acciones";
 
 const periodoVisible = (p: string) => `${p.slice(4)}/${p.slice(0, 4)}`;
 
@@ -16,6 +19,9 @@ export default async function Notificaciones({ params }: { params: Promise<{ id:
   const { empresa, permisos } = await accesoEmpresa(id);
   const hoy = hoyISO();
   const lista = await conEmpresa(id, listarNotificaciones);
+  // Si Empire adelanta el pago, el dinero sale de un banco o caja de la empresa propia (P2e).
+  const [{ propia }] = await db()<{ propia: string | null }[]>`SELECT empresa_propia_id AS propia FROM firmas WHERE id = ${empresa.firma_id}`;
+  const bancos = propia && lista.some((n) => n.estado !== "pagada") ? (await conEmpresa(propia, listarCuentas)).filter((c) => c.tipo === "activo" && c.de_detalle && c.activa && c.codigo.startsWith("11")) : [];
   const registra = puede(permisos, "registrar");
   const mesAnterior = (() => { const d = new Date(`${hoy}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); })();
   const alertas = lista.filter((n) => porVencer(n, hoy));
@@ -56,7 +62,8 @@ export default async function Notificaciones({ params }: { params: Promise<{ id:
             {lista.map((n) => {
               const alerta = porVencer(n, hoy);
               return (
-                <tr key={n.id} style={n.estado === "pagada" ? { opacity: 0.65 } : undefined}>
+                <Fragment key={n.id}>
+                <tr style={n.estado === "pagada" ? { opacity: 0.65 } : undefined}>
                   <td>{TIPOS_NOTIFICACION[n.tipo]}</td>
                   <td>{periodoVisible(n.periodo)}</td>
                   <td>
@@ -70,6 +77,12 @@ export default async function Notificaciones({ params }: { params: Promise<{ id:
                   <td>
                     {ESTADOS_NOTIFICACION[n.estado]}
                     {n.enviada_en && <div className="sub" style={{ margin: 0 }}>enviada {n.enviada_en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</div>}
+                    {n.estado === "pagada" && n.pago_quien && (
+                      <div className="sub" style={{ margin: 0 }}>
+                        pagó {n.pago_quien === "empire" ? "Empire (por cobrar al cliente)" : "el cliente"} el {n.pago_fecha ? verFecha(n.pago_fecha) : ""}{n.pago_referencia ? ` · ${n.pago_referencia}` : ""}
+                        {n.comprobante_id && <> · <a href={`/e/${id}/documentos/${n.comprobante_id}`} target="_blank" rel="noreferrer">comprobante</a></>}
+                      </div>
+                    )}
                   </td>
                   {registra && (
                     <td className="num" style={{ whiteSpace: "nowrap" }}>
@@ -77,11 +90,32 @@ export default async function Notificaciones({ params }: { params: Promise<{ id:
                         <EnviarWhatsApp empresaId={id} clave={n.tipo === "tss" ? "notificacion_tss" : "constancia"} docRef={{ tipo: "notificacion", id: n.id }} etiqueta="WhatsApp" />
                       )}
                       {n.estado === "pendiente" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "enviada")} boton="Marcar enviada" className="fila"><span /></Formulario>}
-                      {n.estado !== "pagada" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "pagada")} boton="Pagada" className="fila"><span /></Formulario>}
                       {n.estado === "enviada" && <Formulario accion={cambiarEstadoNotificacion.bind(null, id, n.id, "pendiente")} boton="No se envió" className="fila"><span /></Formulario>}
                     </td>
                   )}
                 </tr>
+                {registra && n.estado !== "pagada" && (
+                    <tr>
+                      <td colSpan={7}>
+                        <details>
+                          <summary>Registrar el pago de {TIPOS_NOTIFICACION[n.tipo]} de {periodoVisible(n.periodo)} (RD${verMonto(n.monto)}) con su comprobante</summary>
+                          <Formulario accion={registrarPagoImpuesto.bind(null, id, n.id)} boton="Registrar pago" className="fila">
+                            <label>Pagó
+                              <select name="quien" defaultValue="cliente"><option value="cliente">El cliente</option><option value="empire">Empire lo adelantó</option></select>
+                            </label>
+                            <label>Fecha del pago<input type="date" name="fecha" defaultValue={hoy} max={hoy} required /></label>
+                            <label style={{ flex: "1 1 220px" }}>Si lo adelantó Empire: sale de
+                              <select name="cuenta_pago" defaultValue=""><option value="">—</option>{bancos.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}</select>
+                            </label>
+                            <label style={{ flex: "1 1 160px" }}>Referencia<input name="referencia" maxLength={100} placeholder="N.º de transacción" /></label>
+                            <label style={{ flex: "1 1 240px" }}>Comprobante del pago (PDF, JPG o PNG)<input type="file" name="comprobante" accept="application/pdf,image/jpeg,image/png" required /></label>
+                          </Formulario>
+                          <p className="sub">Si lo adelantó Empire, queda un cargo por cobrar al cliente en las cuentas por cobrar de Empire, sin comprobante fiscal.</p>
+                        </details>
+                      </td>
+                    </tr>
+                )}
+                </Fragment>
               );
             })}
             {lista.length === 0 && <tr><td colSpan={7}>Todavía no hay notificaciones.</td></tr>}

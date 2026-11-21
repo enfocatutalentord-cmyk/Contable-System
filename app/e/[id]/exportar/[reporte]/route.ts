@@ -4,6 +4,7 @@ import { tablaFactura, tablaPropuesta } from "@/lib/pdf-documentos";
 import { armarReporte, tablaReporte, type DatosReporte } from "@/lib/reporte-mensual";
 import { proyeccionDe, tablaProyeccion } from "@/lib/proyeccion";
 import { FORMAS_ANTICIPO } from "@/lib/anticipos";
+import { FORMAS_COBRO_CARGO } from "@/lib/cargos";
 import { ESTADOS_GESTION, leerFiltrosBitacora, listarGestiones, nombreMes, TIPOS_GESTION } from "@/lib/bitacora";
 import { equipoDe } from "@/lib/firma";
 import { accesoEmpresa } from "@/lib/acceso";
@@ -40,7 +41,7 @@ import { leerPeriodo } from "../../periodo";
 import { cuentasDeSocia, esTipoSalida, listarSalidas, TIPOS_SALIDA } from "@/lib/salidas";
 import { estadoDeCuenta, tablaEstadoSocia } from "@/lib/socia";
 
-const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo|recibo-anticipo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-inicial|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
+const SIN_PERIODO = /^(facturas|compras|cobros|pagos|catalogo|bitacora|lista-precios|propuesta|factura|reporte-mensual|proyeccion|recibo|recibo-anticipo|recibo-cargo|dgii-60[678]|it1|ir17|ir6|conciliacion-banco|estado-inicial|estado-financiero|ir2|ir2-a1|ir2-b1|ir2-j|ir2-h|socia|salidas)$/;
 const col = (titulo: string, num = false, ancho?: number): Columna => ({ titulo, num, ancho });
 
 // Reportes descargables en Excel (.xlsx, por defecto), PDF o CSV.
@@ -517,6 +518,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           totales: ["Total recibido", "", c.recibido, ""],
         }] as [string, Tabla];
       });
+    }
+    if (reporte === "recibo-cargo" && esUuid(sp.id ?? "")) {
+      // Recibo del cobro de un impuesto que Empire pagó por el cliente (P2e): sin comprobante fiscal.
+      const [g] = await conEmpresa(id, (tx) => tx<{ numero: number; cliente: string; rnc: string | null; concepto: string; fecha: string; monto: string; estado: string;
+        cobrado_en: string | null; cobro_forma: string | null; cobro_referencia: string | null }[]>`
+        SELECT g.numero, c.nombre AS cliente, c.rnc, g.concepto, to_char(g.fecha, 'YYYY-MM-DD') AS fecha, g.monto::text, g.estado,
+               to_char(g.cobrado_en, 'YYYY-MM-DD') AS cobrado_en, g.cobro_forma, g.cobro_referencia
+          FROM cargos_cliente g JOIN clientes c ON c.id = g.cliente_id WHERE g.id = ${sp.id}`);
+      if (!g || g.estado !== "cobrado" || !g.cobrado_en) return null;
+      return [`recibo-cargo-${g.numero}`, {
+        ...base, titulo: `Recibo de cobro n.º ${g.numero}`,
+        detalle: [`Recibimos de ${g.cliente}${g.rnc ? ` (RNC ${g.rnc})` : ""}`, `el ${verFecha(g.cobrado_en)}`, `forma de pago: ${FORMAS_COBRO_CARGO[g.cobro_forma ?? ""] ?? g.cobro_forma ?? ""}`,
+                  g.cobro_referencia ? `referencia ${g.cobro_referencia}` : ""].filter(Boolean).join(" · "),
+        columnas: [col("Concepto", false, 70), col("Monto", true)],
+        filas: [[`Reembolso de lo pagado por Empire el ${verFecha(g.fecha)}: ${g.concepto}. Documento sin valor fiscal.`, g.monto]],
+        totales: ["Total recibido", g.monto],
+      }];
     }
     if (reporte === "recibo-anticipo" && esUuid(sp.id ?? "")) {
       const [a] = await conEmpresa(id, (tx) => tx<{ numero: number; cliente: string; rnc: string | null; fecha: string; monto: string; forma_pago: string;
