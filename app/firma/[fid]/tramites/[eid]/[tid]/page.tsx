@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
-import { accesoEmpresa, accesoFirma, esUuid } from "@/lib/acceso";
+import { EnviarWhatsApp } from "@/app/whatsapp";
+import { accesoEmpresa, accesoFirma, esUuid, soloCliente } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { laborablesEntre } from "@/lib/dias-laborables";
 import { hoyISO, verFecha } from "@/lib/montos";
@@ -23,8 +24,9 @@ export default async function Tramite({ params, searchParams }: {
   const { fid, eid, tid } = await params;
   const sp = await searchParams;
   if (!esUuid(eid) || !esUuid(tid)) notFound();
-  await accesoFirma(fid, false);
+  const { usuario } = await accesoFirma(fid, false);
   const { empresa, permisos } = await accesoEmpresa(eid);
+  const equipo = !(await soloCliente(fid, usuario.id));
   if (empresa.firma_id !== fid) notFound();
   const [t, feriados] = await Promise.all([conEmpresa(eid, (tx) => detalleTramite(tx, tid)), feriadosDe(fid)]);
   if (!t) notFound();
@@ -52,6 +54,16 @@ export default async function Tramite({ params, searchParams }: {
         </div>
         {edita && <Formulario accion={guardarComoPlantillaAccion.bind(null, fid, eid, tid)} boton="Guardar como plantilla" className="fila"><></></Formulario>}
       </div>
+
+      {equipo && puede(permisos, "exportar") && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <p style={{ marginTop: 0 }}>
+            <strong>Aviso al cliente:</strong>{" "}
+            {t.etapa_avisada === t.etapa ? `ya se le avisó que el trámite está «${ETAPAS[t.etapa]}».` : t.etapa_avisada ? `se le avisó «${ETAPAS[t.etapa_avisada]}»; falta avisarle que ahora está «${ETAPAS[t.etapa]}».` : `todavía no se le ha avisado el estado («${ETAPAS[t.etapa]}»).`}
+          </p>
+          <EnviarWhatsApp empresaId={eid} clave="estado_tramite" docRef={{ tipo: "tramite", id: tid }} etiqueta="Avisarle el estado por WhatsApp" />
+        </div>
+      )}
 
       <div className="cifras">
         <div className="tarjeta cifra"><div className="etiqueta">Estado</div><div className="valor" style={{ fontSize: "1.2rem" }}>{ETAPAS[t.etapa]}</div>

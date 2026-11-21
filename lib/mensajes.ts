@@ -4,7 +4,7 @@
 // Campos que el sistema sabe llenar; lo demás queda entre corchetes para escribirlo a mano antes de enviar.
 export const CAMPOS = [
   "nombre", "empresa", "mes", "monto", "enlace", "servicio", "número", "concepto", "declaración", "período", "fecha límite",
-  "cantidad", "tipo", "años", "documento", "requisitos",
+  "cantidad", "tipo", "años", "documento", "requisitos", "trámite", "estado", "detalle",
 ] as const;
 // Mensajes de cobro (rediseño R2, n.º 6): se ven y se editan en Contabilidad Empire; los demás, en la Firma.
 export const CLAVES_COBRO = ["cobro_iguala", "envio_factura", "pago_atrasado", "pago_recibido", "cuenta_bancaria", "correo_factura"];

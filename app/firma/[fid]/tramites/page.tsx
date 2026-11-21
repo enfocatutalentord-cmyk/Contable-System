@@ -74,6 +74,7 @@ export default async function TramitesAbiertos({ params, searchParams }: {
                   <td>{c.nombre}</td>
                   <td>
                     {ETAPAS[t.etapa]}
+                    {t.etapa_avisada !== t.etapa && <div style={{ margin: 0, color: "var(--peligro)", fontSize: "0.85em" }}>Sin avisar al cliente</div>}
                     {t.etapa === "en_espera" && t.espera_motivo && <div className="sub" style={{ margin: 0 }}>{t.espera_motivo}{t.espera_hasta && ` · hasta el ${verFecha(t.espera_hasta)}`}</div>}
                   </td>
                   <td style={urgente ? { color: "var(--peligro)", fontWeight: 600 } : undefined}>

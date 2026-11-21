@@ -122,6 +122,15 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
       poner("tramite", "aviso", `${que}: terminó el tiempo de espera (${t.espera_motivo ?? "respuesta"}) el ${verFecha(t.espera_hasta)}`, enlaceTramite(t.id), t.espera_hasta);
     }
   }
+  // Estado del trámite sin avisarle al cliente (P2e.3): un cambio de estado queda pendiente hasta que se envía el mensaje (los cerrados, por dos semanas).
+  if (!d.propia) {
+    for (const t of await tx<{ id: string; tipo: string; etapa: string }[]>`
+        SELECT id, tipo, etapa FROM tramites
+         WHERE etapa_avisada IS DISTINCT FROM etapa AND (estado = 'abierto' OR cerrado_en > now() - interval '14 days')`) {
+      poner("tramite", "aviso", `Trámite «${t.tipo}»: avisarle al cliente que ${({ pendiente: "ya se registró", en_proceso: "está en proceso", en_espera: "está en espera de respuesta", completado: "quedó listo" } as Record<string, string>)[t.etapa]}`,
+        enlaceTramite(t.id));
+    }
+  }
   for (const p of await tx<{ tramite_id: string; tipo: string; texto: string; vence: string }[]>`
       SELECT p.tramite_id, t.tipo, p.texto, to_char(p.vence, 'YYYY-MM-DD') AS vence
         FROM pendientes_tramite p JOIN tramites t ON t.id = p.tramite_id

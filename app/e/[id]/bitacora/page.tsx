@@ -26,9 +26,9 @@ export default async function Bitacora({ params, searchParams }: {
   const registra = puede(permisos, "registrar");
   const consulta = (m: string) => `/e/${id}/bitacora?${new URLSearchParams({ ...f, mes: m }).toString()}`;
   const abiertas = gestiones.filter((g) => g.estado !== "hecha").length;
-  // Mensajes de WhatsApp (bloque 3c): cualquiera de los predeterminados, con los datos de la ficha.
+  // Mensajes de WhatsApp (bloque 3c): cualquiera de los predeterminados, con los datos de la ficha (el de requisitos y el del trámite salen desde su trabajo o su trámite, ya con sus datos).
   const mensajes = puede(permisos, "exportar") && !(await soloCliente(empresa.firma_id, usuario.id))
-    ? (await plantillasDe(empresa.firma_id)).filter((p) => !p.clave.startsWith("correo_")).map((p) => ({ clave: p.clave, nombre: p.nombre })) : [];
+    ? (await plantillasDe(empresa.firma_id)).filter((p) => !p.clave.startsWith("correo_") && !["estado_tramite", "requisitos_servicio"].includes(p.clave)).map((p) => ({ clave: p.clave, nombre: p.nombre })) : [];
 
   return (
     <>

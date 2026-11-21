@@ -79,7 +79,7 @@ test("expediente: lo subido va a su carpeta, lo del sistema aparece solo y se pu
 test("trámite: queda en la bitácora, avisa 5 días antes y al vencer, y al cerrarlo se va la alerta", conBase, async () => {
   const [{ id }] = await leer((tx) => tx`INSERT INTO tramites (empresa_id, institucion, tipo, numero, fecha, plazo, creado_por)
     VALUES (${empresa}, 'dgii', 'Acuerdo de pago', 'V-123', '2026-10-20', '2026-11-19', ${ana}) RETURNING id`);
-  const alertas = (hoy) => leer((tx) => alertasDeEmpresa(tx, { empresaId: empresa, hoy, propia: false })).then((a) => a.filter((x) => x.tipo === "tramite"));
+  const alertas = (hoy) => leer((tx) => alertasDeEmpresa(tx, { empresaId: empresa, hoy, propia: false })).then((a) => a.filter((x) => x.tipo === "tramite" && !/avisarle al cliente/.test(x.texto))); // el aviso del estado (P2e.3) tiene su propia prueba
   assert.equal((await alertas("2026-11-10")).length, 0, "faltan 9 días");
   assert.match((await alertas("2026-11-15"))[0].texto, /Trámite ante DGII \(Acuerdo de pago\) vence el plazo el 19\/11\/2026 \(faltan 4 días\)/);
   const vencido = (await alertas("2026-11-20"))[0];

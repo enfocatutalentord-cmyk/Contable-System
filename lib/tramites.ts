@@ -157,6 +157,18 @@ export async function crearTramiteNuevo(tx: Tx, d: {
   return id;
 }
 
+// Lo que se le cuenta al cliente de su trámite (P2e.3): el estado en palabras suyas y una frase de detalle.
+export const ESTADO_PARA_CLIENTE: Record<string, string> = {
+  pendiente: "ya lo registramos", en_proceso: "lo estamos trabajando", en_espera: "estamos esperando respuesta", completado: "quedó listo",
+};
+export function detalleParaCliente(t: { etapa: string; espera_motivo: string | null; espera_hasta: string | null; respuesta: string | null }): string {
+  const fecha = (f: string) => f.split("-").reverse().join("/");
+  if (t.etapa === "pendiente") return "Lo iniciaremos en los próximos días y le avisamos cada avance.";
+  if (t.etapa === "en_proceso") return "Ya estamos trabajando en él y le avisamos en cuanto haya novedades.";
+  if (t.etapa === "en_espera") return `Estamos esperando ${t.espera_motivo ? t.espera_motivo.charAt(0).toLowerCase() + t.espera_motivo.slice(1) : "la respuesta de la institución"}${t.espera_hasta ? `; contamos con una respuesta hacia el ${fecha(t.espera_hasta)}` : ""}.`;
+  return `Ya terminó.${t.respuesta ? ` ${t.respuesta.trim()}` : ""}`.slice(0, 500);
+}
+
 export async function cambiarEtapa(tx: Tx, d: {
   id: string; etapa: Etapa; esperaMotivo: string | null; esperaDias: number | null; usuarioId: string; hoy: string; feriados: Set<string>; respuesta: string | null;
 }) {
@@ -183,14 +195,14 @@ export async function cambiarEtapa(tx: Tx, d: {
 export type NotaTramite = { id: string; fecha: string; texto: string; autor: string; creado: Date };
 export type PendienteTramite = { id: string; texto: string; dia: number | null; vence: string | null; hecho: boolean; quien: string | null; hecho_en: Date | null };
 export type DetalleTramite = Tramite & {
-  etapa: Etapa; espera_motivo: string | null; espera_hasta: string | null; dias_estimados: number | null; plantilla_id: string | null;
+  etapa_avisada: Etapa | null; etapa: Etapa; espera_motivo: string | null; espera_hasta: string | null; dias_estimados: number | null; plantilla_id: string | null;
   notas: NotaTramite[]; pendientes: PendienteTramite[];
 };
 
 export async function detalleTramite(tx: Tx, id: string): Promise<DetalleTramite | null> {
   const [t] = await tx<DetalleTramite[]>`
     SELECT t.id, t.empresa_id, t.institucion, t.tipo, t.numero, t.descripcion, to_char(t.fecha, 'YYYY-MM-DD') AS fecha, to_char(t.plazo, 'YYYY-MM-DD') AS plazo,
-           t.estado, t.respuesta, t.responsable_id, u.nombre AS responsable, t.cerrado_en, t.etapa, t.espera_motivo,
+           t.estado, t.respuesta, t.responsable_id, u.nombre AS responsable, t.cerrado_en, t.etapa, t.etapa_avisada, t.espera_motivo,
            to_char(t.espera_hasta, 'YYYY-MM-DD') AS espera_hasta, t.dias_estimados, t.plantilla_id,
            COALESCE((SELECT json_agg(json_build_object('id', d.id, 'nombre', d.nombre, 'descripcion', d.descripcion) ORDER BY d.subido_en)
                        FROM documentos d WHERE d.entidad = 'tramite' AND d.entidad_id = t.id AND NOT d.eliminado), '[]') AS volantes
@@ -206,13 +218,13 @@ export async function detalleTramite(tx: Tx, id: string): Promise<DetalleTramite
 }
 
 export type FilaTramite = Tramite & {
-  etapa: Etapa; espera_hasta: string | null; espera_motivo: string | null; pendientes: number; hechos: number; proximo: string | null; proximo_vence: string | null;
+  etapa_avisada: Etapa | null; etapa: Etapa; espera_hasta: string | null; espera_motivo: string | null; pendientes: number; hechos: number; proximo: string | null; proximo_vence: string | null;
 };
 
 // Para la lista de la firma: estado, plazo, cuántos pendientes van hechos y el próximo paso.
 export const resumenTramites = (tx: Tx, abiertos: boolean) => tx<FilaTramite[]>`
   SELECT t.id, t.empresa_id, t.institucion, t.tipo, t.numero, t.descripcion, to_char(t.fecha, 'YYYY-MM-DD') AS fecha, to_char(t.plazo, 'YYYY-MM-DD') AS plazo,
-         t.estado, t.respuesta, t.responsable_id, u.nombre AS responsable, t.cerrado_en, t.etapa, t.espera_motivo,
+         t.estado, t.respuesta, t.responsable_id, u.nombre AS responsable, t.cerrado_en, t.etapa, t.etapa_avisada, t.espera_motivo,
          to_char(t.espera_hasta, 'YYYY-MM-DD') AS espera_hasta, '[]'::json AS volantes,
          (SELECT count(*)::int FROM pendientes_tramite p WHERE p.tramite_id = t.id) AS pendientes,
          (SELECT count(*)::int FROM pendientes_tramite p WHERE p.tramite_id = t.id AND p.hecho) AS hechos,
