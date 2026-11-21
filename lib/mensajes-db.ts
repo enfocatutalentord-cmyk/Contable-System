@@ -4,6 +4,7 @@ import { ponerEnlace } from "./formularios.ts";
 import { db, type Tx } from "./db.ts";
 import { nombrePeriodo } from "./igualas.ts";
 import { fechaLarga, verHora } from "./agenda.ts";
+import { ponerEnlaceFirma } from "./firma-digital.ts";
 import { detalleParaCliente, ESTADO_PARA_CLIENTE } from "./tramites.ts";
 import { type Datos, HORAS_DESHACER, llenar, telefonoWa } from "./mensajes.ts";
 import { verFecha, verMonto } from "./montos.ts";
@@ -14,7 +15,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario" | "diagnostico" | "tramite" | "cita"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario" | "diagnostico" | "tramite" | "cita" | "firma"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -48,7 +49,7 @@ async function deCliente(tx: Tx, clienteId: string): Promise<Destinatario> {
   return { nombre: null, empresa: c?.nombre ?? "", telefono: telefonoWa(c?.telefono), grupo: null };
 }
 
-export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "formulario" | "diagnostico"; refId: string; titulo: string } | null };
+export type Preparado = { datos: Datos; destinatario: Destinatario; enlace: { tipo: "factura" | "propuesta" | "documento" | "reporte" | "proyeccion" | "formulario" | "diagnostico" | "firma"; refId: string; titulo: string } | null };
 
 // Datos del documento para llenar el mensaje y, si lleva PDF, qué se comparte por el enlace seguro. Corre en conEmpresa.
 export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promise<Preparado> {
@@ -129,6 +130,14 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
     const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
     return { destinatario, datos: { "trámite": t.tipo, estado: ESTADO_PARA_CLIENTE[t.etapa] ?? t.etapa, detalle: detalleParaCliente(t) }, enlace: null };
   }
+  if (ref.tipo === "firma") {
+    // Pedir la firma de un documento (P3e): el enlace es el de la página para firmar (/firmar/…), no una descarga.
+    const [s] = await tx<{ titulo: string; estado: string; firmante: string | null }[]>`SELECT titulo, estado, firmante FROM solicitudes_firma WHERE id = ${ref.id}`;
+    if (!s) throw new ErrorMensaje("Esa solicitud de firma no existe.");
+    if (!["pendiente", "vista"].includes(s.estado)) throw new ErrorMensaje("Esta solicitud ya se firmó, se rechazó o se canceló.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    return { destinatario: s.firmante ? { ...destinatario, nombre: s.firmante } : destinatario, datos: { documento: s.titulo }, enlace: { tipo: "firma", refId: ref.id, titulo: s.titulo } };
+  }
   if (ref.tipo === "cita") {
     // Recordatorio de una cita (P3c): sale con «Confirmación de cita», la fecha, la hora y el lugar; sin enlace.
     const [c] = await tx<{ fecha: string; hora: string; modalidad: string; lugar: string | null; estado: string }[]>`
@@ -179,6 +188,8 @@ export async function registrarEnvio(tx: Tx, d: {
   let enlaceId: string | null = null;
   if (d.enlace?.tipo === "formulario" && d.token && texto.includes(d.token)) {
     await ponerEnlace(tx, d.enlace.refId, d.token);
+  } else if (d.enlace?.tipo === "firma" && d.token && texto.includes(d.token)) {
+    await ponerEnlaceFirma(tx, { empresaId: d.empresaId, solicitudId: d.enlace.refId, token: d.token, usuarioId: d.usuarioId });
   } else if (d.enlace && d.token && texto.includes(d.token)) {
     [{ id: enlaceId }] = await tx<{ id: string }[]>`
       INSERT INTO enlaces_documento (empresa_id, token_hash, tipo, ref_id, titulo, creado_por)
