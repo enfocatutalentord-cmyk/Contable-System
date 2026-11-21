@@ -7,10 +7,10 @@ import { moverMes, nombreMes } from "@/lib/bitacora";
 import { conEmpresa } from "@/lib/db";
 import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede, puedeOPide } from "@/lib/permisos";
-import { armarReporte, type DatosReporte, ESTADOS_REPORTE, huellaReporte } from "@/lib/reporte-mensual";
-import { aprobarReporte, guardarNotasReporte, quitarAprobacion, revisarReporte } from "../../reporte-acciones";
+import { armarReporte, type DatosReporte, ESTADOS_REPORTE, huellaReporte, INCLUIR_TODO, SECCIONES_REPORTE } from "@/lib/reporte-mensual";
+import { aprobarReporte, guardarNotasReporte, guardarSeccionesReporte, quitarAprobacion, revisarReporte } from "../../reporte-acciones";
 
-type Fila = { id: string; estado: string; notas: string | null; datos: DatosReporte | null; huella: string | null;
+type Fila = { id: string; estado: string; notas: string | null; incluir: string[]; datos: DatosReporte | null; huella: string | null;
   preparado: string | null; preparado_en: Date | null; revisado: string | null; revisado_en: Date | null;
   aprobado: string | null; aprobado_en: Date | null; enviado_en: Date | null };
 const fechaHora = (d: Date | null) => d?.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" }) ?? "";
@@ -26,7 +26,7 @@ export default async function ReporteMensual({ params, searchParams }: { params:
   const periodo = mes.replace("-", "");
   const { r, vivo } = await conEmpresa(id, async (tx) => {
     const [r] = await tx<Fila[]>`
-      SELECT m.id, m.estado, m.notas, m.datos, m.huella, up.nombre AS preparado, m.preparado_en, ur.nombre AS revisado, m.revisado_en,
+      SELECT m.id, m.estado, m.notas, m.incluir, m.datos, m.huella, up.nombre AS preparado, m.preparado_en, ur.nombre AS revisado, m.revisado_en,
              ua.nombre AS aprobado, m.aprobado_en, m.enviado_en
         FROM reportes_mensuales m LEFT JOIN usuarios up ON up.id = m.preparado_por LEFT JOIN usuarios ur ON ur.id = m.revisado_por
         LEFT JOIN usuarios ua ON ua.id = m.aprobado_por
@@ -38,6 +38,7 @@ export default async function ReporteMensual({ params, searchParams }: { params:
   const d = aprobado && r?.datos ? r.datos : vivo;
   const cambio = aprobado && r?.huella !== huellaReporte(vivo);
   const equipo = !(await soloCliente(empresa.firma_id, usuario.id));
+  const incluir = r?.incluir ?? INCLUIR_TODO;
 
   return (
     <>
@@ -82,6 +83,24 @@ export default async function ReporteMensual({ params, searchParams }: { params:
       </div>
 
       <section className="tarjeta" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Qué lleva el PDF del cliente</h2>
+        {!aprobado && puede(permisos, "registrar") ? (
+          <Formulario accion={guardarSeccionesReporte.bind(null, id, periodo)} boton="Guardar lo que lleva">
+            <div className="fila" style={{ gap: 4 }}>
+              {Object.entries(SECCIONES_REPORTE).map(([k, t]) => (
+                <label key={k} style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: "1 1 280px" }}>
+                  <input type="checkbox" name="incluir" value={k} defaultChecked={incluir.includes(k)} style={{ minHeight: 0 }} /> {t}
+                </label>
+              ))}
+            </div>
+            <p className="sub" style={{ margin: 0 }}>Lo que no marques no va en el PDF ni en el enlace que recibe el cliente; en esta pantalla sigue a la vista. Con la factura del mes marcada, sale en el mismo documento.</p>
+          </Formulario>
+        ) : (
+          <p style={{ margin: 0 }}>{incluir.length === INCLUIR_TODO.length ? "Lleva todas las secciones." : `Lleva: ${incluir.map((k) => SECCIONES_REPORTE[k]).join(", ") || "ninguna"}.`}</p>
+        )}
+      </section>
+
+      <section className="tarjeta" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Notas para el cliente</h2>
         {!aprobado && puede(permisos, "registrar") ? (
           <Formulario accion={guardarNotasReporte.bind(null, id, periodo)} boton="Guardar notas">
@@ -91,22 +110,22 @@ export default async function ReporteMensual({ params, searchParams }: { params:
         ) : <p style={{ margin: 0 }}>{r?.notas || <span className="sub">Sin notas.</span>}</p>}
       </section>
 
-      <Reporte d={d} />
+      <Reporte d={d} incluir={incluir} />
     </>
   );
 }
 
-function Reporte({ d }: { d: DatosReporte }) {
+function Reporte({ d, incluir }: { d: DatosReporte; incluir: string[] }) {
   const m = (x: string | null | undefined) => (x ? `RD$${verMonto(x)}` : "");
   return (
     <div className="reporte-mensual">
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("servicios") ? undefined : { opacity: 0.5 }} title={incluir.includes("servicios") ? undefined : "No va en el PDF del cliente"}>
         <h2>1. Servicios realizados en el mes</h2>
         {d.servicios.length === 0 ? <p className="sub">Sin gestiones anotadas en la bitácora.</p> : (
           <ul>{d.servicios.map((s, i) => <li key={i}><strong>{verFecha(s.fecha)}</strong> · {s.tipo}: {s.descripcion}{s.estado !== "hecha" && <em> ({s.estado.replace("_", " ")})</em>}</li>)}</ul>
         )}
       </section>
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("facturas") ? undefined : { opacity: 0.5 }} title={incluir.includes("facturas") ? undefined : "No va en el PDF del cliente"}>
         <h2>2. Facturas del mes</h2>
         <table><tbody>
           <tr><td>Facturas de ventas emitidas</td><td className="num">{d.ventas.cantidad}</td><td className="num">{m(d.ventas.total)}</td></tr>
@@ -114,7 +133,7 @@ function Reporte({ d }: { d: DatosReporte }) {
           <tr><td>Facturas de compras recibidas</td><td className="num">{d.compras.cantidad}</td><td className="num">{m(d.compras.total)}</td></tr>
         </tbody></table>
       </section>
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("itbis") ? undefined : { opacity: 0.5 }} title={incluir.includes("itbis") ? undefined : "No va en el PDF del cliente"}>
         <h2>3. ITBIS</h2>
         {d.itbis ? (
           <table><tbody>
@@ -126,7 +145,7 @@ function Reporte({ d }: { d: DatosReporte }) {
           </tbody></table>
         ) : <p className="sub">No declara ITBIS (IT-1) según su perfil fiscal.</p>}
       </section>
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("retenciones") ? undefined : { opacity: 0.5 }} title={incluir.includes("retenciones") ? undefined : "No va en el PDF del cliente"}>
         <h2>4. Retenciones e ISR</h2>
         {d.retenciones ? (
           <table><tbody>
@@ -135,7 +154,7 @@ function Reporte({ d }: { d: DatosReporte }) {
           </tbody></table>
         ) : <p className="sub">Sin retenciones que declarar.</p>}
       </section>
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("declaraciones") ? undefined : { opacity: 0.5 }} title={incluir.includes("declaraciones") ? undefined : "No va en el PDF del cliente"}>
         <h2>5. Declaraciones y notificaciones</h2>
         <table><tbody>
           {d.declaraciones.map((x) => <tr key={x.nombre}><td>{x.nombre}</td><td>{x.estado}{!x.estado.startsWith("Presentada") && ` · vence ${verFecha(x.vence)}`}</td><td className="num">{m(x.monto)}</td></tr>)}
@@ -143,12 +162,12 @@ function Reporte({ d }: { d: DatosReporte }) {
           {d.declaraciones.length + d.notificaciones.length === 0 && <tr><td colSpan={3} className="sub">Sin declaraciones ni notificaciones este mes.</td></tr>}
         </tbody></table>
       </section>
-      <section className="tarjeta">
+      <section className="tarjeta" style={incluir.includes("pendientes") ? undefined : { opacity: 0.5 }} title={incluir.includes("pendientes") ? undefined : "No va en el PDF del cliente"}>
         <h2>6. Pendientes del cliente</h2>
         {d.pendientes.length === 0 ? <p className="sub">Nada pendiente.</p> : <ul>{d.pendientes.map((t, i) => <li key={i}>{t}</li>)}</ul>}
       </section>
       {d.cuenta && (
-        <section className="tarjeta">
+        <section className="tarjeta" style={incluir.includes("cuenta") ? undefined : { opacity: 0.5 }} title={incluir.includes("cuenta") ? undefined : "No va en el PDF del cliente"}>
           <h2>7. Su cuenta con la firma</h2>
           <table><tbody>
             {d.cuenta.facturas.map((f) => <tr key={f.ncf}><td>Factura {f.ncf} · {verFecha(f.fecha)}<div className="sub" style={{ margin: 0 }}>{f.detalle}</div></td><td className="num">{m(f.total)}</td><td className="num">pendiente {m(f.saldo)}</td></tr>)}

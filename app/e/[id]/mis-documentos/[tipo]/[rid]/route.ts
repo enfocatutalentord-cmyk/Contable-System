@@ -17,9 +17,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const base = { empresa: empresa.nombre + (empresa.rnc ? ` · RNC ${empresa.rnc}` : ""), generado: `Descargado el ${ahora}` };
   const archivo = await conEmpresa(id, async (tx) => {
     if (tipo === "reporte") {
-      const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string }[]>`
-        SELECT datos, notas, periodo FROM reportes_mensuales WHERE id = ${rid} AND estado IN ('aprobado', 'enviado')`;
-      return r?.datos ? { nombre: `reporte-${r.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaReporte(r.datos, r.notas, base))) } : null;
+      const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string; incluir: string[] }[]>`
+        SELECT datos, notas, periodo, incluir FROM reportes_mensuales WHERE id = ${rid} AND estado IN ('aprobado', 'enviado')`;
+      return r?.datos ? { nombre: `reporte-${r.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaReporte(r.datos, r.notas, base, r.incluir))) } : null;
     }
     if (tipo === "proyeccion") {
       const [p] = await tx<{ datos: Proyeccion; notas: string | null; periodo: string }[]>`SELECT datos, notas, periodo FROM proyecciones_fiscales WHERE id = ${rid}`;

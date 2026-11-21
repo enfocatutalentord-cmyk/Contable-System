@@ -16,6 +16,7 @@ export const TIPOS_ALERTA: Record<string, string> = {
   prospecto: "Prospecto", facturas_subidas: "Facturas subidas", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
   tramite: "Trámites", solicitud: "Solicitudes y formularios", ecf: "Factura electrónica",
   vencimiento: "Documentos que vencen",
+  reporte: "Reporte mensual",
 };
 // Último plazo de la factura electrónica para micro, pequeños y no clasificados (Aviso DGII 14-25 + prórroga del Aviso 06-26).
 export const FECHA_ECF = "2026-11-15";
@@ -157,6 +158,17 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
       const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM recepciones WHERE subido_en >= date_trunc('month', ${hoy}::date)`;
       if (n === 0) poner("documentos", "aviso", "No ha enviado documentos este mes (facturas de compras para el 606)", `${base}/recepcion`, hoy,
         { clave: "facturas_606", extra: { mes: `${MESES[Number(anterior.slice(4)) - 1]} ${anterior.slice(0, 4)}` } });
+    }
+    // Reporte mensual del día 30 (P2e.2): desde dos días antes del 30 (o del último día del mes) avisa si el reporte del mes no está aprobado.
+    {
+      const anio = Number(hoy.slice(0, 4)), mes = Number(hoy.slice(5, 7));
+      const diaReporte = Math.min(30, new Date(Date.UTC(anio, mes, 0)).getUTCDate());
+      if (Number(hoy.slice(8)) >= diaReporte - 2) {
+        const [r] = await tx<{ estado: string }[]>`SELECT estado FROM reportes_mensuales WHERE periodo = ${hoy.slice(0, 7).replace("-", "")}`;
+        if (!r || !["aprobado", "enviado"].includes(r.estado)) {
+          poner("reporte", Number(hoy.slice(8)) >= diaReporte ? "urgente" : "aviso", `Reporte mensual de ${MESES[mes - 1]}: ${r ? "falta aprobarlo y enviarlo" : "sin preparar"} (sale el ${diaReporte})`, `${base}/bitacora/reporte?mes=${hoy.slice(0, 7)}`);
+        }
+      }
     }
     if (!e.formalizado) poner("formalizacion", "aviso", "Sin formalizar: falta la fecha de la ficha, la hoja de acuerdo o el contrato firmados", `${base}/empresa?seccion=relacion`);
     // Registro mercantil y nombre comercial: 60 días antes. Asamblea ordinaria: 30 días antes.

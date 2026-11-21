@@ -44,9 +44,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
       return p ? { nombre: `proyeccion-${p.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaProyeccion(p.datos, p.notas, base))) } : null;
     }
     if (e.tipo === "reporte") {
-      const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string }[]>`
-        SELECT datos, notas, periodo FROM reportes_mensuales WHERE id = ${e.ref_id} AND estado IN ('aprobado', 'enviado')`;
-      return r?.datos ? { nombre: `reporte-${r.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaReporte(r.datos, r.notas, base))) } : null;
+      const [r] = await tx<{ datos: DatosReporte | null; notas: string | null; periodo: string; incluir: string[] }[]>`
+        SELECT datos, notas, periodo, incluir FROM reportes_mensuales WHERE id = ${e.ref_id} AND estado IN ('aprobado', 'enviado')`;
+      return r?.datos ? { nombre: `reporte-${r.periodo}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(tablaReporte(r.datos, r.notas, base, r.incluir))) } : null;
     }
     const armado = e.tipo === "factura" ? await tablaFactura(tx, e.ref_id, base) : await tablaPropuesta(tx, e.ref_id, base);
     return armado ? { nombre: `${armado[0]}.pdf`, tipo: "application/pdf", datos: new Uint8Array(await aPdf(armado[1])) } : null;

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { exigirPermiso } from "@/lib/acceso";
 import { conEmpresa, mensajeError, type Tx } from "@/lib/db";
 import { hoyISO } from "@/lib/montos";
-import { armarReporte, huellaReporte } from "@/lib/reporte-mensual";
+import { armarReporte, huellaReporte, leerIncluir } from "@/lib/reporte-mensual";
 import type { Estado } from "../../acciones-cuenta";
 import { diferirSiPide } from "./diferir";
 
@@ -39,6 +39,17 @@ export async function guardarNotasReporte(empresaId: string, periodo: string, _:
     if (r.estado === "aprobado" || r.estado === "enviado") throw new ErrorReporte("El reporte ya está aprobado: para cambiar las notas, quita la aprobación.");
     await tx`UPDATE reportes_mensuales SET notas = ${notas}, preparado_por = ${usuario.id}, preparado_en = now() WHERE id = ${r.id}`;
   }, "Notas guardadas.");
+}
+
+// Qué secciones lleva el PDF del cliente (P2e.2): se elige mientras el reporte no esté aprobado.
+export async function guardarSeccionesReporte(empresaId: string, periodo: string, _: Estado, fd: FormData): Promise<Estado> {
+  const { usuario } = await exigirPermiso(empresaId, "registrar", "/bitacora");
+  const incluir = leerIncluir(fd);
+  return correr(empresaId, periodo, async (tx) => {
+    const r = await fila(tx, empresaId, periodo);
+    if (r.estado === "aprobado" || r.estado === "enviado") throw new ErrorReporte("El reporte ya está aprobado: para cambiar lo que lleva, quita la aprobación.");
+    await tx`UPDATE reportes_mensuales SET incluir = ${incluir}, preparado_por = ${usuario.id}, preparado_en = now() WHERE id = ${r.id}`;
+  }, "Listo: el PDF llevará solo lo marcado.");
 }
 
 export async function revisarReporte(empresaId: string, periodo: string): Promise<Estado> {

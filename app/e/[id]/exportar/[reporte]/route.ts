@@ -478,9 +478,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       // Reporte mensual al cliente (bloque 4b): lo aprobado tal cual; si no está aprobado, lo de hoy.
       const periodo = sp.mes.replace("-", "");
       return conEmpresa(id, async (tx) => {
-        const [r] = await tx<{ estado: string; datos: DatosReporte | null; notas: string | null }[]>`SELECT estado, datos, notas FROM reportes_mensuales WHERE periodo = ${periodo}`;
+        const [r] = await tx<{ estado: string; datos: DatosReporte | null; notas: string | null; incluir: string[] }[]>`SELECT estado, datos, notas, incluir FROM reportes_mensuales WHERE periodo = ${periodo}`;
         const d = r?.datos && (r.estado === "aprobado" || r.estado === "enviado") ? r.datos : await armarReporte(tx, id, periodo, hoyISO());
-        return [`reporte-mensual-${empresa.rnc ?? "cliente"}-${sp.mes}`, tablaReporte(d, r?.notas ?? null, base)] as [string, Tabla];
+        return [`reporte-mensual-${empresa.rnc ?? "cliente"}-${sp.mes}`, tablaReporte(d, r?.notas ?? null, base, r?.incluir)] as [string, Tabla];
       });
     }
     if (reporte === "proyeccion" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes ?? "")) {

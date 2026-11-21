@@ -26,6 +26,17 @@ export type DatosReporte = {
   cuenta: { saldo: string; facturas: { ncf: string; fecha: string; total: string; saldo: string; detalle: string }[] } | null;
 };
 
+// Qué lleva el PDF que recibe el cliente (P2e.2): cada sección se marca o se quita; «factura» pone aparte la factura del mes de la firma.
+export const SECCIONES_REPORTE: Record<string, string> = {
+  servicios: "Servicios realizados en el mes", facturas: "Facturas del mes (ventas, notas y compras)", itbis: "ITBIS", retenciones: "Retenciones e ISR",
+  declaraciones: "Declaraciones y notificaciones", pendientes: "Pendientes del cliente", cuenta: "Su cuenta con la firma", factura: "La factura del mes de la firma",
+};
+export const INCLUIR_TODO = Object.keys(SECCIONES_REPORTE);
+export function leerIncluir(fd: FormData): string[] {
+  const marcadas = fd.getAll("incluir").map(String).filter((k) => k in SECCIONES_REPORTE);
+  return INCLUIR_TODO.filter((k) => marcadas.includes(k));
+}
+
 export const ESTADOS_REPORTE: Record<string, string> = { borrador: "En preparación", revisado: "Revisado", aprobado: "Aprobado", enviado: "Enviado" };
 const ESTADO_DECLARACION: Record<string, string> = { presentada: "Presentada", en_cero: "Presentada en cero", pendiente: "Pendiente", vencida: "Vencida sin presentar" };
 const ESTADO_NOTIFICACION: Record<string, string> = { pendiente: "Por enviar", enviada: "Enviada, sin pagar", pagada: "Pagada" };
@@ -129,37 +140,58 @@ export async function armarReporte(tx: Tx, empresaId: string, periodo: string, h
 }
 
 // El PDF (con la marca de la firma: es un documento de Empire, no del cliente) en una sola tabla por secciones.
-export function tablaReporte(d: DatosReporte, notas: string | null, base: { empresa: string; generado: string }): Tabla {
+export function tablaReporte(d: DatosReporte, notas: string | null, base: { empresa: string; generado: string }, incluir: string[] = INCLUIR_TODO): Tabla {
   const filas: (string | number)[][] = [];
   const negritas: number[] = [];
-  const seccion = (t: string) => { negritas.push(filas.length); filas.push([t, "", ""]); };
-  seccion("1. Servicios realizados en el mes");
-  if (d.servicios.length === 0) filas.push(["Sin gestiones anotadas", "", ""]);
-  for (const s of d.servicios) filas.push([`${verFecha(s.fecha)} · ${s.tipo}`, s.descripcion, ""]);
-  seccion("2. Facturas del mes");
-  filas.push(["Facturas de ventas emitidas", `${d.ventas.cantidad} · ITBIS RD$${verMonto(d.ventas.itbis)}`, d.ventas.total]);
-  if (d.notas.cantidad) filas.push(["Notas de crédito", String(d.notas.cantidad), `-${d.notas.total}`]);
-  filas.push(["Facturas de compras recibidas", `${d.compras.cantidad} · ITBIS RD$${verMonto(d.compras.itbis)}`, d.compras.total]);
-  seccion("3. ITBIS");
+  // Las secciones van numeradas en el orden en que salen, aunque se quiten algunas.
+  let n = 0;
+  const va = (k: string) => incluir.includes(k);
+  const seccion = (t: string) => { negritas.push(filas.length); filas.push([t.replace("{n}", String(++n)), "", ""]); };
+  const delMes = (d.cuenta?.facturas ?? []).filter((f) => f.fecha.slice(0, 7).replace("-", "") === d.periodo);
+  if (va("servicios")) {
+    seccion("{n}. Servicios realizados en el mes");
+    if (d.servicios.length === 0) filas.push(["Sin gestiones anotadas", "", ""]);
+    for (const s of d.servicios) filas.push([`${verFecha(s.fecha)} · ${s.tipo}`, s.descripcion, ""]);
+  }
+  if (va("facturas")) {
+    seccion("{n}. Facturas del mes");
+    filas.push(["Facturas de ventas emitidas", `${d.ventas.cantidad} · ITBIS RD$${verMonto(d.ventas.itbis)}`, d.ventas.total]);
+    if (d.notas.cantidad) filas.push(["Notas de crédito", String(d.notas.cantidad), `-${d.notas.total}`]);
+    filas.push(["Facturas de compras recibidas", `${d.compras.cantidad} · ITBIS RD$${verMonto(d.compras.itbis)}`, d.compras.total]);
+  }
+  if (va("itbis")) {
+  seccion("{n}. ITBIS");
   if (d.itbis) {
     filas.push(["ITBIS facturado (cobrado)", "", d.itbis.cobrado], ["ITBIS adelantado (deducible)", "", d.itbis.deducible]);
     filas.push([Number(d.itbis.aPagar) > 0 ? "ITBIS a pagar" : "Saldo a favor", `${d.itbis.fuente === "presentado" ? "según el IT-1 presentado" : "calculado con lo registrado"} · vence ${verFecha(d.itbis.vence)}`,
       Number(d.itbis.aPagar) > 0 ? d.itbis.aPagar : d.itbis.saldoFavor]);
   } else filas.push(["No declara ITBIS (IT-1) según su perfil fiscal", "", ""]);
-  seccion("4. Retenciones e ISR");
+  }
+  if (va("retenciones")) {
+  seccion("{n}. Retenciones e ISR");
   if (d.retenciones) {
     filas.push(["Retenciones de ITBIS a pagar", `vence ${verFecha(d.retenciones.venceItbis)}`, d.retenciones.itbis]);
     filas.push(["Retenciones de ISR (IR-17) a pagar", `vence ${verFecha(d.retenciones.venceIsr)}`, d.retenciones.isr]);
   } else filas.push(["Sin retenciones que declarar", "", ""]);
-  seccion("5. Declaraciones y notificaciones");
+  }
+  if (va("declaraciones")) {
+  seccion("{n}. Declaraciones y notificaciones");
   for (const x of d.declaraciones) filas.push([x.nombre, x.estado + (x.estado.startsWith("Presentada") ? "" : ` · vence ${verFecha(x.vence)}`), x.monto ?? ""]);
   for (const n of d.notificaciones) filas.push([`Notificación ${n.tipo}${n.concepto ? ` · ${n.concepto}` : ""}`, `${n.estado} · fecha límite ${verFecha(n.fechaLimite)}`, n.monto]);
-  seccion("6. Pendientes del cliente");
+  }
+  if (va("pendientes")) {
+  seccion("{n}. Pendientes del cliente");
   if (d.pendientes.length === 0) filas.push(["Nada pendiente", "", ""]);
   for (const t of d.pendientes) filas.push([t, "", ""]);
-  if (d.cuenta) {
-    seccion("7. Su cuenta con la firma");
-    for (const f of d.cuenta.facturas) filas.push([`Factura ${f.ncf} del ${verFecha(f.fecha)}`, `${f.detalle} · pendiente RD$${verMonto(f.saldo)}`, f.total]);
+  }
+  // La factura del mes de la firma, aparte, para que el cliente la tenga en el mismo documento.
+  if (va("factura") && d.cuenta && delMes.length) {
+    seccion("{n}. Factura del mes");
+    for (const f of delMes) filas.push([`Factura ${f.ncf} del ${verFecha(f.fecha)}`, f.detalle, f.total]);
+  }
+  if (va("cuenta") && d.cuenta) {
+    seccion("{n}. Su cuenta con la firma");
+    for (const f of d.cuenta.facturas.filter((x) => !(va("factura") && delMes.includes(x)))) filas.push([`Factura ${f.ncf} del ${verFecha(f.fecha)}`, `${f.detalle} · pendiente RD$${verMonto(f.saldo)}`, f.total]);
     filas.push(["Saldo pendiente", "", d.cuenta.saldo]);
     negritas.push(filas.length - 1);
   }
