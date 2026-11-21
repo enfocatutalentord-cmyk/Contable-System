@@ -29,7 +29,7 @@ function leerRef(ref: Ref | null): Ref | null {
 // Solo campos conocidos y cortos (vienen de la pantalla: alertas, por ejemplo).
 function leerExtra(extra: Record<string, string> | undefined): Datos {
   const r: Record<string, string> = {};
-  for (const [k, v] of Object.entries(extra ?? {})) if ((CAMPOS as readonly string[]).includes(k) && typeof v === "string") r[k] = v.slice(0, 120);
+  for (const [k, v] of Object.entries(extra ?? {})) if ((CAMPOS as readonly string[]).includes(k) && typeof v === "string") r[k] = v.slice(0, k === "requisitos" ? 1500 : 120);
   return r;
 }
 

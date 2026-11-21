@@ -11,7 +11,9 @@ import { hoyISO, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { CATEGORIAS_PRECIO, GRUPOS_SERVICIO, preciosVigentes } from "@/lib/precios";
 import { LISTA_P01 } from "@/lib/lista-p01";
+import { requisitosDeServicio } from "@/lib/trabajos";
 import { cargarLista, guardarServicio } from "../ventas-acciones";
+import { agregarRequisitoServicio, quitarRequisitoServicio } from "../trabajo-acciones";
 
 type Servicio = {
   id: string; nombre: string; precio: string; impuesto_id: string | null; impuesto_adicional_id: string | null;
@@ -28,7 +30,8 @@ export default async function Servicios({ params, searchParams }: {
   const { id } = await params;
   const { editar, grupo } = await searchParams;
   const { permisos, usuario } = await accesoEmpresa(id);
-  const puedeCargar = puede(permisos, "empresa") && (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
+  const esPropia = (await misFirmas(usuario.id)).some((f) => f.empresa_propia_id === id);
+  const puedeCargar = puede(permisos, "empresa") && esPropia;
   const totalP01 = Object.values(LISTA_P01).flat().length;
   const hoy = hoyISO();
   const { servicios, ingresos, impuestos, precios, unidades } = await conEmpresa(id, async (tx) => ({
@@ -48,6 +51,8 @@ export default async function Servicios({ params, searchParams }: {
   const adicionales = impuestos.filter((i) => i.tipo !== "itbis" && i.tipo !== "exento");
   const enEdicion = editable ? servicios.find((s) => s.id === editar) : undefined;
   const vigentes = enEdicion ? precios.get(enEdicion.id) ?? {} : {};
+  // Requisitos del servicio (P2d): lo que se le pide al cliente; se copian a cada trabajo nuevo de este servicio.
+  const requisitos = enEdicion && esPropia ? await conEmpresa(id, (tx) => requisitosDeServicio(tx, enEdicion.id)) : [];
   const visibles = grupo ? servicios.filter((s) => (s.grupo ?? "ninguno") === grupo) : servicios;
   const conPrecios = servicios.some((s) => precios.has(s.id));
 
@@ -134,6 +139,22 @@ export default async function Servicios({ params, searchParams }: {
             )}
           </Formulario>
           {enEdicion && <p><Link href={`/e/${id}/servicios`}>Cancelar</Link></p>}
+          {enEdicion && esPropia && (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--borde)" }}>
+              <h3 style={{ marginTop: 0 }}>Requisitos de este servicio</h3>
+              <p className="sub">Lo que se le pide al cliente (información o documentos). Cada trabajo nuevo de este servicio los trae y no se entrega sin los obligatorios.</p>
+              <ul>
+                {requisitos.map((r) => (
+                  <li key={r.id}>{r.texto}{!r.obligatorio && <span className="sub"> (opcional)</span>} <Formulario accion={quitarRequisitoServicio.bind(null, id, r.id)} boton="Quitar" className="fila boton-chico"><span /></Formulario></li>
+                ))}
+                {requisitos.length === 0 && <li className="sub">Todavía no tiene requisitos.</li>}
+              </ul>
+              <Formulario key={`r-${requisitos.length}`} accion={agregarRequisitoServicio.bind(null, id, enEdicion.id)} boton="Agregar requisito" className="fila">
+                <label style={{ flex: "2 1 280px" }}>Requisito<input name="texto" maxLength={300} required /></label>
+                <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" name="opcional" style={{ minHeight: 0 }} /> Es opcional</label>
+              </Formulario>
+            </div>
+          )}
         </div>
       )}
       <nav className="fila" style={{ marginBottom: 12 }} aria-label="Grupo">

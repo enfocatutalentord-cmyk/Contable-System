@@ -191,7 +191,7 @@ export default async function Solicitudes({ params, searchParams }: { params: Pr
               return (
                 <tr key={s.id} style={["entregada", "descartada"].includes(s.estado) ? { opacity: 0.65 } : undefined}>
                   <td>
-                    <strong>{s.servicio ?? (s.tipo === "requerimiento" ? "Requerimiento" : "Servicio")}</strong>: {s.descripcion}
+                    <Link href={`/e/${id}/solicitudes/${s.id}`}><strong>{s.servicio ?? (s.tipo === "requerimiento" ? "Requerimiento" : "Servicio")}</strong>: {s.descripcion}</Link>
                     {s.para_que && <div className="sub" style={{ margin: 0 }}>Para: {s.para_que}</div>}
                     <div className="sub" style={{ margin: 0 }}>{ORIGENES_SOLICITUD[s.origen]} · {fechaHora(s.creado)}{s.responsable && ` · ${s.responsable}`}</div>
                   </td>

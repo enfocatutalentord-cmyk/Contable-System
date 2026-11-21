@@ -3,6 +3,7 @@ import { conEmpresa, db } from "@/lib/db";
 import { ESTADOS_FORMULARIO, ESTADOS_SOLICITUD, listarFormularios, listarSolicitudes, PRIORIDADES, serviciosDeLaFirma, TIPOS_FORMULARIO } from "@/lib/formularios";
 import { hoyISO, verFecha } from "@/lib/montos";
 import { GRUPOS_SERVICIO } from "@/lib/precios";
+import { ESTADOS_REQUISITO } from "@/lib/trabajos";
 import { llenarFormulario, pedirServicio } from "../cliente-acciones";
 
 // «Mis solicitudes» del cliente o del prospecto en la aplicación (bloque 8a): pedir un servicio o un requerimiento, llenar sus
@@ -14,6 +15,8 @@ export async function SolicitudesCliente({ id, firmaId }: { id: string; firmaId:
       solicitudes: await listarSolicitudes(tx),
       formularios: await listarFormularios(tx),
       estado: (await tx<{ estado_cliente: string }[]>`SELECT estado_cliente FROM empresas WHERE id = ${id}`)[0].estado_cliente,
+      requisitos: await tx<{ solicitud_id: string; texto: string; obligatorio: boolean; estado: string }[]>`
+        SELECT solicitud_id, texto, obligatorio, estado FROM requisitos_solicitud ORDER BY orden, creado`,
     })),
     serviciosDeLaFirma(propia),
   ]);
@@ -88,7 +91,19 @@ export async function SolicitudesCliente({ id, firmaId }: { id: string; firmaId:
             {datos.solicitudes.map((s) => (
               <tr key={s.id}>
                 <td>{verFecha(s.creado.toISOString().slice(0, 10))}</td>
-                <td>{s.servicio ? <><strong>{s.servicio}</strong><br /></> : null}{s.descripcion}</td>
+                <td>{s.servicio ? <><strong>{s.servicio}</strong><br /></> : null}{s.descripcion}
+                  {datos.requisitos.some((r) => r.solicitud_id === s.id) && (
+                    <details style={{ marginTop: 6 }} open={datos.requisitos.some((r) => r.solicitud_id === s.id && r.estado === "pendiente")}>
+                      <summary>Lo que necesitamos de ti ({datos.requisitos.filter((r) => r.solicitud_id === s.id && r.estado === "pendiente").length} pendiente{datos.requisitos.filter((r) => r.solicitud_id === s.id && r.estado === "pendiente").length === 1 ? "" : "s"})</summary>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                        {datos.requisitos.filter((r) => r.solicitud_id === s.id).map((r, i) => (
+                          <li key={i} style={r.estado === "pendiente" ? undefined : { opacity: 0.65 }}>{r.texto}{r.obligatorio ? "" : " (opcional)"} · <em>{ESTADOS_REQUISITO[r.estado]}</em></li>
+                        ))}
+                      </ul>
+                      <p className="sub" style={{ margin: "4px 0 0" }}>Súbelos en «Mis documentos» o mándalos por WhatsApp.</p>
+                    </details>
+                  )}
+                </td>
                 <td>{s.fecha_requerida ? verFecha(s.fecha_requerida) : "—"}</td>
                 <td>{ESTADOS_SOLICITUD[s.estado]}</td>
               </tr>

@@ -70,7 +70,7 @@ export default async function SolicitudesDeLaFirma({ params }: { params: Promise
             {solicitudes.map(({ c, s }) => (
               <tr key={s.id}>
                 <td><Link href={`/e/${c.id}/solicitudes`}>{c.nombre}</Link></td>
-                <td>{s.servicio && <strong>{s.servicio}: </strong>}{s.descripcion}<div className="sub" style={{ margin: 0 }}>{ORIGENES_SOLICITUD[s.origen]}</div></td>
+                <td><Link href={`/e/${c.id}/solicitudes/${s.id}`}>{s.servicio && <strong>{s.servicio}: </strong>}{s.descripcion}</Link><div className="sub" style={{ margin: 0 }}>{ORIGENES_SOLICITUD[s.origen]}</div></td>
                 <td style={s.fecha_requerida && s.fecha_requerida < hoy ? { color: "var(--peligro)", fontWeight: 600 } : undefined}>{s.fecha_requerida ? verFecha(s.fecha_requerida) : "—"}</td>
                 <td>{PRIORIDADES[s.prioridad]}</td>
                 <td>{ESTADOS_SOLICITUD[s.estado]}</td>
