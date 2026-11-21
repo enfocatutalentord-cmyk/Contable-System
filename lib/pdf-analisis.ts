@@ -6,7 +6,7 @@ import { verFecha } from "./montos.ts";
 const VERDE = "#003D19", DORADO = "#B88A40";
 
 // El logo del cliente, el de su ficha (PNG o JPG ya comprobados al subirlos), como imagen para el PDF. Sin logo, el informe sale sin él.
-async function logoDe(tx: Tx, empresaId: string): Promise<string | null> {
+export async function logoDe(tx: Tx, empresaId: string): Promise<string | null> {
   const [l] = await tx<{ tipo: string; contenido: Buffer }[]>`
     SELECT tipo, contenido FROM documentos WHERE entidad = 'empresa' AND entidad_id = ${empresaId} AND descripcion = 'logo' AND NOT eliminado
      ORDER BY subido_en DESC LIMIT 1`;
@@ -15,7 +15,7 @@ async function logoDe(tx: Tx, empresaId: string): Promise<string | null> {
 }
 
 // La letra estándar del PDF solo dibuja Latin-1 y unos pocos signos más: lo demás (emojis, el signo menos de Unicode) se cambia para que no salga garabateado.
-const limpiar = (t: string) => t.replaceAll("−", "-").replace(/[^\n\u0020-\u007E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC\u2122]/g, "?");
+export const limpiar = (t: string) => t.replaceAll("−", "-").replace(/[^\n\u0020-\u007E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC\u2122]/g, "?");
 
 const texto = (v: Valor, kind: Parameters<typeof verRazon>[0]) => ("num" in v ? verRazon(kind, v.num) : "—");
 
