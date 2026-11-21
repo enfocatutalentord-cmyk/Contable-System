@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { accesoFirma, esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
 import { conEmpresa, mensajeError } from "@/lib/db";
+import { agregarCartasDeEjemplo } from "@/lib/cartas-trabajo";
 import { hoyISO } from "@/lib/montos";
 import { generarDocumento, guardarPlantilla, leerPlantilla, plantillaDe, quitarPlantilla } from "@/lib/plantillas-documento";
 import { ErrorPlantilla } from "@/lib/plantillas-word";
@@ -55,4 +56,17 @@ export async function generarDocumentoAccion(firmaId: string, empresaId: string,
   }
   revalidatePath(`/e/${empresaId}/expediente`);
   redirect(`/firma/${firmaId}/plantillas?hecho=${resultado.documentoId}&e=${empresaId}&ref=${encodeURIComponent(resultado.referencia)}`);
+}
+
+// P3i: agrega las cartas de trabajo de ejemplo (constancia, desahucio y vacaciones) que la firma todavía no tenga. Solo administradoras, como cualquier plantilla.
+export async function agregarCartasAccion(firmaId: string, _: Estado): Promise<Estado> {
+  const { usuario } = await accesoFirma(firmaId);
+  try {
+    const agregadas = await agregarCartasDeEjemplo(firmaId, usuario.id);
+    revalidatePath(`/firma/${firmaId}/cartas`);
+    revalidatePath(`/firma/${firmaId}/plantillas`);
+    return { ok: agregadas.length ? `Agregué: ${agregadas.join(", ")}. Revisa el texto de cada una antes de usarla.` : "Ya tienes las tres cartas de ejemplo." };
+  } catch (e) {
+    return { error: e instanceof ErrorPlantilla ? e.message : mensajeError(e) };
+  }
 }
