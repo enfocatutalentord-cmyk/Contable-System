@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ANEXOS, SECCIONES_LEV, type Columna, type Pregunta } from "@/lib/levantamiento";
+import { anexosDe, seccionesDe, type Columna, type ModoLevantamiento, type Pregunta } from "@/lib/levantamiento";
 import { aCentavos, deCentavos, leerMonto, verMonto } from "@/lib/montos";
 
 const estilo = (ancho: number) => ({ flex: `1 1 ${ancho}px` });
@@ -29,7 +29,8 @@ const Celda = ({ n, c }: { n: string; c: Columna }) => c.op
 
 // Cuestionario del levantamiento (6b.2): por partes, con filas que se agregan y totales al momento. Lo escrito se conserva en esta
 // pestaña del navegador si la página se recarga; al cerrarla se borra, porque lleva salarios y datos de la empresa.
-export function CamposLevantamiento({ clave, iniciales }: { clave: string; iniciales: Record<string, string> }) {
+export function CamposLevantamiento({ clave, iniciales, modo = "completo" }: { clave: string; iniciales: Record<string, string>; modo?: ModoLevantamiento }) {
+  const ANEXOS = anexosDe(modo), SECCIONES = seccionesDe(modo);
   const caja = useRef<HTMLDivElement>(null);
   const [filas, setFilas] = useState<Record<string, number>>(Object.fromEntries(ANEXOS.map((a) => [a.clave, 3])));
   const [totales, setTotales] = useState<Record<string, string>>({});
@@ -84,7 +85,7 @@ export function CamposLevantamiento({ clave, iniciales }: { clave: string; inici
 
   return (
     <div ref={caja} onInput={() => { calcular(); guardar(); }} onChange={guardar} style={{ display: "contents" }}>
-      {SECCIONES_LEV.map((s) => (
+      {SECCIONES.map((s) => (
         <fieldset key={s.titulo} className="tarjeta">
           <legend><strong>{s.titulo}</strong></legend>
           <div className="fila">{s.preguntas.map((p) => <Campo key={p.k} p={p} inicial={iniciales[p.k]} />)}</div>
@@ -115,7 +116,7 @@ export function CamposLevantamiento({ clave, iniciales }: { clave: string; inici
         </label>
       </fieldset>
       <fieldset className="tarjeta">
-        <legend><strong>10. Validación</strong></legend>
+        <legend><strong>{modo === "simple" ? "Validación" : "10. Validación"}</strong></legend>
         <div className="fila">
           <label style={estilo(240)}>Su nombre<input name="acepta_nombre" required maxLength={200} /></label>
           <label style={estilo(180)}>Su cédula o RNC<input name="acepta_cedula" required maxLength={20} /></label>

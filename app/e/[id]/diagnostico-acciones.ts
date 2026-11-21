@@ -14,11 +14,11 @@ import type { Estado } from "../../acciones-cuenta";
 // Entrega 6b.3. La coordinadora prepara el diagnóstico; Patricia (permiso «empresa») lo aprueba y entonces nacen las propuestas.
 
 const volver = (id: string, fid: string) => { revalidatePath(`/e/${id}/solicitudes/levantamiento/${fid}`, "layout"); revalidatePath(`/e/${id}/expediente`); };
-type Fila = { estado: string; respuestas: Record<string, string> | null; aprobado_en: Date | null; diagnostico: Diagnostico | null; diagnostico_aprobado_en: Date | null;
+type Fila = { modo: string; estado: string; respuestas: Record<string, string> | null; aprobado_en: Date | null; diagnostico: Diagnostico | null; diagnostico_aprobado_en: Date | null;
   propuesta_servicios_id: string | null; propuesta_iguala_id: string | null; tipo_persona: string | null; categoria: string | null };
 const leer = async (tx: Tx, fid: string) => {
   const [f] = await tx<Fila[]>`
-    SELECT f.estado, f.respuestas, f.aprobado_en, f.diagnostico, f.diagnostico_aprobado_en, f.propuesta_servicios_id, f.propuesta_iguala_id, e.tipo_persona, e.categoria
+    SELECT f.modo, f.estado, f.respuestas, f.aprobado_en, f.diagnostico, f.diagnostico_aprobado_en, f.propuesta_servicios_id, f.propuesta_iguala_id, e.tipo_persona, e.categoria
       FROM formularios f JOIN empresas e ON e.id = f.empresa_id WHERE f.id = ${fid} AND f.tipo = 'levantamiento' FOR UPDATE OF f`;
   if (!f?.respuestas || f.estado !== "aceptado") throw new Error("Primero acepta el levantamiento.");
   return f as Fila & { respuestas: Record<string, string> };
@@ -52,7 +52,7 @@ export async function aprobarDiagnostico(empresaId: string, fid: string): Promis
     if (!propia) return { error: "Primero elige la empresa propia en Empresas Empire." };
     await exigirPermiso(propia, "registrar", "/propuestas");
     const f = await conEmpresa(empresaId, (tx) => leer(tx, fid));
-    if (!f.aprobado_en) return { error: "Primero aprueba el estado inicial." };
+    if (!f.aprobado_en && f.modo !== "simple") return { error: "Primero aprueba el estado inicial." };
     if (f.diagnostico_aprobado_en) return { error: "Ya está aprobado." };
     if (!f.diagnostico) return { error: "Primero guarda el diagnóstico." };
     const d = f.diagnostico;
@@ -86,12 +86,15 @@ export async function aprobarDiagnostico(empresaId: string, fid: string): Promis
       return { lineas, servicios_id, servicios_num, iguala_id, iguala_num };
     });
     await conEmpresa(empresaId, async (tx) => {
-      const e = estadoInicial(f.respuestas);
-      const ver = (v: bigint) => (v < 0n ? `-${deCentavos(-v)}` : deCentavos(v));
-      const resultado = e.operativa.at(-1)!.monto!;
       const total = hecho.lineas.reduce((t, l) => t + l.p, 0n);
-      const economica = { lineas: hecho.lineas.map((l) => ({ descripcion: l.n, precio: deCentavos(l.p) })), iguala: d.iguala && aCentavos(d.iguala) > 0n ? deCentavos(aCentavos(d.iguala)) : null,
-        total: deCentavos(total), activos: ver(e.activos), pasivos: ver(e.pasivos), patrimonio: ver(e.patrimonio), resultado: f.respuestas.ventas_mes ? ver(resultado) : null, margen: e.margen };
+      const base = { lineas: hecho.lineas.map((l) => ({ descripcion: l.n, precio: deCentavos(l.p) })), iguala: d.iguala && aCentavos(d.iguala) > 0n ? deCentavos(aCentavos(d.iguala)) : null, total: deCentavos(total) };
+      let economica: NonNullable<Diagnostico["economica"]> = base;
+      if (f.modo !== "simple") {
+        const e = estadoInicial(f.respuestas);
+        const ver = (v: bigint) => (v < 0n ? `-${deCentavos(-v)}` : deCentavos(v));
+        const resultado = e.operativa.at(-1)!.monto!;
+        economica = { ...base, activos: ver(e.activos), pasivos: ver(e.pasivos), patrimonio: ver(e.patrimonio), resultado: f.respuestas.ventas_mes ? ver(resultado) : null, margen: e.margen };
+      }
       await tx`UPDATE formularios SET diagnostico = ${tx.json({ ...d, economica } as never)}, diagnostico_aprobado_por = ${usuario.id}, diagnostico_aprobado_en = now(),
                  propuesta_servicios_id = ${hecho.servicios_id}, propuesta_servicios_numero = ${hecho.servicios_num}, propuesta_iguala_id = ${hecho.iguala_id}, propuesta_iguala_numero = ${hecho.iguala_num}
                 WHERE id = ${fid}`;

@@ -3,7 +3,7 @@ import { aCentavos, deCentavos, leerMonto } from "./montos.ts";
 import { db, type Tx } from "./db.ts";
 import { type Archivo, guardarArchivos } from "./expediente.ts";
 import { categoriaSugerida, ErrorFicha, guardarEmpleados, guardarSocios, leerContactos, leerOperaciones, leerSociedad, leerSocios, ROLES_CONTACTO } from "./ficha.ts";
-import { camposLevantamiento, ErrorLevantamiento, filasDe, ANEXOS, leerLevantamiento } from "./levantamiento.ts";
+import { camposLevantamiento, ErrorLevantamiento, filasDe, ANEXOS, leerLevantamiento, type ModoLevantamiento } from "./levantamiento.ts";
 import { abrirConstitucion } from "./tramites.ts";
 
 // Bloque 6, entrega 6a: formularios en línea (Documento maestro, sección 6). El cliente los llena desde un enlace seguro sin
@@ -48,12 +48,12 @@ const aFormData = (r: Record<string, string>) => { const fd = new FormData(); fo
 const limpio = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, 2000) : "");
 
 // Lee y valida lo que envía el cliente. Devuelve solo los campos del formulario con algo escrito.
-export function leerRespuestas(tipo: string, fd: FormData, servicios: Map<string, string> = new Map()): Record<string, string> {
+export function leerRespuestas(tipo: string, fd: FormData, servicios: Map<string, string> = new Map(), modo: ModoLevantamiento = "completo"): Record<string, string> {
   const campos = CAMPOS_FORMULARIO[tipo];
   if (!campos) throw new ErrorFormulario("Formulario no válido.");
   if (tipo === "levantamiento") {
     try {
-      return leerLevantamiento(fd);
+      return leerLevantamiento(fd, modo);
     } catch (e) {
       throw e instanceof ErrorLevantamiento ? new ErrorFormulario(e.message) : e;
     }
@@ -91,13 +91,13 @@ export function leerRespuestas(tipo: string, fd: FormData, servicios: Map<string
   return r;
 }
 
-export type FormularioPublico = { id: string; empresa_id: string; tipo: string; estado: string; creado_por: string; empresa: string; firma: string; propia: string | null };
+export type FormularioPublico = { id: string; empresa_id: string; tipo: string; modo: ModoLevantamiento; estado: string; creado_por: string; empresa: string; firma: string; propia: string | null };
 
 // Busca el formulario por su enlace (sin sesión; conexión dueña: la tabla no lleva FORCE RLS).
 export async function formularioPorToken(token: string): Promise<FormularioPublico | null> {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
   const [f] = await db()<FormularioPublico[]>`
-    SELECT f.id, f.empresa_id, f.tipo, f.estado, f.creado_por, e.nombre AS empresa, fi.nombre AS firma, fi.empresa_propia_id AS propia
+    SELECT f.id, f.empresa_id, f.tipo, f.modo, f.estado, f.creado_por, e.nombre AS empresa, fi.nombre AS firma, fi.empresa_propia_id AS propia
       FROM formularios f JOIN empresas e ON e.id = f.empresa_id JOIN firmas fi ON fi.id = e.firma_id
      WHERE f.token_hash = ${hashToken(token)} AND f.vence > now() AND f.estado <> 'descartado'`;
   return f ?? null;
@@ -248,12 +248,12 @@ export async function ponerEnlace(tx: Tx, formularioId: string, token: string) {
   if (!r.count) throw new ErrorFormulario("Ese formulario ya se respondió o se cerró.");
 }
 
-export type FilaFormulario = { id: string; tipo: string; estado: string; creado: Date; recibido_en: Date | null; vence: Date | null;
+export type FilaFormulario = { id: string; tipo: string; modo: ModoLevantamiento; estado: string; creado: Date; recibido_en: Date | null; vence: Date | null;
   respuestas: Record<string, string> | null; aceptadas: string[] | null; creado_por: string | null; revisado_por: string | null;
   adjuntos: { id: string; nombre: string }[] };
 
 export const listarFormularios = (tx: Tx) => tx<FilaFormulario[]>`
-  SELECT f.id, f.tipo, f.estado, f.creado, f.recibido_en, f.vence, f.respuestas, f.aceptadas, uc.nombre AS creado_por, ur.nombre AS revisado_por,
+  SELECT f.id, f.tipo, f.modo, f.estado, f.creado, f.recibido_en, f.vence, f.respuestas, f.aceptadas, uc.nombre AS creado_por, ur.nombre AS revisado_por,
          COALESCE((SELECT json_agg(json_build_object('id', d.id, 'nombre', d.nombre)) FROM documentos d
                     WHERE d.entidad = 'formulario' AND d.entidad_id = f.id AND NOT d.eliminado), '[]') AS adjuntos
     FROM formularios f LEFT JOIN usuarios uc ON uc.id = f.creado_por LEFT JOIN usuarios ur ON ur.id = f.revisado_por

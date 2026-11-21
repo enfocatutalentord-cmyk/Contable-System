@@ -83,8 +83,8 @@ export default async function FormularioEnLinea({ params }: { params: Promise<{ 
           <div className="tarjeta"><h1>{def.nombre}</h1><p>Ya recibimos este formulario. ¡Gracias! Si necesita cambiar algo, escríbale a la firma.</p></div>
         ) : (
           <>
-            <h1 style={{ marginBottom: 4 }}>{def.nombre}</h1>
-            <p className="sub">{f.empresa} · {f.firma} · {def.codigo}. Llénelo desde aquí; al enviarlo, la firma lo revisa antes de guardarlo.</p>
+            <h1 style={{ marginBottom: 4 }}>{def.nombre}{f.tipo === "levantamiento" && f.modo === "simple" ? " (simple)" : ""}</h1>
+            <p className="sub">{f.empresa} · {f.firma} · {f.tipo === "levantamiento" && f.modo === "simple" ? "sin anexos" : def.codigo}. Llénelo desde aquí; al enviarlo, la firma lo revisa antes de guardarlo.</p>
             <Formulario accion={enviarFormularioPublico.bind(null, token)} boton="Enviar" className="formulario formulario-cliente">
               {f.tipo === "ficha" && (
                 <>
@@ -146,7 +146,7 @@ export default async function FormularioEnLinea({ params }: { params: Promise<{ 
                   <Adjuntos texto="Cédulas de los accionistas (ambos lados), certificado de ONAPI y recibo del impuesto sobre el capital si ya los tiene" />
                 </>
               )}
-              {f.tipo === "levantamiento" && <CamposLevantamiento clave={token.slice(0, 12)} iniciales={iniciales} />}
+              {f.tipo === "levantamiento" && <CamposLevantamiento clave={token.slice(0, 12)} iniciales={iniciales} modo={f.modo} />}
               {f.tipo === "solicitud" && (
                 <>
                   <fieldset className="tarjeta">

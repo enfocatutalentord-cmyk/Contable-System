@@ -32,10 +32,10 @@ export async function pdfDiagnostico(tx: Tx, fid: string): Promise<{ nombre: str
     { text: "Documento confidencial, preparado para uso exclusivo del cliente.", italics: true, color: "#666666", margin: [16, 260, 0, 0] },
     { text: "Resumen", bold: true, fontSize: 14, color: VERDE, pageBreak: "before", margin: [0, 0, 0, 6] },
     { text: d.resumen, lineHeight: 1.3 },
-    tabla(["*", "auto"], ["Situación financiera inicial", "RD$"], [
+    ...(eco.activos !== undefined && eco.pasivos !== undefined && eco.patrimonio !== undefined ? [tabla(["*", "auto"], ["Situación financiera inicial", "RD$"], [
       ["Total de activos", m(eco.activos)], ["Total de pasivos", m(eco.pasivos)], ["Patrimonio", m(eco.patrimonio)],
       ...(eco.resultado ? [["Resultado mensual estimado", m(eco.resultado)]] : []), ...(eco.margen ? [["Margen de ganancia", { text: eco.margen, alignment: "right" }]] : []),
-    ]),
+    ])] : []),
     h2("Hallazgos y recomendaciones por área"),
     ...areas.flatMap(({ a, h }) => [
       { text: a, bold: true, fontSize: 11, margin: [0, 8, 0, 4] },

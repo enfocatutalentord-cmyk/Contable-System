@@ -10,6 +10,7 @@ import { ANEXOS, estadoInicial, filasDe, SECCIONES_LEV, type Linea } from "@/lib
 import { deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
 import { aceptarFormularioAccion, descartarFormularioAccion } from "../../../solicitudes-acciones";
+import { pasarAClienteAccion } from "../../../cliente-acciones";
 import { aprobarEstadoInicial, guardarPatrimonio, pasarASaldos, quitarAprobacionEstado } from "../../../levantamiento-acciones";
 
 export const metadata = { title: "Levantamiento contable · Empire Tax & Legal" };
@@ -36,13 +37,13 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
   if (!esUuid(fid)) notFound();
   const { permisos, empresa } = await accesoEmpresa(id);
   const datos = await conEmpresa(id, async (tx) => {
-    const [f] = await tx<(Pick<FilaFormulario, "estado" | "recibido_en" | "aceptadas"> & { respuestas: Record<string, string> | null; aprobado_en: Date | null; aprobador: string | null; revisor: string | null })[]>`
-      SELECT f.estado, f.recibido_en, f.aceptadas, f.respuestas, f.aprobado_en, ua.nombre AS aprobador, ur.nombre AS revisor
+    const [f] = await tx<(Pick<FilaFormulario, "estado" | "modo" | "recibido_en" | "aceptadas"> & { respuestas: Record<string, string> | null; aprobado_en: Date | null; aprobador: string | null; revisor: string | null })[]>`
+      SELECT f.estado, f.modo, f.recibido_en, f.aceptadas, f.respuestas, f.aprobado_en, ua.nombre AS aprobador, ur.nombre AS revisor
         FROM formularios f LEFT JOIN usuarios ua ON ua.id = f.aprobado_por LEFT JOIN usuarios ur ON ur.id = f.revisado_por
        WHERE f.id = ${fid} AND f.tipo = 'levantamiento'`;
     const [e] = await tx<Record<string, string | null>[]>`
       SELECT nombre, nombre_comercial, rnc, direccion, telefono, correo, to_char(fecha_constitucion, 'YYYY-MM-DD') AS fecha_constitucion, municipio, provincia,
-             ventas_mes::text, facturas_mes::text, CASE tiene_tss WHEN true THEN 'Sí' WHEN false THEN 'No' END AS en_tss, sistema_usa, capital_social::text, lleva_contabilidad::text
+             ventas_mes::text, facturas_mes::text, CASE tiene_tss WHEN true THEN 'Sí' WHEN false THEN 'No' END AS en_tss, sistema_usa, capital_social::text, lleva_contabilidad::text, estado_cliente
         FROM empresas WHERE id = ${id}`;
     const adjuntos = await tx<{ id: string; nombre: string }[]>`SELECT id, nombre FROM documentos WHERE entidad = 'formulario' AND entidad_id = ${fid} AND NOT eliminado`;
     return { f, e, adjuntos };
@@ -55,20 +56,28 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
   const sugerida = categoriaDe({ ventas_mes: r.ventas_mes ?? "", facturas_mes: r.facturas_mes ?? "", empleados_mes: String(Number(r.empleados_fijos ?? 0) + Number(r.empleados_servicio ?? 0)) });
   const nomina = ANEXOS[0], filasNomina = filasDe(r, nomina);
   const porAceptar = f.estado === "recibido";
+  const simple = f.modo === "simple", prospecto = datos.e.estado_cliente === "prospecto";
 
   return (
     <>
       <p><Link href={`/e/${id}/solicitudes`}>← Solicitudes y formularios</Link></p>
       <div className="entre">
         <div>
-          <h1>Levantamiento contable</h1>
+          <h1>Levantamiento contable{simple ? " (simple)" : ""}</h1>
           <p className="sub">{empresa.nombre} · {ESTADOS_FORMULARIO[f.estado]}{r.acepta_nombre && ` · confirmado por ${r.acepta_nombre} (${r.acepta_cedula})`}{f.recibido_en && ` el ${verFecha(f.recibido_en)}`}{f.revisor && ` · revisó ${f.revisor}`}</p>
         </div>
-        {puede(permisos, "exportar") && f.aprobado_en && <Descargar href={`/e/${id}/exportar/estado-inicial?id=${fid}`} />}
+        {puede(permisos, "exportar") && !simple && f.aprobado_en && <Descargar href={`/e/${id}/exportar/estado-inicial?id=${fid}`} />}
       </div>
 
       {f.estado === "aceptado" && <p><Link className="boton primario" href={`/e/${id}/solicitudes/levantamiento/${fid}/diagnostico`}>Informe de diagnóstico y propuesta</Link></p>}
-      <section className="tarjeta" style={{ marginBottom: 16 }}>
+      {prospecto && f.estado === "aceptado" && (
+        <div className="aviso" style={{ marginBottom: 16 }}>
+          <p style={{ marginTop: 0 }}>{empresa.nombre} sigue como prospecto. Cuando decida trabajar con la firma, pásalo a cliente con un clic: queda activo, con la fecha de hoy como inicio del contrato.</p>
+          {registra && <Formulario accion={pasarAClienteAccion.bind(null, id)} boton="Pasar a cliente" className="fila"><span /></Formulario>}
+        </div>
+      )}
+      {simple && <p className="sub">Levantamiento simple: no lleva anexos ni estado de situación inicial. Para tener las cifras de partida, prepara un levantamiento completo.</p>}
+      {!simple && <section className="tarjeta" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Estado de situación financiera inicial</h2>
         {est.avisos.map((a, i) => <p key={i} className="aviso">{a}</p>)}
         <Tabla lineas={est.lineas} />
@@ -102,7 +111,7 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
             )}
           </>
         )}
-      </section>
+      </section>}
 
       {porAceptar && registra && (
         <section className="tarjeta" style={{ marginBottom: 16 }}>
@@ -138,7 +147,7 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
         {datos.adjuntos.length > 0 && <ul>{datos.adjuntos.map((d) => <li key={d.id}><a href={`/e/${id}/documentos/${d.id}`} target="_blank" rel="noreferrer">{d.nombre}</a></li>)}</ul>}
       </section>
 
-      <section className="tarjeta">
+      {!simple && <section className="tarjeta">
         <h2 style={{ marginTop: 0 }}>Anexos</h2>
         {ANEXOS.map((a) => {
           const filas = filasDe(r, a);
@@ -152,7 +161,7 @@ export default async function Levantamiento({ params }: { params: Promise<{ id: 
             </details>
           );
         })}
-      </section>
+      </section>}
     </>
   );
 }

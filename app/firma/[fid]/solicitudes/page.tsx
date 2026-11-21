@@ -51,7 +51,9 @@ export default async function SolicitudesDeLaFirma({ params }: { params: Promise
         <p className="sub">Elige el cliente o créalo aquí. Sigues a su pantalla para mandarle el enlace del formulario por WhatsApp.</p>
         <Formulario accion={iniciarLevantamientoAccion.bind(null, fid)} boton="Crear el levantamiento" className="fila">
           <SelectorClienteRapido clientes={listaClientes} crearClientes={firma.crear_clientes} />
+          <label>Levantamiento<select name="modo" defaultValue="completo"><option value="completo">Completo (con anexos y estado inicial)</option><option value="simple">Simple (datos, ingresos, nómina y necesidades)</option></select></label>
         </Formulario>
+        <p className="sub">Si el cliente es nuevo queda como prospecto hasta que lo pases a cliente.</p>
       </details>
       {formularios.length > 0 && (
         <div className="tarjeta" style={{ marginBottom: 16 }}>

@@ -23,13 +23,15 @@ export async function crearFormulario(empresaId: string, _: Estado, fd: FormData
   const { usuario } = await exigirPermiso(empresaId, "registrar", "/solicitudes");
   const tipo = String(fd.get("tipo") ?? "");
   if (!(tipo in TIPOS_FORMULARIO)) return { error: "Elige el formulario." };
+  // Solo el levantamiento tiene versión simple (P2c.4); los demás formularios son como siempre.
+  const modo = tipo === "levantamiento" && String(fd.get("modo") ?? "") === "simple" ? "simple" : "completo";
   try {
-    await conEmpresa(empresaId, (tx) => tx`INSERT INTO formularios (empresa_id, tipo, creado_por) VALUES (${empresaId}, ${tipo}, ${usuario.id})`);
+    await conEmpresa(empresaId, (tx) => tx`INSERT INTO formularios (empresa_id, tipo, modo, creado_por) VALUES (${empresaId}, ${tipo}, ${modo}, ${usuario.id})`);
   } catch (e) {
     return { error: mensaje(e) };
   }
   volver(empresaId);
-  return { ok: `${TIPOS_FORMULARIO[tipo].nombre}: ya se puede enviar por WhatsApp o copiar su enlace.` };
+  return { ok: `${TIPOS_FORMULARIO[tipo].nombre}${modo === "simple" ? " (simple)" : ""}: ya se puede enviar por WhatsApp o copiar su enlace.` };
 }
 
 // Enlace para copiar y mandarlo por otro medio. Reemplaza el anterior (el que se haya mandado antes deja de funcionar).

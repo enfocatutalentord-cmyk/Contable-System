@@ -26,12 +26,13 @@ export async function crearSolicitudAccion(firmaId: string, _: Estado, fd: FormD
 export async function iniciarLevantamientoAccion(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
   let id: string;
   try {
-    id = (await clienteDeFormulario(firmaId, fd)).id;
+    id = (await clienteDeFormulario(firmaId, fd, { prospecto: true })).id;
   } catch (e) {
     return { error: mensajeError(e) };
   }
   const f = new FormData();
   f.set("tipo", "levantamiento");
+  f.set("modo", String(fd.get("modo") ?? ""));
   const r = await crearFormulario(id, {}, f);
   if (r.error) return r;
   redirect(`/e/${id}/solicitudes`);

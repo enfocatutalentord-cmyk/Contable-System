@@ -46,7 +46,8 @@ export function hallazgosDe(r: Record<string, string>, tipoPersona: string | nul
 
 export type Diagnostico = {
   hallazgos: Hallazgo[]; resumen: string; categoria: string | null; iguala: string; incluirLevantamiento: boolean;
-  economica?: { lineas: { descripcion: string; precio: string }[]; iguala: string | null; total: string; activos: string; pasivos: string; patrimonio: string; resultado: string | null; margen: string | null };
+  // Las cifras del estado inicial solo van en el levantamiento completo; el simple lleva los servicios y la iguala.
+  economica?: { lineas: { descripcion: string; precio: string }[]; iguala: string | null; total: string; activos?: string; pasivos?: string; patrimonio?: string; resultado?: string | null; margen?: string | null };
 };
 
 export const inicial = (r: Record<string, string>, tipoPersona: string | null, categoria: string | null): Diagnostico => ({

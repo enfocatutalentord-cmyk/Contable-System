@@ -7,25 +7,27 @@ import { conEmpresa, db } from "@/lib/db";
 import {
   CATEGORIAS, ESTADOS_CLIENTE, leerFicha, MAX_EMPLEADOS, MAX_SOCIOS, MODALIDADES, ROLES_CONTACTO, TIPOS_CLIENTE,
 } from "@/lib/ficha";
-import { verFecha, verMonto } from "@/lib/montos";
+import { hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { archivosDelExpediente, AVISO_DIAS, estadoDe, faltanDias, listarVencimientos, SUGERIDOS } from "@/lib/vencimientos";
 import { actualizarFicha } from "../acciones";
+import { guardarVencimiento, quitarVencimiento } from "../vencimientos-acciones";
 import {
   guardarFichaContactos, guardarFichaEmpleados, guardarFichaOperaciones, guardarFichaRelacion, guardarFichaSocios, guardarFichaSociedad, subirLogo,
 } from "../ficha-acciones";
 
 const SECCIONES: Record<string, string> = {
   general: "Datos generales", sociedad: "Sociedad", socios: "Socios", contactos: "Contactos", operaciones: "Operaciones",
-  empleados: "Empleados", relacion: "Relación con Empire",
+  empleados: "Empleados", vencimientos: "Documentos que vencen", relacion: "Relación con Empire",
 };
 const FILAS_EXTRA = 3;
 const v = (x: unknown) => (x === null || x === undefined ? "" : String(x));
 
 // Ficha única del cliente (Documento maestro «Sistema Empire», sección 5): de aquí salen los datos de facturas, documentos,
 // mensajes y alertas. Ver la ficha pide «ver»; cambiarla, «empresa»; los empleados (llevan sueldos), «empresa» para verlos.
-export default async function Ficha({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ seccion?: string }> }) {
+export default async function Ficha({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ seccion?: string; editar?: string }> }) {
   const { id } = await params;
-  const { seccion: s } = await searchParams;
+  const { seccion: s, editar } = await searchParams;
   const { permisos, usuario, empresa, propia: deLaDuena } = await accesoEmpresa(id);
   const propiaId = (await misFirmas(usuario.id)).find((x) => x.id === empresa.firma_id)?.empresa_propia_id ?? null;
   const esPropia = !!deLaDuena; // una de las empresas de la dueña (Contabilidad): no es cliente
@@ -54,6 +56,19 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
   const { ficha: f, socios, contactos, empleados, sugerida, formalizado } = await conEmpresa(id, (tx) => leerFicha(tx, id, verEmpleados));
   const [logo] = await conEmpresa(id, (tx) => tx<{ id: string }[]>`
     SELECT id FROM documentos WHERE entidad = 'empresa' AND entidad_id = ${id} AND descripcion = 'logo' AND NOT eliminado ORDER BY subido_en DESC LIMIT 1`);
+  // Documentos que vencen (P2c.4): los tres de la sociedad y los demás que se agreguen, con su estado y su archivo del expediente.
+  const hoy = hoyISO();
+  const { vencimientos, archivos } = seccion === "vencimientos"
+    ? await conEmpresa(id, async (tx) => ({ vencimientos: await listarVencimientos(tx), archivos: await archivosDelExpediente(tx, id) }))
+    : { vencimientos: [], archivos: [] };
+  const enEdicion = vencimientos.find((x) => x.id === editar);
+  const delaSociedad = ([["Registro mercantil", f.vence_registro_mercantil, 60], ["Nombre comercial (ONAPI)", f.vence_nombre_comercial, 60], ["Próxima asamblea ordinaria", f.fecha_asamblea, 30]] as const)
+    .filter(([, fecha]) => fecha) as unknown as [string, string, number][];
+  const etiquetaEstado = (vence: string, aviso: number) => {
+    const e = estadoDe(vence, aviso, hoy), n = faltanDias(vence, hoy);
+    return e === "vencido" ? <span className="error" style={{ margin: 0 }}>Venció hace {-n} día{n === -1 ? "" : "s"}</span>
+      : e === "por_vencer" ? <span style={{ color: "var(--aviso, #8a5a00)", fontWeight: 600 }}>{n === 0 ? "Vence hoy" : `Vence en ${n} día${n === 1 ? "" : "s"}`}</span> : <span className="sub" style={{ margin: 0 }}>Vigente</span>;
+  };
   const boton = (t: string) => (editable ? t : "");
   // Logo del cliente (lo usan cartas, actas y estados financieros): arriba, en Datos generales, para que se encuentre (n.º 14).
   const Logo = () => (
@@ -223,6 +238,58 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
               </div>,
             )}
           </Formulario>
+        )}
+
+        {seccion === "vencimientos" && (
+          <>
+            <p className="sub">Lo que vence en la vida de este cliente. El sistema lo avisa antes (en Alertas y en su resumen) y deja de avisar cuando pones la fecha nueva.</p>
+            <div className="tabla-envoltura">
+              <table>
+                <thead><tr><th>Documento</th><th>Vence</th><th>Estado</th><th>Archivo</th><th /></tr></thead>
+                <tbody>
+                  {delaSociedad.map(([nombre, fecha, aviso]) => (
+                    <tr key={nombre}>
+                      <td>{nombre}<div className="sub" style={{ margin: 0 }}>Se cambia en <Link href={`/e/${id}/empresa?seccion=sociedad`}>Sociedad</Link></div></td>
+                      <td>{verFecha(fecha)}</td><td>{etiquetaEstado(fecha, aviso)}</td><td>—</td><td />
+                    </tr>
+                  ))}
+                  {vencimientos.map((x) => (
+                    <tr key={x.id}>
+                      <td>{x.nombre}{x.nota && <div className="sub" style={{ margin: 0 }}>{x.nota}</div>}</td>
+                      <td>{verFecha(x.vence)}<div className="sub" style={{ margin: 0 }}>aviso {x.avisar_dias} días antes</div></td>
+                      <td>{etiquetaEstado(x.vence, x.avisar_dias)}</td>
+                      <td>{x.documento_id && x.documento ? <a href={`/e/${id}/documentos/${x.documento_id}`} target="_blank" rel="noreferrer">{x.documento}</a> : "—"}</td>
+                      <td className="num" style={{ whiteSpace: "nowrap" }}>
+                        {editable && <Link href={`/e/${id}/empresa?seccion=vencimientos&editar=${x.id}`}>Renovar o cambiar</Link>}
+                        {editable && <Formulario accion={quitarVencimiento.bind(null, id, x.id)} boton="Quitar" className="fila boton-chico"><span /></Formulario>}
+                      </td>
+                    </tr>
+                  ))}
+                  {delaSociedad.length === 0 && vencimientos.length === 0 && <tr><td colSpan={5}>Todavía no hay documentos con vencimiento.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            {editable && (
+              <section className="tarjeta" style={{ marginTop: 16 }}>
+                <h3 style={{ marginTop: 0 }}>{enEdicion ? `Renovar o cambiar: ${enEdicion.nombre}` : "Agregar un documento que vence"}</h3>
+                <Formulario key={enEdicion?.id ?? "nuevo"} accion={guardarVencimiento.bind(null, id)} boton={enEdicion ? "Guardar" : "Agregar"} className="fila">
+                  {enEdicion && <input type="hidden" name="id" value={enEdicion.id} />}
+                  <label style={{ flex: "2 1 260px" }}>Documento<input name="nombre" list="vencimientos-sugeridos" defaultValue={enEdicion?.nombre} required maxLength={200} /></label>
+                  <datalist id="vencimientos-sugeridos">{SUGERIDOS.map((n) => <option key={n} value={n} />)}</datalist>
+                  <label>Vence el<input name="vence" type="date" defaultValue={enEdicion?.vence} required /></label>
+                  <label style={{ width: 150 }}>Avisar (días antes)<input name="avisar_dias" type="number" min={0} max={365} defaultValue={enEdicion?.avisar_dias ?? AVISO_DIAS} /></label>
+                  <label style={{ flex: "1 1 240px" }}>Archivo del expediente (opcional)
+                    <select name="documento_id" defaultValue={enEdicion?.documento_id ?? ""}>
+                      <option value="">—</option>
+                      {archivos.map((a) => <option key={a.id} value={a.id}>{a.carpeta ? `${a.carpeta} · ` : ""}{a.nombre}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ flex: "1 1 100%" }}>Nota<input name="nota" maxLength={500} defaultValue={enEdicion?.nota ?? ""} /></label>
+                </Formulario>
+                {enEdicion && <p><Link href={`/e/${id}/empresa?seccion=vencimientos`}>Cancelar</Link></p>}
+              </section>
+            )}
+          </>
         )}
 
         {seccion === "relacion" && (

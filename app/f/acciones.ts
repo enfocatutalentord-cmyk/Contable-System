@@ -13,7 +13,7 @@ export async function enviarFormularioPublico(token: string, _: Estado, fd: Form
   if (f.estado !== "pendiente") return { error: "Este formulario ya se envió. Gracias." };
   try {
     const servicios = f.tipo === "solicitud" ? new Map((await serviciosDeLaFirma(f.propia)).map((s) => [s.id, s.nombre])) : undefined;
-    const respuestas = leerRespuestas(f.tipo, fd, servicios);
+    const respuestas = leerRespuestas(f.tipo, fd, servicios, f.modo);
     const archivos = await leerArchivos(fd, "archivos", 10);
     await conEmpresa(f.empresa_id, (tx) => recibirFormulario(tx, f, respuestas, archivos));
   } catch (e) {

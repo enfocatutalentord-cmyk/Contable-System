@@ -15,6 +15,7 @@ export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
   prospecto: "Prospecto", facturas_subidas: "Facturas subidas", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
   tramite: "Trámites", solicitud: "Solicitudes y formularios", ecf: "Factura electrónica",
+  vencimiento: "Documentos que vencen",
 };
 // Último plazo de la factura electrónica para micro, pequeños y no clasificados (Aviso DGII 14-25 + prórroga del Aviso 06-26).
 export const FECHA_ECF = "2026-11-15";
@@ -161,6 +162,11 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
     // Registro mercantil y nombre comercial: 60 días antes. Asamblea ordinaria: 30 días antes.
     for (const [f, que, antes] of [[e.vence_registro_mercantil, "El registro mercantil", 60], [e.vence_nombre_comercial, "El nombre comercial (ONAPI)", 60], [e.fecha_asamblea, "La asamblea ordinaria anual", 30]] as const) {
       if (f && dias(hoy, f) <= antes) poner("registro", dias(hoy, f) < 0 ? "urgente" : "aviso", `${que} ${que.startsWith("La asamblea") ? (dias(hoy, f) < 0 ? `era el ${verFecha(f)}` : `es el ${verFecha(f)}`) : faltan(hoy, f)}`, `${base}/empresa?seccion=sociedad`, f);
+    }
+    // Otros documentos que vencen (P2c.4): cada uno con sus días de aviso.
+    for (const x of await tx<{ nombre: string; vence: string; avisar_dias: number }[]>`
+        SELECT nombre, to_char(vence, 'YYYY-MM-DD') AS vence, avisar_dias FROM vencimientos_empresa WHERE activo`) {
+      if (dias(hoy, x.vence) <= x.avisar_dias) poner("vencimiento", dias(hoy, x.vence) < 0 ? "urgente" : "aviso", `${x.nombre}: ${faltan(hoy, x.vence)}`, `${base}/empresa?seccion=vencimientos`, x.vence);
     }
     // Fidelidad: cumpleaños de los contactos (hoy o mañana) y aniversario con Empire (en los próximos 7 días).
     for (const c of await tx<{ nombre: string; nacimiento: string }[]>`

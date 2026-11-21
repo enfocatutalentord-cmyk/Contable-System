@@ -100,6 +100,14 @@ export const ANEXOS: Anexo[] = [
   ] },
 ];
 
+// Levantamiento simple (P2c.4): lo que hace falta para conocer al prospecto y proponerle servicios, sin anexos ni estado inicial: datos generales (1),
+// situación contable (2), ingresos y ventas (4), nómina (6) y necesidades (9). El completo lleva todo.
+export type ModoLevantamiento = "simple" | "completo";
+export const SECCIONES_SIMPLE = ["1.", "2.", "4.", "6.", "9."];
+export const esModo = (v: unknown): v is ModoLevantamiento => v === "simple" || v === "completo";
+export const seccionesDe = (modo: ModoLevantamiento) => (modo === "simple" ? SECCIONES_LEV.filter((s) => SECCIONES_SIMPLE.some((p) => s.titulo.startsWith(p))) : SECCIONES_LEV);
+export const anexosDe = (modo: ModoLevantamiento): Anexo[] => (modo === "simple" ? [] : ANEXOS);
+
 export const SIMPLES = ["costos_directos", "acepta_nombre", "acepta_cedula", "acepta"];
 export const camposLevantamiento = () => [
   ...SECCIONES_LEV.flatMap((s) => s.preguntas.map((p) => p.k)), ...SIMPLES,
@@ -117,9 +125,9 @@ export const filasDe = (r: Record<string, string>, a: Anexo): Fila[] =>
     .filter((f) => Object.keys(f).length > 0);
 
 // Lee lo que envía el cliente: solo campos conocidos, opciones de su lista, montos y fechas válidos.
-export function leerLevantamiento(fd: FormData): Record<string, string> {
+export function leerLevantamiento(fd: FormData, modo: ModoLevantamiento = "completo"): Record<string, string> {
   const r: Record<string, string> = {};
-  for (const s of SECCIONES_LEV) {
+  for (const s of seccionesDe(modo)) {
     for (const p of s.preguntas) {
       if (p.multi) { const v = fd.getAll(p.k).map(String).filter((x) => p.op!.includes(x)); if (v.length) r[p.k] = v.join(", "); continue; }
       const v = limpio(fd.get(p.k));
@@ -133,9 +141,9 @@ export function leerLevantamiento(fd: FormData): Record<string, string> {
   }
   if (!r.nombre) throw new ErrorLevantamiento("Escriba el nombre o razón social de la empresa.");
   if (r.rnc && !/^\d{9}$|^\d{11}$/.test(r.rnc.replace(/\D/g, ""))) throw new ErrorLevantamiento("El RNC lleva 9 dígitos (o 11 si es una cédula).");
-  const costos = limpio(fd.get("costos_directos"));
+  const costos = modo === "simple" ? "" : limpio(fd.get("costos_directos"));
   if (costos) { if (!montoValido(costos)) throw new ErrorLevantamiento("«Costos directos»: el monto no es válido."); r.costos_directos = costos; }
-  for (const a of ANEXOS) {
+  for (const a of anexosDe(modo)) {
     let n = 0;
     for (let i = 0; i < a.max; i++) {
       const vals = a.cols.map((c) => [c, limpio(fd.get(`${a.clave}${i}_${c.k}`))] as const).filter(([, v]) => v);

@@ -20,9 +20,9 @@ export default async function PaginaDiagnostico({ params }: { params: Promise<{ 
   const { id, fid } = await params;
   if (!esUuid(fid)) notFound();
   const { permisos, empresa } = await accesoEmpresa(id);
-  const [f] = await conEmpresa(id, (tx) => tx<{ estado: string; respuestas: Record<string, string> | null; aprobado_en: Date | null; diagnostico: Diagnostico | null; diagnostico_aprobado_en: Date | null;
+  const [f] = await conEmpresa(id, (tx) => tx<{ modo: string; estado: string; respuestas: Record<string, string> | null; aprobado_en: Date | null; diagnostico: Diagnostico | null; diagnostico_aprobado_en: Date | null;
     propuesta_servicios_numero: number | null; propuesta_iguala_numero: number | null; aprobador: string | null; tipo_persona: string | null; categoria: string | null }[]>`
-    SELECT f.estado, f.respuestas, f.aprobado_en, f.diagnostico, f.diagnostico_aprobado_en, f.propuesta_servicios_numero, f.propuesta_iguala_numero, u.nombre AS aprobador, e.tipo_persona, e.categoria
+    SELECT f.modo, f.estado, f.respuestas, f.aprobado_en, f.diagnostico, f.diagnostico_aprobado_en, f.propuesta_servicios_numero, f.propuesta_iguala_numero, u.nombre AS aprobador, e.tipo_persona, e.categoria
       FROM formularios f JOIN empresas e ON e.id = f.empresa_id LEFT JOIN usuarios u ON u.id = f.diagnostico_aprobado_por WHERE f.id = ${fid} AND f.tipo = 'levantamiento'`);
   if (!f?.respuestas || f.estado !== "aceptado") notFound();
   const r = f.respuestas;
@@ -55,7 +55,7 @@ export default async function PaginaDiagnostico({ params }: { params: Promise<{ 
       </div>
       {!propia && <p className="aviso">Sin empresa propia elegida no hay lista de precios: elígela en Empresas Empire.</p>}
       {propia && lista.length === 0 && <p className="aviso">La lista de precios está vacía: cárgala en Contabilidad Empire › Productos y servicios.</p>}
-      {!f.aprobado_en && <p className="aviso">El estado inicial todavía no está aprobado; hace falta para aprobar este informe.</p>}
+      {!f.aprobado_en && f.modo !== "simple" && <p className="aviso">El estado inicial todavía no está aprobado; hace falta para aprobar este informe.</p>}
 
       {aprobado ? (
         <section className="tarjeta" style={{ marginBottom: 16 }}>
@@ -103,7 +103,7 @@ export default async function PaginaDiagnostico({ params }: { params: Promise<{ 
           </section>
         </Formulario>
       )}
-      {!aprobado && aprueba && f.diagnostico && f.aprobado_en && (
+      {!aprobado && aprueba && f.diagnostico && (f.aprobado_en || f.modo === "simple") && (
         <div style={{ marginTop: 12 }}><Formulario accion={aprobarDiagnostico.bind(null, id, fid)} boton="Aprobar y crear las propuestas" className="fila"><span /></Formulario></div>
       )}
       {!aprobado && !aprueba && <p className="sub">Lo aprueba Patricia.</p>}

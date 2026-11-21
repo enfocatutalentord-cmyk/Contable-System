@@ -139,6 +139,7 @@ export default async function Solicitudes({ params, searchParams }: { params: Pr
       {registra && (
         <Formulario accion={crearFormulario.bind(null, id)} boton="Preparar formulario" className="fila">
           <label>Formulario<select name="tipo" defaultValue="ficha">{Object.entries(TIPOS_FORMULARIO).map(([k, v]) => <option key={k} value={k}>{v.nombre} ({v.codigo})</option>)}</select></label>
+          <label>Si es levantamiento<select name="modo" defaultValue="completo"><option value="completo">Completo (con anexos)</option><option value="simple">Simple (sin anexos)</option></select></label>
         </Formulario>
       )}
       <div className="tabla-envoltura" style={{ margin: "12px 0 24px" }}>
@@ -147,7 +148,7 @@ export default async function Solicitudes({ params, searchParams }: { params: Pr
           <tbody>
             {datos.formularios.map((f) => (
               <tr key={f.id} style={["aceptado", "descartado"].includes(f.estado) ? { opacity: 0.65 } : undefined}>
-                <td>{f.tipo === "levantamiento" && f.estado !== "pendiente" && f.estado !== "descartado" ? <Link href={`/e/${id}/solicitudes/levantamiento/${f.id}`}>{TIPOS_FORMULARIO[f.tipo].nombre}</Link> : TIPOS_FORMULARIO[f.tipo].nombre}</td>
+                <td>{f.tipo === "levantamiento" && f.estado !== "pendiente" && f.estado !== "descartado" ? <Link href={`/e/${id}/solicitudes/levantamiento/${f.id}`}>{TIPOS_FORMULARIO[f.tipo].nombre}{f.modo === "simple" ? " (simple)" : ""}</Link> : `${TIPOS_FORMULARIO[f.tipo].nombre}${f.tipo === "levantamiento" && f.modo === "simple" ? " (simple)" : ""}`}</td>
                 <td>{fechaHora(f.creado)}{f.creado_por && <div className="sub" style={{ margin: 0 }}>{f.creado_por}</div>}</td>
                 <td>{ESTADOS_FORMULARIO[f.estado]}{f.estado === "pendiente" && f.vence && <div className="sub" style={{ margin: 0 }}>enlace hasta el {verFecha(f.vence.toISOString().slice(0, 10))}</div>}
                   {f.revisado_por && <div className="sub" style={{ margin: 0 }}>por {f.revisado_por}</div>}</td>

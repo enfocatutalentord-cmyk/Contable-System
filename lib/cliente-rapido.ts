@@ -13,7 +13,8 @@ export class ErrorClienteRapido extends Error {
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 
-export async function clienteDeFormulario(firmaId: string, fd: FormData): Promise<{ id: string; nuevo: boolean }> {
+// `prospecto`: si el cliente es nuevo, queda como prospecto (todavía no firma): sin tareas ni impuestos del mes hasta que «Pase a cliente».
+export async function clienteDeFormulario(firmaId: string, fd: FormData, opciones: { prospecto?: boolean } = {}): Promise<{ id: string; nuevo: boolean }> {
   const { usuario, firma } = await accesoFirma(firmaId, false);
   const elegido = texto(fd, "empresa");
   if (elegido && elegido !== "nuevo") {
@@ -32,6 +33,7 @@ export async function clienteDeFormulario(firmaId: string, fd: FormData): Promis
   if (typeof ficha === "string") throw new ErrorClienteRapido(ficha === "Escribe la razón social o el nombre de la empresa." ? "Elige el cliente o escribe el nombre del nuevo." : ficha);
   const id = await crearEmpresa({ firmaId, usuarioId: usuario.id, ficha });
   if (ficha.provisional) await conEmpresa(id, (tx) => abrirConstitucion(tx, id));
+  if (opciones.prospecto) await conEmpresa(id, (tx) => tx`UPDATE empresas SET estado_cliente = 'prospecto' WHERE id = ${id}`);
   if (!firma.administrador) {
     await db()`UPDATE empresas SET responsable_id = COALESCE(responsable_id, ${usuario.id}) WHERE id = ${id}`;
     await db()`UPDATE miembros_firma SET clientes = array_append(clientes, ${id}::uuid)
