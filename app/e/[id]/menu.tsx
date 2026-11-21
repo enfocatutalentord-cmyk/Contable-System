@@ -102,7 +102,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ]],
     ["Impuestos", [{ firma: `${firma}/calendario`, nombre: "Calendario fiscal" }, { cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
       { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
-    ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }, ...(admin ? [{ firma: `${firma}/rentabilidad`, nombre: "Rentabilidad por cliente" }] : [])]],
+    ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }, { firma: `${firma}/analisis`, nombre: "Análisis financiero" }, ...(admin ? [{ firma: `${firma}/rentabilidad`, nombre: "Rentabilidad por cliente" }] : [])]],
     ["Expediente y trámites", [{ firma: `${firma}/plantillas`, nombre: "Documentos y plantillas" }, { firma: `${firma}/firmas`, nombre: "Firma digital" }, { firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
     ["Vendario", [{ firma: `${firma}/vendario`, nombre: "Solicitudes y clientes" }, { firma: `${firma}/vendario/salud`, nombre: "Salud de la integración" }]],
