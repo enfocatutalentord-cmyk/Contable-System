@@ -44,7 +44,7 @@ export async function leerArchivos(fd: FormData, campo = "archivos", maximo = 10
 
 // Guarda archivos en el expediente (o en otra entidad, como el volante de un trámite). Devuelve los ids.
 export async function guardarArchivos(tx: Tx, d: {
-  empresaId: string; usuarioId: string; archivos: Archivo[]; entidad?: "expediente" | "tramite" | "formulario"; entidadId?: string;
+  empresaId: string; usuarioId: string; archivos: Archivo[]; entidad?: "expediente" | "tramite" | "formulario" | "auditoria"; entidadId?: string;
   carpeta: string | null; anio: number | null; descripcion: string | null;
 }): Promise<string[]> {
   const ids: string[] = [];

@@ -106,6 +106,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
     ["Expediente y trámites", [{ firma: `${firma}/plantillas`, nombre: "Documentos y plantillas" }, { firma: `${firma}/firmas`, nombre: "Firma digital" }, { firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },
       { cliente: "/expediente" }, { cliente: "/solicitudes" }, { cliente: "/recepcion" }, { cliente: "/bitacora", nombre: "Bitácora del cliente" }]],
     ["Laboral", [{ firma: `${firma}/laboral`, nombre: "Prestaciones laborales" }, { firma: `${firma}/nomina`, nombre: "Nómina y archivo TSS" }, { firma: `${firma}/cartas`, nombre: "Cartas de trabajo" }]],
+    ["Auditoría", [{ firma: `${firma}/auditoria`, nombre: "Auditorías" }]],
     ["Vendario", [{ firma: `${firma}/vendario`, nombre: "Solicitudes y clientes" }, { firma: `${firma}/vendario/salud`, nombre: "Salud de la integración" }]],
   ];
   // Lo de un cliente que no tenga su lugar arriba (una pestaña nueva) no se pierde: va en «Otros».
