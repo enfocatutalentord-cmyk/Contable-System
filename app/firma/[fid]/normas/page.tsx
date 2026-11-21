@@ -5,7 +5,7 @@ import { conEmpresa, db } from "@/lib/db";
 import { COMPROBANTES } from "@/lib/fiscal";
 import { hoyISO, verFecha } from "@/lib/montos";
 import {
-  avisosDeNormas, DIAS_SIN_REVISAR, empresasDeFirma, estadoVigencia, FORMATOS_CALENDARIO, NOMBRE_FORMATO, normasDeFirma, tasasDeFirma,
+  avisosDeNormas, DIAS_SIN_REVISAR, empresasDeFirma, estadoVigencia, FORMATOS_CALENDARIO, FORMATOS_SIN_DIA, NOMBRE_FORMATO, normasDeFirma, tasasDeFirma,
 } from "@/lib/normas";
 import { SIN_CREDITO } from "@/lib/validar-fiscal";
 import { agregarProrroga, cargarTasa, guardarCalendario, guardarResponsableNormas, quitarProrroga, registrarRevision } from "../../normas-acciones";
@@ -106,7 +106,8 @@ export default async function Normas({ params, searchParams }: { params: Promise
         <h2 style={{ marginTop: 0 }}>Calendario fiscal</h2>
         <p className="sub">
           Día del mes siguiente en que vence cada declaración (y, para el IR-2, los días después del cierre del ejercicio). Lo usan las alertas,
-          Impuestos del mes y el reporte mensual. Si el día no existe en un mes, vence el último día.
+          Impuestos del mes, el reporte mensual y el Calendario fiscal. Si el día no existe en un mes, vence el último día. El anticipo del ISR y la
+          TSS se agregaron en el Calendario fiscal: confirma su día; la TSS no sale en el calendario mientras no tenga día.
         </p>
         <Formulario accion={guardarCalendario.bind(null, fid)} boton="Guardar el calendario">
           <div className="tabla-envoltura">
@@ -120,7 +121,8 @@ export default async function Normas({ params, searchParams }: { params: Promise
                       <td><strong>{NOMBRE_FORMATO[f]}</strong></td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         {f === "IR-2" ? "" : "Día "}
-                        <input name={`dia_${f}`} type="number" min={1} max={f === "IR-2" ? 365 : 31} defaultValue={d?.dia ?? ""} required style={{ width: 80 }} aria-label={`Día de ${f}`} />
+                        <input name={`dia_${f}`} type="number" min={1} max={f === "IR-2" ? 365 : 31} defaultValue={d?.dia ?? ""} required={!FORMATOS_SIN_DIA.includes(f)}
+                          placeholder={FORMATOS_SIN_DIA.includes(f) ? "sin día" : undefined} style={{ width: 80 }} aria-label={`Día de ${f}`} />
                         {f === "IR-2" ? " días después del cierre" : " del mes siguiente"}
                       </td>
                       <td><input name={`norma_${f}`} defaultValue={d?.norma ?? ""} maxLength={200} aria-label={`Norma de ${f}`} /></td>

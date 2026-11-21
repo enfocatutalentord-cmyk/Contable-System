@@ -20,7 +20,7 @@ export async function tasasDeFirma(empresas: { id: string; nombre: string }[]): 
   return agrupar(listas);
 }
 
-export type Dia = { formato: string; dia: number; norma: string | null; cambiado_por: string | null; cambiado_en: Date | null };
+export type Dia = { formato: string; dia: number | null; norma: string | null; cambiado_por: string | null; cambiado_en: Date | null };
 export type Revision = { id: string; fecha: string; revisado: string; hubo_cambios: boolean; archivo_nombre: string | null; por: string | null };
 
 export async function normasDeFirma(firmaId: string) {

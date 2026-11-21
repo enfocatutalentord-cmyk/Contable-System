@@ -100,7 +100,7 @@ export function Menu({ firmaId, empresaId, admin, auditoria, pestanas, soloClien
       { firma: `${firma}/mensajes`, nombre: "Mensajes predeterminados" }]],
     ["Facturas y documentos", [{ firma: `${firma}/documentos`, nombre: "Documentos recibidos" }, { firma: `${firma}/facturas-subidas`, nombre: "Facturas del cliente" },
     ]],
-    ["Impuestos", [{ cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
+    ["Impuestos", [{ firma: `${firma}/calendario`, nombre: "Calendario fiscal" }, { cliente: "/dgii" }, { cliente: "/notificaciones" }, { cliente: "/comprobantes" }, { cliente: "/fiscal" }, { firma: `${firma}/firmantes`, nombre: "Firmantes de e-CF" },
       { cliente: "/fiscal/impuestos" }, { cliente: "/fiscal/retenciones" }, { cliente: "/fiscal/probar" }]],
     ["Reportes", [{ cliente: "/estados" }, { cliente: "/reportes" }, ...(admin ? [{ firma: `${firma}/rentabilidad`, nombre: "Rentabilidad por cliente" }] : [])]],
     ["Expediente y trámites", [{ firma: `${firma}/tramites`, nombre: "Trámites abiertos" }, { firma: `${firma}/solicitudes`, nombre: "Solicitudes" },

@@ -53,20 +53,24 @@ export type EstadoMes = {
   sugeridas: boolean; // sin obligaciones confirmadas en el perfil fiscal: se usan las sugeridas por el perfil
 };
 
-// Estado del mes de una empresa (corre en conEmpresa).
-export async function estadoDelMes(tx: Tx, periodo: string, hoy: string): Promise<EstadoMes> {
-  const desde = `${periodo.slice(0, 4)}-${periodo.slice(4)}-01`, hasta = finDeMes(periodo);
+// Las obligaciones que le tocan a la empresa: las confirmadas en su perfil fiscal o, si no confirmó ninguna, las que sugiere el perfil
+// (corre en conEmpresa). Las usan Impuestos del mes y el Calendario fiscal.
+export async function obligacionesActivas(tx: Tx): Promise<{ activas: Set<string>; sugeridas: boolean }> {
   const confirmadas = await tx<{ clave: string; activa: boolean }[]>`SELECT clave, activa FROM obligaciones_empresa`;
   const sugeridas = confirmadas.length === 0;
-  let activas: Set<string>;
   if (sugeridas) {
     const [perfil] = await tx<PerfilFiscal[]>`
       SELECT tipo_persona, regimen, contribuye_itbis, agente_retencion, emisor_ecf, to_char(ecf_desde, 'YYYY-MM-DD') AS ecf_desde
         FROM empresas WHERE id = empresa_actual()`;
-    activas = new Set(perfil ? OBLIGACIONES.filter((o) => o.sugerida(perfil)).map((o) => o.clave) : []);
-  } else {
-    activas = new Set(confirmadas.filter((o) => o.activa).map((o) => o.clave));
+    return { activas: new Set(perfil ? OBLIGACIONES.filter((o) => o.sugerida(perfil)).map((o) => o.clave) : []), sugeridas };
   }
+  return { activas: new Set(confirmadas.filter((o) => o.activa).map((o) => o.clave)), sugeridas };
+}
+
+// Estado del mes de una empresa (corre en conEmpresa).
+export async function estadoDelMes(tx: Tx, periodo: string, hoy: string): Promise<EstadoMes> {
+  const desde = `${periodo.slice(0, 4)}-${periodo.slice(4)}-01`, hasta = finDeMes(periodo);
+  const { activas, sugeridas } = await obligacionesActivas(tx);
   const envios = new Map((await tx<{ formato: string; en_cero: boolean; monto_pagar: string | null; fecha_limite: string | null }[]>`
     SELECT formato, en_cero, monto_pagar::text, to_char(fecha_limite, 'YYYY-MM-DD') AS fecha_limite FROM envios_dgii WHERE periodo = ${periodo}`)
     .map((e) => [e.formato, e]));

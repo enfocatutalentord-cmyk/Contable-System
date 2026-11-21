@@ -5,7 +5,7 @@ import { accesoFirma, esUuid } from "@/lib/acceso";
 import { conEmpresa, db, mensajeError } from "@/lib/db";
 import { TAMANO_MAXIMO, tipoPorContenido } from "@/lib/documentos";
 import { leerPorcentaje, porcentajeTexto } from "@/lib/fiscal";
-import { anotar, cargarTasaNueva, empresasDeFirma, FORMATOS_CALENDARIO, NOMBRE_FORMATO, TEXTO_RESULTADO, type Clase, type Resultado } from "@/lib/normas";
+import { anotar, cargarTasaNueva, empresasDeFirma, FORMATOS_CALENDARIO, FORMATOS_SIN_DIA, NOMBRE_FORMATO, TEXTO_RESULTADO, type Clase, type Resultado } from "@/lib/normas";
 import { fechaValida } from "@/lib/reportes";
 import { verFecha } from "@/lib/montos";
 import type { Estado } from "../acciones-cuenta";
@@ -55,16 +55,18 @@ export async function cargarTasa(firmaId: string, _: Estado, fd: FormData): Prom
 
 export async function guardarCalendario(firmaId: string, _: Estado, fd: FormData): Promise<Estado> {
   const { usuario } = await accesoFirma(firmaId);
-  const actuales = await db()<{ formato: string; dia: number; norma: string | null }[]>`SELECT formato, dia, norma FROM calendario_fiscal WHERE firma_id = ${firmaId}`;
+  const actuales = await db()<{ formato: string; dia: number | null; norma: string | null }[]>`SELECT formato, dia, norma FROM calendario_fiscal WHERE firma_id = ${firmaId}`;
   const cambios: string[] = [];
   for (const f of FORMATOS_CALENDARIO) {
-    const dia = Number(texto(fd, `dia_${f}`));
+    const bruto = texto(fd, `dia_${f}`);
+    // La TSS puede quedar sin día mientras no se confirme (P3a): no sale en el calendario hasta que se escriba.
+    const dia = bruto === "" && FORMATOS_SIN_DIA.includes(f) ? null : Number(bruto);
     const norma = texto(fd, `norma_${f}`) || null;
     const max = f === "IR-2" ? 365 : 31;
-    if (!Number.isInteger(dia) || dia < 1 || dia > max) return { error: `${NOMBRE_FORMATO[f]}: ${f === "IR-2" ? "los días después del cierre van de 1 a 365" : "el día va de 1 a 31"}.` };
+    if (dia !== null && (!Number.isInteger(dia) || dia < 1 || dia > max)) return { error: `${NOMBRE_FORMATO[f]}: ${f === "IR-2" ? "los días después del cierre van de 1 a 365" : "el día va de 1 a 31"}.` };
     const a = actuales.find((x) => x.formato === f);
-    if (a && a.dia === dia && (a.norma ?? null) === norma) continue;
-    cambios.push(`${f}: ${a ? `${a.dia} → ` : ""}${dia}${f === "IR-2" ? " días" : ""}${norma && norma !== a?.norma ? ` (${norma})` : ""}`);
+    if (a && (a.dia ?? null) === dia && (a.norma ?? null) === norma) continue;
+    cambios.push(`${f}: ${a ? `${a.dia ?? "sin día"} → ` : ""}${dia ?? "sin día"}${f === "IR-2" ? " días" : ""}${norma && norma !== a?.norma ? ` (${norma})` : ""}`);
     await db()`INSERT INTO calendario_fiscal (firma_id, formato, dia, norma, cambiado_por, cambiado_en)
                VALUES (${firmaId}, ${f}, ${dia}, ${norma}, ${usuario.nombre}, now())
                ON CONFLICT (firma_id, formato) DO UPDATE SET dia = EXCLUDED.dia, norma = EXCLUDED.norma, cambiado_por = EXCLUDED.cambiado_por, cambiado_en = now()`;

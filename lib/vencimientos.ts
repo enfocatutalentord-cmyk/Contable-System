@@ -5,7 +5,7 @@ import type { Tx } from "./db";
 // solas (`alertasDeEmpresa`) y se van al renovar la fecha.
 
 export const SUGERIDOS = [
-  "Certificación de cumplimiento (DGII)", "Certificado de registro mercantil", "Contrato de alquiler", "Poder o representación", "Firma digital",
+  "Certificación de cumplimiento (DGII)", "Certificado de registro mercantil", "Estatutos sociales", "Contrato de alquiler", "Poder o representación", "Firma digital",
   "Permiso o licencia", "Póliza de seguro", "Certificado de la Cámara de Comercio",
 ];
 export const AVISO_DIAS = 60;

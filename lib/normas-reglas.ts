@@ -5,11 +5,13 @@ import { verFecha } from "./montos.ts";
 // sola: la firma la carga una vez y vale para sus clientes con su fecha de vigencia. Lo ya registrado no cambia: cada factura y compra
 // guarda la tasa que se le aplicó, y la tasa anterior queda cerrada el día antes.
 
-export const FORMATOS_CALENDARIO = ["606", "607", "608", "IT-1", "IR-17", "IR-2"] as const;
+export const FORMATOS_CALENDARIO = ["606", "607", "608", "IT-1", "IR-17", "IR-2", "Anticipo", "TSS"] as const;
 export const NOMBRE_FORMATO: Record<string, string> = {
   "606": "606 · Compras", "607": "607 · Ventas", "608": "608 · Anulados", "IT-1": "IT-1 · ITBIS", "IR-17": "IR-17 · Retenciones",
-  "IR-2": "IR-2 · Renta de sociedades",
+  "IR-2": "IR-2 · Renta de sociedades", Anticipo: "Anticipo del ISR", TSS: "TSS · Seguridad social",
 };
+// Fechas que la firma puede dejar sin día hasta confirmarlas (no se inventan): mientras no haya día no salen en el calendario.
+export const FORMATOS_SIN_DIA: readonly string[] = ["TSS"];
 export const DIAS_SIN_REVISAR = 30; // recordatorio si pasan 30 días sin una revisión
 export const DIAS_AVISO_CAMBIO = 30; // aviso de una tasa o fecha que cambia en los próximos 30 días
 
