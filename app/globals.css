@@ -401,3 +401,12 @@ html.en-panel .app { display: block; min-height: 0; }
   .cal-dia .cal-numero::after { content: " " attr(data-nombre); text-transform: capitalize; }
 }
 @media (prefers-color-scheme: dark) { .cal-vencido, .cal-vencido small { color: #2b0d0b; } }
+
+/* Agenda de citas (P3c): reutiliza la rejilla del calendario fiscal. */
+.cal-cita-programada { border-left-color: var(--primario); }
+.cal-cita-realizada { border-left-color: var(--ok); color: var(--suave); }
+.cal-cita-cancelada { border-left-color: var(--peligro); color: var(--suave); text-decoration: line-through; }
+.etiqueta-cita { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--borde); white-space: nowrap; }
+.etiqueta-cita.cita-programada { background: var(--aviso-fondo); color: var(--aviso-texto); border-color: transparent; }
+.etiqueta-cita.cita-realizada { color: var(--ok); }
+.etiqueta-cita.cita-cancelada { color: var(--peligro); }

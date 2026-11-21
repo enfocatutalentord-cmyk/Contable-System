@@ -5,10 +5,10 @@ import { CampoRnc } from "./campo-rnc";
 
 // Elegir un cliente o crearlo ahí mismo (Prioridad 2.2): la lista, y «+ Cliente nuevo…» con su nombre, su RNC o cédula si lo tiene y, si
 // todavía no existe como empresa, la casilla «en constitución». Los campos van con los nombres que lee `clienteDeFormulario`.
-export function SelectorClienteRapido({ clientes, crearClientes, etiqueta = "Cliente", requerido = true }: {
-  clientes: { id: string; nombre: string }[]; crearClientes: boolean; etiqueta?: string; requerido?: boolean;
+export function SelectorClienteRapido({ clientes, crearClientes, etiqueta = "Cliente", requerido = true, inicial = "" }: {
+  clientes: { id: string; nombre: string }[]; crearClientes: boolean; etiqueta?: string; requerido?: boolean; inicial?: string;
 }) {
-  const [cliente, setCliente] = useState("");
+  const [cliente, setCliente] = useState(inicial);
   const [constitucion, setConstitucion] = useState(false);
   return (
     <>

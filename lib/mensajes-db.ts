@@ -3,6 +3,7 @@ import { cambiarNotificacion } from "./bitacora.ts";
 import { ponerEnlace } from "./formularios.ts";
 import { db, type Tx } from "./db.ts";
 import { nombrePeriodo } from "./igualas.ts";
+import { fechaLarga, verHora } from "./agenda.ts";
 import { detalleParaCliente, ESTADO_PARA_CLIENTE } from "./tramites.ts";
 import { type Datos, HORAS_DESHACER, llenar, telefonoWa } from "./mensajes.ts";
 import { verFecha, verMonto } from "./montos.ts";
@@ -13,7 +14,7 @@ import { verFecha, verMonto } from "./montos.ts";
 export class ErrorMensaje extends Error {}
 
 export type Plantilla = { id: string; clave: string; orden: number; nombre: string; texto: string; editado_por: string | null; editado: string | null };
-export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario" | "diagnostico" | "tramite"; id: string };
+export type Ref = { tipo: "factura" | "cobro" | "propuesta" | "notificacion" | "reporte" | "proyeccion" | "expediente" | "formulario" | "diagnostico" | "tramite" | "cita"; id: string };
 export type Destinatario = { nombre: string | null; empresa: string; telefono: string | null; grupo: string | null };
 
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -128,6 +129,17 @@ export async function datosDe(tx: Tx, empresaId: string, ref: Ref | null): Promi
     const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
     return { destinatario, datos: { "trámite": t.tipo, estado: ESTADO_PARA_CLIENTE[t.etapa] ?? t.etapa, detalle: detalleParaCliente(t) }, enlace: null };
   }
+  if (ref.tipo === "cita") {
+    // Recordatorio de una cita (P3c): sale con «Confirmación de cita», la fecha, la hora y el lugar; sin enlace.
+    const [c] = await tx<{ fecha: string; hora: string; modalidad: string; lugar: string | null; estado: string }[]>`
+      SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, to_char(hora, 'HH24:MI') AS hora, modalidad, lugar, estado FROM citas WHERE id = ${ref.id}`;
+    if (!c) throw new ErrorMensaje("Esa cita no existe.");
+    if (c.estado !== "programada") throw new ErrorMensaje("El recordatorio se envía de las citas programadas.");
+    const destinatario = (await contactoDeEmpresa(empresaId)) ?? { nombre: null, empresa: "", telefono: null, grupo: null };
+    // Sin lugar escrito, una llamada o una reunión virtual igual se explican; una presencial deja [lugar] para escribirlo antes de enviar.
+    const lugar = c.lugar ?? (c.modalidad === "llamada" ? "una llamada telefónica" : c.modalidad === "virtual" ? "una reunión virtual" : "");
+    return { destinatario, datos: { fecha: fechaLarga(c.fecha), hora: verHora(c.hora), lugar }, enlace: null };
+  }
   if (ref.tipo === "reporte") {
     // Reporte mensual (bloque 4b): solo aprobado; el enlace entrega el PDF de lo aprobado.
     const [r] = await tx<{ estado: string; periodo: string }[]>`SELECT estado, periodo FROM reportes_mensuales WHERE id = ${ref.id}`;
@@ -177,6 +189,7 @@ export async function registrarEnvio(tx: Tx, d: {
     VALUES (${d.empresaId}, ${d.clave}, ${d.nombre}, ${texto}, ${d.destino}, ${d.destino === "contacto" ? d.telefono : null},
             ${d.ref?.tipo ?? null}, ${d.ref?.id ?? null}, ${enlaceId}, ${d.usuarioId}) RETURNING id`;
   if (d.ref?.tipo === "tramite") await tx`UPDATE tramites SET etapa_avisada = etapa WHERE id = ${d.ref.id}`;
+  if (d.ref?.tipo === "cita") await tx`UPDATE citas SET recordatorio_enviado = now() WHERE id = ${d.ref.id}`;
   if (d.ref?.tipo === "reporte") await tx`UPDATE reportes_mensuales SET estado = 'enviado', enviado_en = now() WHERE id = ${d.ref.id} AND estado = 'aprobado'`;
   if (d.ref?.tipo === "notificacion") {
     const [n] = await tx<{ estado: string }[]>`SELECT estado FROM notificaciones_pago WHERE id = ${d.ref.id}`;
@@ -199,6 +212,10 @@ export async function deshacerEnvio(tx: Tx, d: { mensajeId: string; usuarioId: s
   if (m.ref_tipo === "tramite" && m.ref_id) {
     // No se sabe de qué estado era el aviso que queda: se vuelve a pedir el aviso del estado de hoy.
     await tx`UPDATE tramites SET etapa_avisada = NULL WHERE id = ${m.ref_id}`;
+  }
+  if (m.ref_tipo === "cita" && m.ref_id) {
+    const [otro] = await tx`SELECT 1 FROM mensajes_enviados WHERE ref_tipo = 'cita' AND ref_id = ${m.ref_id}`;
+    if (!otro) await tx`UPDATE citas SET recordatorio_enviado = NULL WHERE id = ${m.ref_id}`;
   }
   if (m.ref_tipo === "reporte" && m.ref_id) {
     const [otro] = await tx`SELECT 1 FROM mensajes_enviados WHERE ref_tipo = 'reporte' AND ref_id = ${m.ref_id}`;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CamposFicha } from "@/app/campos-ficha";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, misFirmas } from "@/lib/acceso";
+import { ESTADOS_CITA, listarCitas, MODALIDADES as MODALIDADES_CITA, verHora } from "@/lib/agenda";
 import { SERVICIOS_INCLUIDOS, TIPOS_ACUERDO } from "@/lib/igualas";
 import { conEmpresa, db } from "@/lib/db";
 import {
@@ -18,7 +19,7 @@ import {
 
 const SECCIONES: Record<string, string> = {
   general: "Datos generales", sociedad: "Sociedad", socios: "Socios", contactos: "Contactos", operaciones: "Operaciones",
-  empleados: "Empleados", vencimientos: "Documentos que vencen", relacion: "Relación con Empire",
+  empleados: "Empleados", vencimientos: "Documentos que vencen", citas: "Citas", relacion: "Relación con Empire",
 };
 const FILAS_EXTRA = 3;
 const v = (x: unknown) => (x === null || x === undefined ? "" : String(x));
@@ -61,6 +62,8 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
   const { vencimientos, archivos } = seccion === "vencimientos"
     ? await conEmpresa(id, async (tx) => ({ vencimientos: await listarVencimientos(tx), archivos: await archivosDelExpediente(tx, id) }))
     : { vencimientos: [], archivos: [] };
+  // Citas del cliente (P3c): las próximas primero y, abajo, las que ya pasaron.
+  const citas = seccion === "citas" ? await conEmpresa(id, (tx) => listarCitas(tx, null, null)) : [];
   const enEdicion = vencimientos.find((x) => x.id === editar);
   const delaSociedad = ([["Registro mercantil", f.vence_registro_mercantil, 60], ["Nombre comercial (ONAPI)", f.vence_nombre_comercial, 60], ["Próxima asamblea ordinaria", f.fecha_asamblea, 30]] as const)
     .filter(([, fecha]) => fecha) as unknown as [string, string, number][];
@@ -238,6 +241,32 @@ export default async function Ficha({ params, searchParams }: { params: Promise<
               </div>,
             )}
           </Formulario>
+        )}
+
+        {seccion === "citas" && (
+          <>
+            <p className="sub">
+              Las reuniones con este cliente. <Link href={`/firma/${empresa.firma_id}/agenda?cliente=${id}&nueva=1`}>+ Nueva cita</Link> · <Link href={`/firma/${empresa.firma_id}/agenda?cliente=${id}`}>Abrir en la agenda</Link> (ahí se mueven, se cancelan y se envía el recordatorio).
+            </p>
+            <div className="tabla-envoltura">
+              <table>
+                <thead><tr><th>Cuándo</th><th>Asunto</th><th>Dónde</th><th>Estado</th><th>Recordatorio</th></tr></thead>
+                <tbody>
+                  {[...citas.filter((c) => c.fecha >= hoy).sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora)),
+                    ...citas.filter((c) => c.fecha < hoy).sort((a, b) => b.fecha.localeCompare(a.fecha))].map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ whiteSpace: "nowrap" }}>{verFecha(c.fecha)} · {verHora(c.hora)}</td>
+                      <td>{c.titulo}{c.notas && <div className="sub" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{c.notas}</div>}</td>
+                      <td>{MODALIDADES_CITA[c.modalidad]}{c.lugar && ` · ${c.lugar}`}</td>
+                      <td>{ESTADOS_CITA[c.estado]}</td>
+                      <td>{c.estado !== "programada" ? "—" : c.recordatorio_enviado ?? "Pendiente"}</td>
+                    </tr>
+                  ))}
+                  {citas.length === 0 && <tr><td colSpan={5}>Todavía no hay citas con este cliente.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {seccion === "vencimientos" && (

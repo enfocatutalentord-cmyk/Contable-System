@@ -1,3 +1,4 @@
+import { verHora } from "./agenda.ts";
 import { porVencer } from "./bitacora.ts";
 import type { Tx } from "./db";
 import { avisosDe, listarAcuerdos } from "./igualas-db.ts";
@@ -8,14 +9,14 @@ import { sumarDias } from "./tramites.ts";
 // sistema. No se guardan: desaparecen solas cuando se resuelve lo que avisan (se carga el rango, se marca presentada, etc.).
 
 // mensaje: el mensaje de WhatsApp que corresponde a la alerta (bloque 3c), con lo que hace falta para llenarlo.
-export type Mensaje = { clave: string; extra?: Record<string, string>; ref?: { tipo: "notificacion"; id: string } };
+export type Mensaje = { clave: string; extra?: Record<string, string>; ref?: { tipo: "notificacion" | "cita"; id: string } };
 export type Alerta = { tipo: string; nivel: "urgente" | "aviso"; texto: string; enlace: string; orden: string; mensaje?: Mensaje };
 
 export const TIPOS_ALERTA: Record<string, string> = {
   comprobantes: "Comprobantes", declaracion: "Declaraciones", notificacion: "Notificaciones de pago", documentos: "Documentos del cliente",
   prospecto: "Prospecto", facturas_subidas: "Facturas subidas", formalizacion: "Formalización", registro: "Registro mercantil y ONAPI", contrato: "Contrato e iguala", fidelidad: "Fidelidad",
   tramite: "Trámites", solicitud: "Solicitudes y formularios", ecf: "Factura electrónica",
-  vencimiento: "Documentos que vencen",
+  vencimiento: "Documentos que vencen", cita: "Citas",
   reporte: "Reporte mensual",
 };
 // Último plazo de la factura electrónica para micro, pequeños y no clasificados (Aviso DGII 14-25 + prórroga del Aviso 06-26).
@@ -136,6 +137,18 @@ export async function alertasDeEmpresa(tx: Tx, d: { empresaId: string; hoy: stri
         FROM pendientes_tramite p JOIN tramites t ON t.id = p.tramite_id
        WHERE NOT p.hecho AND t.estado = 'abierto' AND p.vence <= ${hoy}::date`) {
     poner("tramite", p.vence < hoy ? "urgente" : "aviso", `Trámite «${p.tipo}»: toca «${p.texto}» (desde el ${verFecha(p.vence)})`, enlaceTramite(p.tramite_id), p.vence);
+  }
+
+  // Citas (P3c): las de hoy y mañana, con el recordatorio por WhatsApp si todavía no salió, y las que pasaron sin marcarse realizadas o canceladas.
+  for (const c of await tx<{ id: string; titulo: string; fecha: string; hora: string; avisada: boolean }[]>`
+      SELECT id, titulo, to_char(fecha, 'YYYY-MM-DD') AS fecha, to_char(hora, 'HH24:MI') AS hora, recordatorio_enviado IS NOT NULL AS avisada
+        FROM citas WHERE estado = 'programada' AND fecha <= ${hoy}::date + 1 ORDER BY fecha, hora`) {
+    const enlace = `/firma/${firmaTramites}/agenda?dia=${c.fecha}`;
+    if (c.fecha < hoy) poner("cita", "urgente", `Cita «${c.titulo}» del ${verFecha(c.fecha)}: márcala como realizada o cancélala`, enlace, c.fecha);
+    else {
+      poner("cita", "aviso", `Cita «${c.titulo}» ${c.fecha === hoy ? "hoy" : "mañana"} a las ${verHora(c.hora)}${c.avisada ? "" : ": falta enviarle el recordatorio"}`, enlace, c.fecha,
+        c.avisada ? undefined : { clave: "cita", ref: { tipo: "cita", id: c.id } });
+    }
   }
 
   // Solicitudes del cliente con su fecha pasada y formularios en línea recibidos sin revisar (bloque 6a).
