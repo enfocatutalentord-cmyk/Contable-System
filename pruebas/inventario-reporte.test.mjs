@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
 import { cambiarEstadoConteo, crearConteo, fijarTotal, registrarLectura } from "../lib/inventario.ts";
-import { armarDiferencias, docInventario, lineasResumen, ordenarDiferencias, reporteConteo, tablaInventario, valorEnCentavos } from "../lib/inventario-reporte.ts";
+import { guardarArchivos } from "../lib/expediente.ts";
+import { armarDiferencias, CARPETA_REPORTE, descripcionReporte, docInventario, lineasResumen, ordenarDiferencias, reporteConteo, reportesGuardados, tablaInventario, valorEnCentavos } from "../lib/inventario-reporte.ts";
 
 const E4 = 10000n;
 const q = (n) => BigInt(Math.round(n * 10000));
@@ -145,4 +146,20 @@ test("el reporte de un conteo: no sale abierto; cerrado, sale con lo contado y l
   assert.deepEqual(rep.sinListado.map((s) => [s.codigo, s.cantidad]), [["999", q(2)]]);
   assert.deepEqual([rep.resumen.faltantes, rep.resumen.sobrantes, rep.resumen.sinCosto, rep.resumen.valorNeto], [2, 1, 1, 68750n]);
   assert.equal(await enEmpresa((tx) => reporteConteo(tx, "00000000-0000-0000-0000-000000000000")), null);
+});
+
+test("reportes guardados: carpeta 05 del expediente, uno por número de conteo y sin los retirados", conBase, async () => {
+  assert.equal(CARPETA_REPORTE, "05");
+  assert.equal(descripcionReporte(4, "Fin de año"), "Diferencias de inventario n.º 4 · Fin de año");
+  assert.equal(descripcionReporte(4, "x".repeat(300)).length, 150);
+  const guardar = (n) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [{ nombre: `diferencias-inventario-n${n}.pdf`, bytes: new TextEncoder().encode(`%PDF-1.3 ${n} ${Math.random()}`) }],
+    carpeta: CARPETA_REPORTE, anio: 2026, descripcion: descripcionReporte(n, "Conteo") }));
+  const [a] = await guardar(4), [b] = await guardar(4); // una copia nueva no se confunde con la anterior
+  await guardar(40);
+  const lista = await enEmpresa((tx) => reportesGuardados(tx, empresa, 4));
+  assert.deepEqual(lista.map((r) => r.id).sort(), [a, b].sort(), "solo el n.º 4, no el 40");
+  assert.equal(lista[0].quien, "Ana");
+  assert.equal((await enEmpresa((tx) => reportesGuardados(tx, empresa, 40))).length, 1);
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
+  assert.deepEqual((await enEmpresa((tx) => reportesGuardados(tx, empresa, 4))).map((r) => r.id), [b], "el retirado ya no sale");
 });

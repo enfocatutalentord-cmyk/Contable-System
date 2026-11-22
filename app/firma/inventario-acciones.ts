@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
+import { accesoFirma, esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
 import { leerTabla, MENSAJE_XLS, tipoEstadoCuenta } from "@/lib/archivos-banco";
 import { clienteDeFormulario } from "@/lib/cliente-rapido";
 import { conEmpresa, mensajeError } from "@/lib/db";
@@ -10,6 +10,8 @@ import { ErrorExpediente, guardarArchivos, leerArchivos } from "@/lib/expediente
 import {
   cambiarEstadoConteo, crearConteo, deshacerLectura, ErrorInventario, fijarTotal, leerCantidadLectura, leerConteo, leerDecimal, leerExistencias, registrarLectura, verCantidad,
 } from "@/lib/inventario";
+import { CARPETA_REPORTE, descripcionReporte, pdfInventario, reporteConteo } from "@/lib/inventario-reporte";
+import { hoyISO } from "@/lib/montos";
 import type { Permiso } from "@/lib/permisos";
 import type { Estado } from "../acciones-cuenta";
 
@@ -119,6 +121,28 @@ export async function cambiarEstadoConteoAccion(firmaId: string, empresaId: stri
     const { usuario } = await acceso(firmaId, empresaId, conteoId, estado === "cerrado" ? "cerrar" : "reabrir");
     await conEmpresa(empresaId, (tx) => cambiarEstadoConteo(tx, conteoId, estado, usuario.id));
     return listo(firmaId, empresaId, conteoId, estado === "cerrado" ? "Conteo cerrado." : "Conteo abierto otra vez.");
+  } catch (e) {
+    return { error: mensaje(e) };
+  }
+}
+
+// Guarda el reporte de diferencias (PDF para el cliente, con su logo) en la carpeta 05 · Reportes del expediente. Solo de un conteo cerrado. Cada vez que se guarda queda una
+// copia nueva (si se reabre el conteo y se vuelve a cerrar, el reporte cambia).
+export async function guardarReporteAccion(firmaId: string, empresaId: string, conteoId: string): Promise<Estado> {
+  try {
+    const { usuario, empresa } = await acceso(firmaId, empresaId, conteoId, "adjuntar");
+    const { firma } = await accesoFirma(firmaId, false);
+    await conEmpresa(empresaId, async (tx) => {
+      const rep = await reporteConteo(tx, conteoId);
+      if (!rep) throw new ErrorInventario("Ese conteo no existe.");
+      if ("error" in rep) throw new ErrorInventario(rep.error);
+      const pdf = await pdfInventario(tx, { empresaId, empresa: empresa.nombre, rnc: empresa.rnc, firma: firma.nombre, preparadoPor: usuario.nombre, rep });
+      await guardarArchivos(tx, {
+        empresaId, usuarioId: usuario.id, archivos: [{ nombre: pdf.nombre, bytes: pdf.datos }], carpeta: CARPETA_REPORTE, anio: Number(hoyISO().slice(0, 4)), descripcion: descripcionReporte(rep.numero, rep.nombre),
+      });
+    });
+    revalidatePath(`/e/${empresaId}/expediente`);
+    return listo(firmaId, empresaId, conteoId, "Reporte guardado en el expediente del cliente, carpeta 05 · Reportes.");
   } catch (e) {
     return { error: mensaje(e) };
   }

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, accesoFirma, esUuid, soloCliente } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { verCantidad } from "@/lib/inventario";
-import { lineasResumen, ordenarDiferencias, reporteConteo } from "@/lib/inventario-reporte";
+import { lineasResumen, ordenarDiferencias, reporteConteo, reportesGuardados } from "@/lib/inventario-reporte";
 import { deCentavos, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
+import { guardarReporteAccion } from "../../../../../inventario-acciones";
 
 export const metadata = { title: "Diferencias de inventario · Empire Tax & Legal" };
 
@@ -22,6 +24,7 @@ export default async function Reporte({ params }: { params: Promise<{ fid: strin
   if (empresa.firma_id !== fid) notFound();
   const rep = await conEmpresa(eid, (tx) => reporteConteo(tx, cid));
   if (!rep) notFound();
+  const guardados = "error" in rep ? [] : await conEmpresa(eid, (tx) => reportesGuardados(tx, eid, rep.numero));
   const volver = <p><Link href={`/firma/${fid}/inventario/${eid}/${cid}`}>← Volver al conteo</Link></p>;
   if ("error" in rep) return <>{volver}<h1>Diferencias de inventario</h1><p className="aviso">{rep.error}</p></>;
 
@@ -93,6 +96,20 @@ export default async function Reporte({ params }: { params: Promise<{ fid: strin
         </table>
       </div>
       {filas.length > EN_PANTALLA && <p className="sub">Se muestran las {EN_PANTALLA} de mayor valor de {filas.length}. El PDF y el Excel traen todas.</p>}
+
+      <section className="tarjeta" style={{ marginTop: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Reporte en el expediente</h2>
+        <p className="sub">
+          El PDF del reporte (con el logo del cliente) se guarda en la carpeta <strong>05 · Reportes</strong> del expediente de {empresa.nombre}. Cada vez que se guarda queda una copia nueva;
+          si reabres el conteo y lo vuelves a cerrar, guarda el reporte otra vez.
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          {guardados.map((g) => <li key={g.id}><a href={`/e/${eid}/documentos/${g.id}`} target="_blank" rel="noreferrer">{g.nombre}</a><span className="sub"> · guardado por {g.quien}, {g.subido_en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</span></li>)}
+          {guardados.length === 0 && <li className="sub">Todavía no se ha guardado.</li>}
+        </ul>
+        {puede(permisos, "adjuntar") && <Formulario accion={guardarReporteAccion.bind(null, fid, eid, cid)} boton={guardados.length ? "Guardar una copia nueva en el expediente" : "Guardar el reporte en el expediente"} className="fila"><></></Formulario>}
+        <p style={{ margin: "8px 0 0" }}><Link href={`/e/${eid}/expediente`}>Abrir el expediente del cliente</Link></p>
+      </section>
 
       {rep.sinListado.length > 0 && (
         <section className="tarjeta" style={{ marginTop: 16, borderLeft: "4px solid var(--peligro)" }}>

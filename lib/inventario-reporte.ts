@@ -194,3 +194,15 @@ export async function pdfInventario(tx: Tx, p: { empresaId: string; empresa: str
   const { nombre, doc } = docInventario(p.rep, { empresa: p.empresa, rnc: p.rnc, firma: p.firma, preparadoPor: p.preparadoPor, logo: await logoDe(tx, p.empresaId) }, p.todos);
   return { nombre, datos: new Uint8Array(await armarPdf(doc)) };
 }
+
+// El reporte final se guarda en la carpeta 05 (Reportes) del expediente del cliente; cada vez que se guarda queda una copia nueva.
+export const CARPETA_REPORTE = "05";
+export const descripcionReporte = (numero: number, nombre: string) => `Diferencias de inventario n.º ${numero} · ${nombre}`.slice(0, 150);
+
+export type ReporteGuardado = { id: string; nombre: string; subido_en: Date; quien: string };
+export const reportesGuardados = (tx: Tx, empresaId: string, numero: number) => tx<ReporteGuardado[]>`
+  SELECT d.id, d.nombre, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_REPORTE} AND NOT d.eliminado
+     AND d.descripcion LIKE ${`Diferencias de inventario n.º ${numero} · %`}
+   ORDER BY d.subido_en DESC`;
