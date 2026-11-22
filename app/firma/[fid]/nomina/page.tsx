@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 import { accesoFirma, esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
 import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
+import { nominasGuardadas, type NominaGuardada } from "@/lib/nomina";
 import { puede } from "@/lib/permisos";
 import { NominaForm, type EmpleadoNomina } from "./nomina-form";
 
 export const metadata = { title: "Nómina y TSS · Empire Tax & Legal" };
 
 // Nómina del mes y archivo de la TSS (Prioridad 3, P3h). El cliente se elige aquí; los empleados de su ficha (con sueldos) solo los ve quien puede editar la ficha,
-// y el resto escribe los datos. No se guarda nada.
+// y el resto escribe los datos. No se guarda nada, salvo la hoja si se guarda en el expediente del cliente.
 export default async function Nomina({ params, searchParams }: { params: Promise<{ fid: string }>; searchParams: Promise<{ empresa?: string }> }) {
   const { fid } = await params;
   const sp = await searchParams;
@@ -19,11 +20,16 @@ export default async function Nomina({ params, searchParams }: { params: Promise
 
   let empleados: EmpleadoNomina[] = [];
   let rnc: string | null = null;
+  let puedeGuardar = false;
+  let guardadas: NominaGuardada[] = [];
   if (elegido) {
     const { empresa, permisos } = await exigirPermiso(elegido.id, "ver");
     if (empresa.firma_id !== fid) notFound();
     rnc = empresa.rnc;
+    // La hoja lleva sueldos y cédulas: guardarla y ver la lista pide el permiso de la ficha (el que da ver los sueldos) y, para guardar, adjuntar.
     if (puede(permisos, "empresa")) {
+      puedeGuardar = puede(permisos, "adjuntar");
+      guardadas = await conEmpresa(elegido.id, (tx) => nominasGuardadas(tx, elegido.id));
       empleados = (await conEmpresa(elegido.id, (tx) => tx<{ nombre: string; cedula: string | null; sueldo: string | null }[]>`
         SELECT nombre, cedula, sueldo::text AS sueldo FROM empleados_empresa ORDER BY orden`))
         .map((e) => ({ nombre: e.nombre, cedula: e.cedula ?? "", sueldo: e.sueldo ?? "" }));
@@ -52,7 +58,21 @@ export default async function Nomina({ params, searchParams }: { params: Promise
           <h2>{elegido.nombre}</h2>
           {!rnc && <p className="aviso" role="status">Este cliente no tiene RNC en su ficha: sin él no se puede armar el archivo de la TSS.</p>}
           {empleados.length === 0 && <p className="sub">No hay empleados en su ficha, o tu perfil no puede verlos: escribe los datos a mano.</p>}
-          <NominaForm key={elegido.id} firmaId={fid} empresaId={elegido.id} empleados={empleados} />
+          <NominaForm key={elegido.id} firmaId={fid} empresaId={elegido.id} empleados={empleados} puedeGuardar={puedeGuardar} />
+          {guardadas.length > 0 && (
+            <section className="tarjeta" style={{ marginBottom: 16 }}>
+              <h2 style={{ marginTop: 0 }}>Hojas de nómina guardadas en el expediente</h2>
+              <p className="sub">En la carpeta 04 · Declaraciones de {elegido.nombre}. Llevan sueldos y cédulas: solo las ve quien puede editar la ficha.</p>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {guardadas.map((g) => (
+                  <li key={g.id}>
+                    <a href={`/e/${elegido.id}/documentos/${g.id}`} target="_blank" rel="noopener noreferrer">{g.descripcion.replace("Nómina · ", "")}</a>
+                    <span className="sub"> · guardada por {g.quien}, {g.subido_en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </>

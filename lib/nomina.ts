@@ -1,3 +1,4 @@
+import type { Tx } from "./db.ts";
 import { aCentavos, deCentavos, leerMonto, verMonto } from "./montos.ts";
 import { cedulaValida } from "./validar-fiscal.ts";
 
@@ -255,3 +256,19 @@ export const DECISIONES_NOMINA: string[] = [
   "El salario del mes es lo realmente devengado: si alguien entró o salió a mitad de mes, se escribe la parte proporcional (el instructivo lo exige) y el tipo de ingreso suele ser 0004.",
 ];
 
+
+// La hoja de la nómina se guarda como PDF en la carpeta 04 (Declaraciones: TSS e ISR) del expediente del cliente; cada vez que se guarda queda una copia nueva. Lleva sueldos y cédulas:
+// por eso guardarla pide también el permiso «empresa». El archivo de la TSS (.txt) no se guarda: el expediente solo acepta PDF, imágenes, Word y Excel.
+export const CARPETA_NOMINA = "04";
+export function descripcionNomina(periodo: string, empleados: number): string {
+  const [a, m] = periodo.split("-");
+  const mes = new Date(Date.UTC(Number(a), Number(m) - 1, 1)).toLocaleDateString("es-DO", { month: "long", year: "numeric", timeZone: "UTC" });
+  return `Nómina · ${mes} · ${empleados} empleado${empleados === 1 ? "" : "s"}`;
+}
+
+export type NominaGuardada = { id: string; nombre: string; descripcion: string; subido_en: Date; quien: string };
+export const nominasGuardadas = (tx: Tx, empresaId: string) => tx<NominaGuardada[]>`
+  SELECT d.id, d.nombre, d.descripcion, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_NOMINA} AND NOT d.eliminado AND d.descripcion LIKE 'Nómina · %'
+   ORDER BY d.subido_en DESC`;

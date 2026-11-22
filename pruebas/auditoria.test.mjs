@@ -8,6 +8,7 @@ import {
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
 import { deflateSync } from "node:zlib";
+import { CARPETA_NOMINA, descripcionNomina, nominasGuardadas } from "../lib/nomina.ts";
 import { CARPETA_PRESTACIONES, descripcionPrestaciones, prestacionesGuardadas } from "../lib/pdf-prestaciones.ts";
 import { analisisGuardados, CARPETA_ANALISIS, descripcionAnalisis, logoDe } from "../lib/pdf-analisis.ts";
 import { docAuditoria, imagenLegible, MAX_FOTOS_POR_HALLAZGO } from "../lib/pdf-auditoria.ts";
@@ -334,4 +335,20 @@ test("prestaciones guardadas: carpeta 05, con el empleado y cómo terminó, sin 
   assert.equal(lista[0].quien, "Ana");
   await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
   assert.deepEqual((await enEmpresa((tx) => prestacionesGuardadas(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
+});
+
+// ───── la hoja de la nómina guardada en el expediente ─────
+test("nóminas guardadas: carpeta 04, con el mes y los empleados, sin los retirados ni otros documentos", conBase, async () => {
+  assert.equal(CARPETA_NOMINA, "04");
+  assert.equal(descripcionNomina("2026-11", 3), "Nómina · noviembre de 2026 · 3 empleados");
+  assert.equal(descripcionNomina("2026-01", 1), "Nómina · enero de 2026 · 1 empleado");
+  const guardar = (desc) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [{ nombre: "nomina.pdf", bytes: new TextEncoder().encode(`%PDF-1.3 ${Math.random()}`) }], carpeta: "04", anio: 2026, descripcion: desc }));
+  const [a] = await guardar(descripcionNomina("2026-11", 3));
+  const [b] = await guardar(descripcionNomina("2026-10", 3));
+  await guardar("Constancia del IT-1 de octubre"); // otro documento de la carpeta 04
+  const lista = await enEmpresa((tx) => nominasGuardadas(tx, empresa));
+  assert.deepEqual(lista.map((x) => x.id).sort(), [a, b].sort());
+  assert.equal(lista[0].quien, "Ana");
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
+  assert.deepEqual((await enEmpresa((tx) => nominasGuardadas(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
 });

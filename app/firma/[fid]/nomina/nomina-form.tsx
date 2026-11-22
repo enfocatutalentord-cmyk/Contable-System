@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { alEnviar } from "@/app/enviar";
 import { DECISIONES_NOMINA, FUENTES_NOMINA, REGLAS_NOMINA, TIPOS_INGRESO } from "@/lib/nomina";
-import { calcularNominaAccion, type EstadoNomina } from "../../nomina-acciones";
+import type { Estado } from "@/app/acciones-cuenta";
+import { calcularNominaAccion, guardarNominaEnExpediente, type EstadoNomina } from "../../nomina-acciones";
 
 export type EmpleadoNomina = { nombre: string; cedula: string; sueldo: string };
 type Fila = { incluir: boolean; nombre: string; cedula: string; salario: string; comisiones: string; vacaciones: string; otras: string; regalia: string; indemnizacion: string; pension: string; isr: string; tipo: string };
@@ -21,8 +22,9 @@ const CAMPOS: { k: keyof Fila; titulo: string; ancho: number; ayuda?: string }[]
 ];
 
 // La nómina del mes: una fila por empleado (de la ficha del cliente o escritos), los aportes y retenciones, y las descargas (hoja y archivo de la TSS).
-export function NominaForm({ firmaId, empresaId, empleados }: { firmaId: string; empresaId: string; empleados: EmpleadoNomina[] }) {
+export function NominaForm({ firmaId, empresaId, empleados, puedeGuardar }: { firmaId: string; empresaId: string; empleados: EmpleadoNomina[]; puedeGuardar: boolean }) {
   const [estado, enviar, enviando] = useActionState<EstadoNomina, FormData>(calcularNominaAccion.bind(null, firmaId, empresaId), {});
+  const [guardado, guardar, guardando] = useActionState<Estado, FormData>(guardarNominaEnExpediente.bind(null, firmaId, empresaId), {});
   const [filas, setFilas] = useState<Fila[]>(empleados.length ? empleados.map((e) => ({ ...vacia(), nombre: e.nombre, cedula: e.cedula, salario: e.sueldo })) : [vacia()]);
   const cambiar = (i: number, k: keyof Fila, v: string | boolean) => setFilas(filas.map((f, j) => (j === i ? { ...f, [k]: v } : f)));
   const r = estado.resultado;
@@ -30,8 +32,9 @@ export function NominaForm({ firmaId, empresaId, empleados }: { firmaId: string;
 
   const alEnviarNomina = (e: React.FormEvent<HTMLFormElement>) => {
     // Los botones de descarga mandan el formulario tal cual a su dirección (en otra pestaña); solo «Calcular» pasa por la acción.
-    if (((e.nativeEvent as SubmitEvent).submitter as HTMLElement | null)?.dataset.descarga) return;
-    alEnviar(enviar)(e);
+    const boton = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    if (boton?.dataset.descarga) return;
+    alEnviar(boton?.dataset.guardar ? guardar : enviar)(e);
   };
 
   return (
@@ -82,7 +85,7 @@ export function NominaForm({ firmaId, empresaId, empleados }: { firmaId: string;
         </div>
         <div><button type="button" className="boton" onClick={() => setFilas([...filas, vacia()])}>+ Agregar empleado</button></div>
         <p className="sub" style={{ margin: 0 }}>
-          Aquí no se guarda nada: cada mes se vuelven a escribir las partes que cambian (los empleados y sus sueldos vienen de la ficha del cliente si tu perfil puede verla).
+          Aquí no se guarda nada, salvo que guardes la hoja en el expediente: cada mes se vuelven a escribir las partes que cambian (los empleados y sus sueldos vienen de la ficha del cliente si tu perfil puede verla).
           Los extranjeros sin cédula se reportan directamente en el SUIR Plus.
         </p>
 
@@ -92,7 +95,10 @@ export function NominaForm({ firmaId, empresaId, empleados }: { firmaId: string;
           <button type="submit" className="boton" data-descarga="1" formAction={`/firma/${firmaId}/nomina/hoja`} formTarget="_blank" name="formato" value="xlsx">Hoja en Excel</button>
           <button type="submit" className="boton" data-descarga="1" formAction={`/firma/${firmaId}/nomina/hoja`} formTarget="_blank" name="formato" value="pdf">Hoja en PDF</button>
           <button type="submit" className="boton" data-descarga="1" formAction={`/firma/${firmaId}/nomina/archivo`} formTarget="_blank">Archivo para la TSS</button>
+          {puedeGuardar && <button type="submit" className="boton" data-guardar="1" disabled={guardando}>{guardando ? "Guardando…" : "Guardar la hoja en el expediente"}</button>}
         </div>
+        {guardado.ok && <p className="exito" role="status" style={{ margin: 0 }}>{guardado.ok}</p>}
+        {guardado.error && <p className="error" role="alert" style={{ margin: 0 }}>{guardado.error}</p>}
       </form>
 
       {r && (
