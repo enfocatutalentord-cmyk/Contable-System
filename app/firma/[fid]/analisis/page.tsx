@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
+import { Formulario } from "@/app/formulario";
 import { accesoFirma, esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
 import {
   armarAnalisis, COMPARATIVOS, GRUPOS, leerFiltrosAnalisis, NOMBRES_GRUPO, observacionesDe, PREGUNTA_GRUPO, verCambio, verRazon, type Valor,
 } from "@/lib/analisis-financiero";
 import { conEmpresa } from "@/lib/db";
 import { clientesDeFirma } from "@/lib/firma";
+import { analisisGuardados } from "@/lib/pdf-analisis";
 import { puede } from "@/lib/permisos";
 import { llevaContabilidad } from "@/lib/reportes";
+import { guardarInformeAnalisis } from "../../analisis-acciones";
 import { Observaciones } from "./observaciones";
 
 export const metadata = { title: "Análisis financiero · Empire Tax & Legal" };
@@ -29,8 +32,9 @@ export default async function AnalisisFinanciero({ params, searchParams }: { par
       analisis: await armarAnalisis(tx, f.desde, f.hasta, f.comparar),
       obs: await observacionesDe(tx, f.desde, f.hasta),
       contabilidad: await llevaContabilidad(tx),
+      guardados: await analisisGuardados(tx, elegido.id),
     }));
-    return { ...r, puedeEscribir: puede(permisos, "registrar"), puedeBajar: puede(permisos, "exportar") };
+    return { ...r, puedeEscribir: puede(permisos, "registrar"), puedeBajar: puede(permisos, "exportar"), puedeGuardar: puede(permisos, "adjuntar") };
   })() : null;
 
   const consulta = elegido ? new URLSearchParams({ empresa: elegido.id, desde: f.desde, hasta: f.hasta, comparar: f.comparar }).toString() : "";
@@ -119,6 +123,25 @@ export default async function AnalisisFinanciero({ params, searchParams }: { par
               Los saldos del balance son los del cierre de cada período (no promedios). La rentabilidad y las rotaciones son del período elegido, sin llevarlas a un año: para
               compararlas, usa períodos del mismo largo.
             </p>
+
+            <section className="tarjeta" style={{ marginBottom: 16 }}>
+              <h2 style={{ marginTop: 0 }}>Informe en el expediente</h2>
+              <p className="sub">
+                El informe en PDF de este período y esta comparación (con el logo del cliente y lo que escribiste abajo) se guarda en la carpeta <strong>05 · Reportes</strong> del
+                expediente de {elegido.nombre}. Guarda primero las observaciones. Cada vez que se guarda queda una copia nueva.
+              </p>
+              <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+                {detalle.guardados.map((g) => (
+                  <li key={g.id}>
+                    <a href={`/e/${elegido.id}/documentos/${g.id}`} target="_blank" rel="noopener noreferrer">{g.descripcion.replace("Análisis financiero · ", "")}</a>
+                    <span className="sub"> · guardado por {g.quien}, {g.subido_en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</span>
+                  </li>
+                ))}
+                {detalle.guardados.length === 0 && <li className="sub">Todavía no se ha guardado ninguno.</li>}
+              </ul>
+              {detalle.puedeGuardar && <Formulario accion={guardarInformeAnalisis.bind(null, fid, elegido.id, f.desde, f.hasta, f.comparar)} boton="Guardar el informe en el expediente" className="fila"><></></Formulario>}
+              <p style={{ margin: "8px 0 0" }}><a href={`/e/${elegido.id}/expediente`}>Abrir el expediente del cliente</a></p>
+            </section>
 
             <Observaciones firmaId={fid} empresaId={elegido.id} desde={f.desde} hasta={f.hasta} textos={obs.textos} puedeEscribir={detalle.puedeEscribir} />
             {obs.en && <p className="sub">Última vez guardado{obs.por ? ` por ${obs.por}` : ""} el {obs.en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "medium", timeStyle: "short" })}.</p>}

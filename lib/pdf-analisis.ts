@@ -89,3 +89,14 @@ export async function pdfAnalisis(tx: Tx, p: Parameters<typeof docAnalisis>[1]) 
   const { nombre, doc } = await docAnalisis(tx, p);
   return { nombre, datos: new Uint8Array(await armarPdf(doc)) };
 }
+
+// El informe se guarda en la carpeta 05 (Reportes) del expediente del cliente; cada vez que se guarda queda una copia nueva (del período y la comparación que se estaban viendo).
+export const CARPETA_ANALISIS = "05";
+export const descripcionAnalisis = (desde: string, hasta: string, comparar: Comparativo) => `Análisis financiero · ${verFecha(desde)} al ${verFecha(hasta)} · ${COMPARATIVOS[comparar]}`.slice(0, 150);
+
+export type AnalisisGuardado = { id: string; nombre: string; descripcion: string; subido_en: Date; quien: string };
+export const analisisGuardados = (tx: Tx, empresaId: string) => tx<AnalisisGuardado[]>`
+  SELECT d.id, d.nombre, d.descripcion, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_ANALISIS} AND NOT d.eliminado AND d.descripcion LIKE 'Análisis financiero · %'
+   ORDER BY d.subido_en DESC`;

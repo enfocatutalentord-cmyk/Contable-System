@@ -8,7 +8,7 @@ import {
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
 import { deflateSync } from "node:zlib";
-import { logoDe } from "../lib/pdf-analisis.ts";
+import { analisisGuardados, CARPETA_ANALISIS, descripcionAnalisis, logoDe } from "../lib/pdf-analisis.ts";
 import { docAuditoria, imagenLegible, MAX_FOTOS_POR_HALLAZGO } from "../lib/pdf-auditoria.ts";
 
 const form = (o) => { const fd = new FormData(); for (const [k, v] of Object.entries(o)) for (const x of [].concat(v)) fd.append(k, x); return fd; };
@@ -299,4 +299,21 @@ test("informes guardados: carpeta 05 del expediente, uno por número de auditor�
   assert.equal((await enEmpresa((tx) => informesGuardados(tx, empresa, 8))).length, 0);
   await sql`UPDATE documentos SET eliminado = true WHERE id = ${id7a}`;
   assert.deepEqual((await enEmpresa((tx) => informesGuardados(tx, empresa, 7))).map((i) => i.id), [id7b], "el retirado ya no sale");
+});
+
+// ───── el informe del análisis financiero guardado en el expediente ─────
+test("análisis guardados: carpeta 05, con su período y comparación, sin los retirados ni otros documentos", conBase, async () => {
+  assert.equal(CARPETA_ANALISIS, "05");
+  assert.equal(descripcionAnalisis("2026-01-01", "2026-11-30", "ninguno"), "Análisis financiero · 01/01/2026 al 30/11/2026 · Sin comparar");
+  assert.match(descripcionAnalisis("2026-01-01", "2026-11-30", "anio"), /año pasado|Año/i);
+  const guardar = (desc) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [{ nombre: "analisis.pdf", bytes: new TextEncoder().encode(`%PDF-1.3 ${Math.random()}`) }], carpeta: "05", anio: 2026, descripcion: desc }));
+  const [a] = await guardar(descripcionAnalisis("2026-01-01", "2026-11-30", "ninguno"));
+  const [b] = await guardar(descripcionAnalisis("2025-01-01", "2025-12-31", "anterior"));
+  await guardar("Informe de auditoría n.º 1 · otra cosa"); // otro informe de la carpeta 05: no es un análisis
+  const lista = await enEmpresa((tx) => analisisGuardados(tx, empresa));
+  assert.deepEqual(lista.map((x) => x.id).sort(), [a, b].sort());
+  assert.equal(lista[0].quien, "Ana");
+  assert.match(lista.find((x) => x.id === b).descripcion, /01\/01\/2025 al 31\/12\/2025/);
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
+  assert.deepEqual((await enEmpresa((tx) => analisisGuardados(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
 });
