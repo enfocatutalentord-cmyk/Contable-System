@@ -8,6 +8,7 @@ import {
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
 import { deflateSync } from "node:zlib";
+import { CARPETA_COTIZACION, cotizacionesGuardadas, descripcionCotizacion } from "../lib/propuestas.ts";
 import { CARPETA_NOMINA, descripcionNomina, nominasGuardadas } from "../lib/nomina.ts";
 import { CARPETA_PRESTACIONES, descripcionPrestaciones, prestacionesGuardadas } from "../lib/pdf-prestaciones.ts";
 import { analisisGuardados, CARPETA_ANALISIS, descripcionAnalisis, logoDe } from "../lib/pdf-analisis.ts";
@@ -351,4 +352,22 @@ test("nóminas guardadas: carpeta 04, con el mes y los empleados, sin los retira
   assert.equal(lista[0].quien, "Ana");
   await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
   assert.deepEqual((await enEmpresa((tx) => nominasGuardadas(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
+});
+
+// ───── la cotización de la propuesta guardada en el expediente del cliente ─────
+test("cotizaciones guardadas: carpeta 06 del cliente, una propuesta por número y sin los retirados", conBase, async () => {
+  assert.equal(CARPETA_COTIZACION, "06");
+  assert.equal(descripcionCotizacion(12, "enviada"), "Cotización · propuesta n.º 12 · Enviada");
+  assert.equal(descripcionCotizacion(12, "aceptada"), "Cotización · propuesta n.º 12 · Aceptada");
+  const guardar = (desc) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [{ nombre: "propuesta.pdf", bytes: new TextEncoder().encode(`%PDF-1.3 ${Math.random()}`) }], carpeta: "06", anio: 2026, descripcion: desc }));
+  const [a] = await guardar(descripcionCotizacion(12, "enviada"));
+  const [b] = await guardar(descripcionCotizacion(12, "aceptada")); // otra copia de la misma propuesta, ya aceptada
+  await guardar(descripcionCotizacion(120, "enviada")); // la propuesta 120 no es la 12
+  await guardar("Informe de diagnóstico y propuesta");
+  const lista = await enEmpresa((tx) => cotizacionesGuardadas(tx, empresa, 12));
+  assert.deepEqual(lista.map((x) => x.id).sort(), [a, b].sort());
+  assert.equal(lista[0].quien, "Ana");
+  assert.equal((await enEmpresa((tx) => cotizacionesGuardadas(tx, empresa, 120))).length, 1);
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
+  assert.deepEqual((await enEmpresa((tx) => cotizacionesGuardadas(tx, empresa, 12))).map((x) => x.id), [b], "el retirado ya no sale");
 });

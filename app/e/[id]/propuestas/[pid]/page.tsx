@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Descargar } from "@/app/descargar";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, esUuid, misFirmas } from "@/lib/acceso";
+import { clientesDeFirma } from "@/lib/firma";
 import { EnviarWhatsApp } from "@/app/whatsapp";
 import { listarAnticipos } from "@/lib/anticipos";
 import { cantidadTexto } from "@/lib/calculos";
@@ -10,9 +11,9 @@ import { conEmpresa } from "@/lib/db";
 import { listarImpuestos } from "@/lib/fiscal";
 import { deCentavos, hoyISO, verFecha, verMonto } from "@/lib/montos";
 import { puede } from "@/lib/permisos";
-import { aLinea, descuentoAEmprendedor, ESTADOS_PROPUESTA, lineasDe, montoAnticipo, totalesPropuesta } from "@/lib/propuestas";
+import { aLinea, cotizacionesGuardadas, descuentoAEmprendedor, ESTADOS_PROPUESTA, lineasDe, montoAnticipo, totalesPropuesta, type CotizacionGuardada } from "@/lib/propuestas";
 import { datosFormulario } from "../../facturas/datos-formulario";
-import { cambiarEstadoPropuesta, guardarPropuestaAccion, propuestaAFactura, propuestaAIguala } from "../../propuestas-acciones";
+import { cambiarEstadoPropuesta, guardarCotizacionEnExpediente, guardarPropuestaAccion, propuestaAFactura, propuestaAIguala } from "../../propuestas-acciones";
 import { FormularioPropuesta } from "../formulario-propuesta";
 
 export default async function Propuesta({ params, searchParams }: {
@@ -27,10 +28,10 @@ export default async function Propuesta({ params, searchParams }: {
   const r = await conEmpresa(id, async (tx) => {
     const [p] = await tx<{
       numero: number; cliente_id: string; cliente: string; categoria: string | null; rnc: string | null; fecha: string; valida_hasta: string; estado: string; requisitos: string | null;
-      anticipo_pct: string; forma_pago: string | null; entrega: string | null; notas: string | null; factura_id: string | null; acuerdo_id: string | null;
+      anticipo_pct: string; forma_pago: string | null; entrega: string | null; notas: string | null; factura_id: string | null; acuerdo_id: string | null; vinculada: string | null;
     }[]>`
       SELECT p.numero, p.cliente_id, c.nombre AS cliente, c.categoria, c.rnc, to_char(p.fecha, 'YYYY-MM-DD') AS fecha, to_char(p.valida_hasta, 'YYYY-MM-DD') AS valida_hasta,
-             p.estado, p.requisitos, p.anticipo_pct::text, p.forma_pago, to_char(p.entrega, 'YYYY-MM-DD') AS entrega, p.notas, p.factura_id, p.acuerdo_id
+             p.estado, p.requisitos, p.anticipo_pct::text, p.forma_pago, to_char(p.entrega, 'YYYY-MM-DD') AS entrega, p.notas, p.factura_id, p.acuerdo_id, c.empresa_vinculada_id AS vinculada
         FROM propuestas p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ${pid}`;
     if (!p) return null;
     const lineas = await lineasDe(tx, pid);
@@ -40,6 +41,17 @@ export default async function Propuesta({ params, searchParams }: {
   });
   if (!r) notFound();
   const { p, lineas, impuestos } = r;
+  // Cotización en el expediente del cliente (su empresa en la firma): solo si el cliente está enlazado y esta persona lo ve.
+  let cotizaciones: CotizacionGuardada[] = [];
+  let puedeGuardarCotizacion = false;
+  if (propia && p.vinculada && p.estado !== "borrador") {
+    const firma = (await misFirmas(usuario.id)).find((x) => x.empresa_propia_id === id);
+    if (firma && (await clientesDeFirma(firma.id, usuario.id, firma.administrador)).some((c) => c.id === p.vinculada)) {
+      const acc = await accesoEmpresa(p.vinculada);
+      puedeGuardarCotizacion = puede(permisos, "exportar") && puede(acc.permisos, "adjuntar");
+      cotizaciones = await conEmpresa(p.vinculada, (tx) => cotizacionesGuardadas(tx, p.vinculada!, p.numero));
+    }
+  }
   const t = totalesPropuesta(lineas.map(aLinea), impuestos);
   const anticipo = montoAnticipo(t.total, p.anticipo_pct);
   const abierta = p.estado === "borrador" || p.estado === "enviada";
@@ -87,6 +99,23 @@ export default async function Propuesta({ params, searchParams }: {
       </div>
       {propia && p.estado !== "rechazada" && puede(permisos, "exportar") && (
         <div style={{ marginBottom: 12 }}><EnviarWhatsApp empresaId={id} clave="propuesta" docRef={{ tipo: "propuesta", id: pid }} /></div>
+      )}
+      {propia && p.vinculada && p.estado !== "borrador" && (cotizaciones.length > 0 || puedeGuardarCotizacion) && (
+        <div className="tarjeta" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Cotización en el expediente del cliente</h2>
+          <p className="sub">La propuesta en PDF, tal como está hoy, se guarda en la carpeta <strong>06 · Solicitudes</strong> del expediente de {p.cliente}. Cada vez que se guarda queda una copia nueva.</p>
+          <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+            {cotizaciones.map((g) => (
+              <li key={g.id}>
+                <a href={`/e/${p.vinculada}/documentos/${g.id}`} target="_blank" rel="noreferrer">{g.descripcion.replace("Cotización · ", "")}</a>
+                <span className="sub"> · guardada por {g.quien}, {g.subido_en.toLocaleString("es-DO", { timeZone: "America/Santo_Domingo", dateStyle: "short", timeStyle: "short" })}</span>
+              </li>
+            ))}
+            {cotizaciones.length === 0 && <li className="sub">Todavía no se ha guardado.</li>}
+          </ul>
+          {puedeGuardarCotizacion && <Formulario accion={guardarCotizacionEnExpediente.bind(null, id, pid)} boton="Guardar la cotización en el expediente" className="fila"><span /></Formulario>}
+          <p style={{ margin: "8px 0 0" }}><Link href={`/e/${p.vinculada}/expediente`}>Abrir el expediente del cliente</Link></p>
+        </div>
       )}
       <div className="tabla-envoltura" style={{ marginBottom: 16 }}>
         <table>

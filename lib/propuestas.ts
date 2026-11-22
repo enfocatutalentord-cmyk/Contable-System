@@ -159,3 +159,16 @@ export async function convertirEnIguala(tx: Tx, d: { empresaId: string; propuest
   await tx`UPDATE propuestas SET acuerdo_id = ${id} WHERE id = ${d.propuestaId}`;
   return id;
 }
+
+// La cotización (la propuesta en PDF, tal como se envió) se guarda en la carpeta 06 (Solicitudes, cotizaciones y entregables) del expediente del CLIENTE, no en el de Empire; cada vez que
+// se guarda queda una copia nueva. Solo de una propuesta que ya salió (enviada, aceptada o rechazada): un borrador todavía puede cambiar.
+export const CARPETA_COTIZACION = "06";
+export const descripcionCotizacion = (numero: number, estado: string) => `Cotización · propuesta n.º ${numero} · ${ESTADOS_PROPUESTA[estado] ?? estado}`;
+
+export type CotizacionGuardada = { id: string; nombre: string; descripcion: string; subido_en: Date; quien: string };
+export const cotizacionesGuardadas = (tx: Tx, empresaClienteId: string, numero: number) => tx<CotizacionGuardada[]>`
+  SELECT d.id, d.nombre, d.descripcion, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaClienteId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_COTIZACION} AND NOT d.eliminado
+     AND d.descripcion LIKE ${`Cotización · propuesta n.º ${numero} · %`}
+   ORDER BY d.subido_en DESC`;

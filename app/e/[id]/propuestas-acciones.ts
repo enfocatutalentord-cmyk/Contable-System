@@ -9,7 +9,12 @@ import { leerCantidad } from "@/lib/calculos";
 import { conEmpresa, mensajeError } from "@/lib/db";
 import { leerUnidad } from "@/lib/empresa-propia";
 import { aCentavos, hoyISO, leerMonto } from "@/lib/montos";
-import { cambiarEstado, convertirEnFactura, convertirEnIguala, ESTADOS_PROPUESTA, guardarPropuesta, type LineaPropuesta } from "@/lib/propuestas";
+import { aPdf } from "@/lib/exportar";
+import { ErrorExpediente, guardarArchivos } from "@/lib/expediente";
+import { tablaPropuesta } from "@/lib/pdf-documentos";
+import {
+  cambiarEstado, CARPETA_COTIZACION, convertirEnFactura, convertirEnIguala, descripcionCotizacion, ESTADOS_PROPUESTA, guardarPropuesta, type LineaPropuesta,
+} from "@/lib/propuestas";
 import { fechaValida } from "@/lib/reportes";
 import type { Estado } from "../../acciones-cuenta";
 
@@ -171,4 +176,34 @@ export async function anularAnticipoAccion(empresaId: string, anticipoId: string
   }
   revalidatePath(`/e/${empresaId}`, "layout");
   return { ok: "Anticipo anulado: su asiento también." };
+}
+
+// Guarda la cotización (la propuesta en PDF) en la carpeta 06 del expediente del cliente (su empresa en la firma, enlazada con el cliente de la facturación). Pide poder exportar la
+// propuesta en Empire y «adjuntar» en el expediente del cliente. Solo de una propuesta que ya salió. Cada vez que se guarda queda una copia nueva.
+export async function guardarCotizacionEnExpediente(empresaId: string, propuestaId: string): Promise<Estado> {
+  const { usuario, empresa } = await exigirPermiso(empresaId, "exportar", "/propuestas");
+  if (!esUuid(propuestaId)) return { error: "La propuesta no existe." };
+  const p = await conEmpresa(empresaId, async (tx) => (await tx<{ numero: number; estado: string; vinculada: string | null }[]>`
+    SELECT p.numero, p.estado, c.empresa_vinculada_id AS vinculada FROM propuestas p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ${propuestaId}`)[0]);
+  if (!p) return { error: "La propuesta no existe." };
+  if (p.estado === "borrador") return { error: "Marca la propuesta como enviada antes de guardarla: un borrador todavía puede cambiar." };
+  if (!p.vinculada) return { error: "Este cliente no tiene su expediente en la firma (no es una de sus empresas): no hay dónde guardar la cotización." };
+  const cliente = await exigirPermiso(p.vinculada, "adjuntar", "/expediente");
+  if (cliente.empresa.firma_id !== empresa.firma_id) return { error: "Ese cliente no es de la firma." };
+  try {
+    const bytes = await conEmpresa(empresaId, async (tx) => {
+      const t = await tablaPropuesta(tx, propuestaId, { empresa: empresa.nombre + (empresa.rnc ? ` · RNC ${empresa.rnc}` : ""), generado: `Guardada en el expediente por ${usuario.nombre} el ${new Date().toLocaleDateString("es-DO", { timeZone: "America/Santo_Domingo" })}` });
+      return t ? new Uint8Array(await aPdf(t[1])) : null;
+    });
+    if (!bytes) return { error: "La propuesta no existe." };
+    await conEmpresa(p.vinculada, (tx) => guardarArchivos(tx, {
+      empresaId: p.vinculada!, usuarioId: usuario.id, archivos: [{ nombre: `propuesta-${p.numero}.pdf`, bytes }], carpeta: CARPETA_COTIZACION, anio: Number(hoyISO().slice(0, 4)),
+      descripcion: descripcionCotizacion(p.numero, p.estado),
+    }));
+  } catch (e) {
+    return error(e instanceof ErrorExpediente ? new ErrorContable(e.message) : e);
+  }
+  revalidatePath(`/e/${empresaId}/propuestas`, "layout");
+  revalidatePath(`/e/${p.vinculada}/expediente`);
+  return { ok: "Cotización guardada en el expediente del cliente, carpeta 06 · Solicitudes." };
 }
