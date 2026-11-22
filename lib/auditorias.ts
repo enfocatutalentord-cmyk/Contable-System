@@ -249,3 +249,15 @@ export async function retirarEvidencia(tx: Tx, documentoId: string, usuarioId: s
   if (d.estado === "cerrada") throw new ErrorAuditoria("La auditoría está cerrada: reábrela para retirar archivos.");
   await tx`UPDATE documentos SET eliminado = true, eliminado_por = ${usuarioId}, eliminado_en = now() WHERE id = ${documentoId} AND entidad = 'auditoria'`;
 }
+
+// El informe final se guarda en la carpeta 05 (Reportes) del expediente del cliente; cada vez que se guarda queda una copia nueva, con la fecha en que se hizo.
+export const CARPETA_INFORME = "05";
+export const descripcionInforme = (numero: number, nombre: string) => `Informe de auditoría n.º ${numero} · ${nombre}`.slice(0, 150);
+
+export type InformeGuardado = { id: string; nombre: string; subido_en: Date; quien: string };
+export const informesGuardados = (tx: Tx, empresaId: string, numero: number) => tx<InformeGuardado[]>`
+  SELECT d.id, d.nombre, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_INFORME} AND NOT d.eliminado
+     AND d.descripcion LIKE ${`Informe de auditoría n.º ${numero} · %`}
+   ORDER BY d.subido_en DESC`;

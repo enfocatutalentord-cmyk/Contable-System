@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Formulario } from "@/app/formulario";
 import { accesoEmpresa, accesoFirma, esUuid, soloCliente } from "@/lib/acceso";
 import {
-  camposFaltantes, CAMPOS_HALLAZGO, detalleAuditoria, ESTADOS, ESTADOS_HALLAZGO, ESTADOS_PASO, RIESGOS, TRANSICIONES, type Evidencia,
+  camposFaltantes, CAMPOS_HALLAZGO, detalleAuditoria, ESTADOS, ESTADOS_HALLAZGO, ESTADOS_PASO, informesGuardados, RIESGOS, TRANSICIONES, type Evidencia,
 } from "@/lib/auditorias";
 import { conEmpresa } from "@/lib/db";
 import { equipoDe } from "@/lib/firma";
@@ -12,7 +12,7 @@ import { puede } from "@/lib/permisos";
 import { verTamano } from "@/lib/documentos";
 import {
   agregarPasosAccion, agregarPruebasAccion, agregarPruebasHallazgoAccion, cambiarEstadoAuditoriaAccion, estadoHallazgoAccion, guardarAuditoriaAccion,
-  guardarHallazgoAccion, marcarPasoAccion, quitarPasoAccion, retirarPruebaAccion,
+  guardarHallazgoAccion, guardarInformeAccion, marcarPasoAccion, quitarPasoAccion, retirarPruebaAccion,
 } from "../../../../auditoria-acciones";
 import { CamposHallazgo, CamposPlan } from "../../campos";
 
@@ -34,6 +34,7 @@ export default async function Auditoria({ params, searchParams }: {
   if (empresa.firma_id !== fid) notFound();
   const [a, equipo] = await Promise.all([conEmpresa(eid, (tx) => detalleAuditoria(tx, aid)), equipoDe(fid)]);
   if (!a) notFound();
+  const informes = await conEmpresa(eid, (tx) => informesGuardados(tx, eid, a.numero));
 
   const cerrada = a.estado === "cerrada";
   const edita = puede(permisos, "registrar") && !cerrada;
@@ -95,6 +96,22 @@ export default async function Auditoria({ params, searchParams }: {
         </div>
         <p className="sub" style={{ marginBottom: 0 }}>Para cerrarla no pueden quedar pasos pendientes ni hallazgos con campos vacíos. Cerrada, no se cambia nada hasta reabrirla.</p>
       </div>
+
+      {(cerrada || informes.length > 0) && (
+        <section className="tarjeta" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Informe en el expediente</h2>
+          <p className="sub">
+            El informe final en PDF (con el logo del cliente y las fotos) se guarda en la carpeta <strong>05 · Reportes</strong> del expediente de {empresa.nombre}.
+            Cada vez que se guarda queda una copia nueva; si reabres la auditoría y la vuelves a cerrar, guarda el informe otra vez.
+          </p>
+          <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+            {informes.map((i) => <li key={i.id}><a href={`/e/${eid}/documentos/${i.id}`} target="_blank" rel="noreferrer">{i.nombre}</a><span className="sub"> · guardado por {i.quien}, {fechaHora(i.subido_en)}</span></li>)}
+            {informes.length === 0 && <li className="sub">Todavía no se ha guardado.</li>}
+          </ul>
+          {cerrada && puede(permisos, "adjuntar") && <Formulario accion={guardarInformeAccion.bind(null, fid, eid, aid)} boton={informes.length ? "Guardar una copia nueva en el expediente" : "Guardar el informe en el expediente"} className="fila"><></></Formulario>}
+          <p style={{ margin: "8px 0 0" }}><Link href={`/e/${eid}/expediente`}>Abrir el expediente del cliente</Link></p>
+        </section>
+      )}
 
       <section className="tarjeta" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Plan</h2>

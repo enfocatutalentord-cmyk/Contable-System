@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
+import { accesoFirma, esUuid, exigirPermiso, soloCliente } from "@/lib/acceso";
 import {
-  agregarPasos, cambiarEstadoAuditoria, crearAuditoria, crearHallazgo, ErrorAuditoria, estadoDeHallazgo, guardarAuditoria, guardarHallazgo, leerAuditoria, leerHallazgo,
-  leerPasosTexto, marcarPaso, quitarPaso, retirarEvidencia,
+  agregarPasos, CARPETA_INFORME, cambiarEstadoAuditoria, crearAuditoria, crearHallazgo, ErrorAuditoria, estadoDeHallazgo, guardarAuditoria, guardarHallazgo, leerAuditoria, leerHallazgo,
+  descripcionInforme, leerPasosTexto, marcarPaso, quitarPaso, retirarEvidencia,
 } from "@/lib/auditorias";
 import { clienteDeFormulario } from "@/lib/cliente-rapido";
 import { conEmpresa, db, mensajeError } from "@/lib/db";
 import { ErrorExpediente, guardarArchivos, leerArchivos } from "@/lib/expediente";
+import { hoyISO } from "@/lib/montos";
+import { pdfAuditoria } from "@/lib/pdf-auditoria";
 import type { Permiso } from "@/lib/permisos";
 import type { Estado } from "../acciones-cuenta";
 
@@ -204,4 +206,27 @@ export async function retirarPruebaAccion(firmaId: string, empresaId: string, au
     return { error: mensaje(e) };
   }
   return listo(firmaId, empresaId, auditoriaId, "Archivo retirado.");
+}
+
+// Guarda el informe final (PDF, con el logo del cliente y sus fotos) en la carpeta 05 · Reportes del expediente del cliente. Solo de una auditoría cerrada: el informe de una que
+// sigue abierta es un borrador y no se archiva. Cada vez que se guarda queda una copia nueva (si se reabre y se vuelve a cerrar, el informe cambia).
+export async function guardarInformeAccion(firmaId: string, empresaId: string, auditoriaId: string): Promise<Estado> {
+  try {
+    const { usuario, empresa } = await acceso(firmaId, empresaId, auditoriaId, "adjuntar");
+    const { firma } = await accesoFirma(firmaId, false);
+    await conEmpresa(empresaId, async (tx) => {
+      const [a] = await tx<{ numero: number; nombre: string; estado: string }[]>`SELECT numero, nombre, estado FROM auditorias WHERE id = ${auditoriaId}`;
+      if (!a) throw new ErrorAuditoria("Esa auditoría no existe.");
+      if (a.estado !== "cerrada") throw new ErrorAuditoria("El informe se guarda en el expediente cuando la auditoría está cerrada: ahora es un borrador.");
+      const pdf = await pdfAuditoria(tx, { empresaId, auditoriaId, empresa: empresa.nombre, rnc: empresa.rnc, firma: firma.nombre, preparadoPor: usuario.nombre });
+      if (!pdf) throw new ErrorAuditoria("Esa auditoría no existe.");
+      await guardarArchivos(tx, {
+        empresaId, usuarioId: usuario.id, archivos: [{ nombre: pdf.nombre, bytes: pdf.datos }], carpeta: CARPETA_INFORME, anio: Number(hoyISO().slice(0, 4)), descripcion: descripcionInforme(a.numero, a.nombre),
+      });
+    });
+    revalidatePath(`/e/${empresaId}/expediente`);
+  } catch (e) {
+    return { error: mensaje(e) };
+  }
+  return listo(firmaId, empresaId, auditoriaId, "Informe guardado en el expediente del cliente, carpeta 05 · Reportes.");
 }

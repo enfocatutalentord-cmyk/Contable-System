@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import postgres from "postgres";
 import {
-  agregarPasos, cambiarEstadoAuditoria, camposFaltantes, crearAuditoria, crearHallazgo, detalleAuditoria, ErrorAuditoria, estadoDeHallazgo, guardarAuditoria,
+  agregarPasos, CARPETA_INFORME, cambiarEstadoAuditoria, camposFaltantes, descripcionInforme, informesGuardados, crearAuditoria, crearHallazgo, detalleAuditoria, ErrorAuditoria, estadoDeHallazgo, guardarAuditoria,
   guardarHallazgo, leerAuditoria, leerHallazgo, leerPasosTexto, listarAuditorias, marcarPaso, quitarPaso, retirarEvidencia,
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
@@ -278,4 +278,25 @@ test("logoDe: un logo dañado se ignora (el PDF sale sin logo) y uno bueno se us
   await new Promise((r) => setTimeout(r, 15)); // el más reciente manda
   await guardar("logo-malo.png", "image/png", pngDe(Buffer.from("basura que no es zlib, pero con firma de PNG")), "b".repeat(64));
   assert.equal(await enEmpresa((tx) => logoDe(tx, empresa)), null, "el logo dañado más reciente se ignora en vez de romper el PDF");
+});
+
+// ───── el informe final guardado en el expediente ─────
+test("informes guardados: carpeta 05 del expediente, uno por número de auditoría y sin los retirados", conBase, async () => {
+  assert.equal(CARPETA_INFORME, "05");
+  assert.equal(descripcionInforme(7, "Revisión de compras"), "Informe de auditoría n.º 7 · Revisión de compras");
+  assert.equal(descripcionInforme(7, "x".repeat(300)).length, 150);
+  const pdf = (n) => ({ nombre: `informe-auditoria-n${n}.pdf`, bytes: new TextEncoder().encode(`%PDF-1.3 informe ${n} ${Math.random()}`) });
+  const guardar = (n, nombre) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [pdf(n)], carpeta: CARPETA_INFORME, anio: 2026, descripcion: descripcionInforme(n, nombre) }));
+  const [id7a] = await guardar(7, "Revisión");
+  const [id7b] = await guardar(7, "Revisión"); // una copia nueva: no se confunde con la anterior
+  await guardar(70, "Otra");
+  await enEmpresa((tx) => tx`INSERT INTO documentos (empresa_id, entidad, entidad_id, nombre, tipo, tamano, sha256, contenido, descripcion, subido_por, carpeta)
+    VALUES (${empresa}, 'expediente', ${empresa}, 'otro.pdf', 'application/pdf', 4, ${"c".repeat(64)}, ${Buffer.from("%PDF")}, 'Informe de auditoría n.º 7 · en otra carpeta', ${ana}, '01')`);
+  const lista = await enEmpresa((tx) => informesGuardados(tx, empresa, 7));
+  assert.deepEqual(lista.map((i) => i.id).sort(), [id7a, id7b].sort(), "solo el n.º 7 y solo de la carpeta 05");
+  assert.equal(lista[0].quien, "Ana");
+  assert.equal((await enEmpresa((tx) => informesGuardados(tx, empresa, 70))).length, 1);
+  assert.equal((await enEmpresa((tx) => informesGuardados(tx, empresa, 8))).length, 0);
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${id7a}`;
+  assert.deepEqual((await enEmpresa((tx) => informesGuardados(tx, empresa, 7))).map((i) => i.id), [id7b], "el retirado ya no sale");
 });
