@@ -67,6 +67,7 @@ export default async function Conteo({ params, searchParams }: {
         <div className="fila" style={{ alignItems: "center", gap: 8 }}>
           <strong>Estado del conteo:</strong>
           {!cerrado && puede(permisos, "cerrar") && <Formulario accion={cambiarEstadoConteoAccion.bind(null, fid, eid, cid, "cerrado")} boton="Cerrar el conteo" className="fila"><></></Formulario>}
+          {cerrado && <Link className="boton" href={`${base}/reporte`}>Reporte de diferencias</Link>}
           {cerrado && puede(permisos, "reabrir") && <Formulario accion={cambiarEstadoConteoAccion.bind(null, fid, eid, cid, "abierto")} boton="Reabrir el conteo" className="fila"><></></Formulario>}
         </div>
         <p className="sub" style={{ marginBottom: 0 }}>

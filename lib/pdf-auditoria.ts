@@ -54,7 +54,7 @@ export function imagenLegible(tipo: string, b: Uint8Array): boolean {
   } catch { return false; }
   return false;
 }
-const imagenDeDatos = (d: string | null) => {
+export const imagenDeDatos = (d: string | null) => {
   const m = d?.match(/^data:(image\/(?:png|jpeg));base64,(.*)$/);
   return m && imagenLegible(m[1], Buffer.from(m[2], "base64")) ? d : null;
 };
