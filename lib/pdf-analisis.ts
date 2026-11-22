@@ -1,16 +1,19 @@
 import { armarAnalisis, GRUPOS, NOMBRES_GRUPO, observacionesDe, PREGUNTA_GRUPO, verCambio, verRazon, type Comparativo, type Valor, COMPARATIVOS } from "./analisis-financiero.ts";
 import type { Tx } from "./db";
 import { armarPdf } from "./exportar.ts";
+import { imagenLegible } from "./imagenes-pdf.ts";
 import { verFecha } from "./montos.ts";
 
 const VERDE = "#003D19", DORADO = "#B88A40";
 
-// El logo del cliente, el de su ficha (PNG o JPG ya comprobados al subirlos), como imagen para el PDF. Sin logo, el informe sale sin él.
+// El logo del cliente, el de su ficha (PNG o JPG), como imagen para el PDF. Sin logo, o con un logo dañado, el informe sale sin él.
 export async function logoDe(tx: Tx, empresaId: string): Promise<string | null> {
   const [l] = await tx<{ tipo: string; contenido: Buffer }[]>`
     SELECT tipo, contenido FROM documentos WHERE entidad = 'empresa' AND entidad_id = ${empresaId} AND descripcion = 'logo' AND NOT eliminado
      ORDER BY subido_en DESC LIMIT 1`;
   if (!l || (l.tipo !== "image/png" && l.tipo !== "image/jpeg")) return null;
+  // El tipo se aceptó al subirlo por sus primeros bytes: una imagen dañada hace fallar al generador de PDF sin remedio, así que aquí se comprueba que se pueda leer (sin logo, el PDF sale sin él).
+  if (!imagenLegible(l.tipo, l.contenido)) return null;
   return `data:${l.tipo};base64,${Buffer.from(l.contenido).toString("base64")}`;
 }
 

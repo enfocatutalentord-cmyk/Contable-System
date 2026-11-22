@@ -1,9 +1,11 @@
-import { inflateSync } from "node:zlib";
 import { CAMPOS_HALLAZGO, detalleAuditoria, ESTADOS, ESTADOS_HALLAZGO, ESTADOS_PASO, RIESGOS, type DetalleAuditoria } from "./auditorias.ts";
 import type { Tx } from "./db";
 import { armarPdf } from "./exportar.ts";
 import { verFecha } from "./montos.ts";
+import { imagenLegible } from "./imagenes-pdf.ts";
 import { limpiar, logoDe } from "./pdf-analisis.ts";
+
+export { imagenLegible };
 
 // Prioridad 3 · P3k · Informe final de auditoría en PDF: el logo del cliente, el objetivo y el alcance, un resumen de hallazgos, los pasos que se hicieron, cada hallazgo
 // con sus cinco campos y sus fotos, y la línea de firmas de la firma. Si la auditoría todavía no está cerrada, sale marcado como borrador.
@@ -16,47 +18,6 @@ const MAX_CARGA_FOTOS = 16 * 1024 * 1024; // tope de fotos (en base64) dentro de
 export type ParametrosAuditoria = {
   empresa: string; rnc: string | null; firma: string; preparadoPor: string;
   logo: string | null; imagenes: Map<string, string>; // id del documento → imagen en base64
-};
-
-// Los archivos se aceptan por su firma (los primeros bytes); una imagen dañada hace que el generador de PDF falle sin remedio, así que antes de dibujarla se comprueba
-// que se pueda leer: un PNG con sus trozos completos y datos que se descomprimen, y un JPG con su marca de tamaño. Las que no, se nombran en la lista de archivos.
-export function imagenLegible(tipo: string, b: Uint8Array): boolean {
-  try {
-    if (tipo === "image/png") {
-      if (b.length < 33 || b[0] !== 0x89 || b[1] !== 0x50) return false;
-      const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
-      const idat: Uint8Array[] = [];
-      let pos = 8, ihdr = false, fin = false;
-      while (pos + 12 <= b.length) {
-        const largo = v.getUint32(pos), tipoTrozo = String.fromCharCode(b[pos + 4], b[pos + 5], b[pos + 6], b[pos + 7]);
-        if (pos + 12 + largo > b.length) return false;
-        if (tipoTrozo === "IHDR") ihdr = true;
-        if (tipoTrozo === "IDAT") idat.push(b.subarray(pos + 8, pos + 8 + largo));
-        if (tipoTrozo === "IEND") { fin = true; break; }
-        pos += 12 + largo;
-      }
-      if (!ihdr || !fin || !idat.length) return false;
-      inflateSync(Buffer.concat(idat));
-      return true;
-    }
-    if (tipo === "image/jpeg") {
-      if (b[0] !== 0xff || b[1] !== 0xd8) return false;
-      let pos = 2;
-      while (pos + 4 <= b.length) {
-        if (b[pos] !== 0xff) return false;
-        const marca = b[pos + 1];
-        if (marca === 0xd8 || marca === 0x01 || (marca >= 0xd0 && marca <= 0xd7)) { pos += 2; continue; }
-        if ((marca >= 0xc0 && marca <= 0xc3) || (marca >= 0xc5 && marca <= 0xc7) || (marca >= 0xc9 && marca <= 0xcb) || (marca >= 0xcd && marca <= 0xcf)) return true; // trae su tamaño
-        pos += 2 + ((b[pos + 2] << 8) | b[pos + 3]);
-      }
-      return false;
-    }
-  } catch { return false; }
-  return false;
-}
-export const imagenDeDatos = (d: string | null) => {
-  const m = d?.match(/^data:(image\/(?:png|jpeg));base64,(.*)$/);
-  return m && imagenLegible(m[1], Buffer.from(m[2], "base64")) ? d : null;
 };
 
 const rango = (a: string | null, b: string | null) => (a || b ? `${a ? verFecha(a) : "…"} al ${b ? verFecha(b) : "…"}` : "sin fechas");
@@ -173,6 +134,6 @@ export async function pdfAuditoria(tx: Tx, p: { empresaId: string; auditoriaId: 
   const fotos = await tx<{ id: string; tipo: string; contenido: Buffer }[]>`
     SELECT id, tipo, contenido FROM documentos WHERE entidad = 'auditoria' AND entidad_id IN ${tx(ids)} AND NOT eliminado AND tipo IN ('image/png', 'image/jpeg') ORDER BY subido_en`;
   const imagenes = new Map(fotos.filter((f) => imagenLegible(f.tipo, f.contenido)).map((f) => [f.id, `data:${f.tipo};base64,${Buffer.from(f.contenido).toString("base64")}`]));
-  const { nombre, doc } = docAuditoria(a, { empresa: p.empresa, rnc: p.rnc, firma: p.firma, preparadoPor: p.preparadoPor, logo: imagenDeDatos(await logoDe(tx, p.empresaId)), imagenes });
+  const { nombre, doc } = docAuditoria(a, { empresa: p.empresa, rnc: p.rnc, firma: p.firma, preparadoPor: p.preparadoPor, logo: await logoDe(tx, p.empresaId), imagenes });
   return { nombre, datos: new Uint8Array(await armarPdf(doc)) };
 }

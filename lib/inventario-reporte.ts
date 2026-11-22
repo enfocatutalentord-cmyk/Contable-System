@@ -3,7 +3,6 @@ import type { Tx } from "./db.ts";
 import { armarPdf, type Tabla } from "./exportar.ts";
 import { deCentavos, verFecha, verMonto } from "./montos.ts";
 import { limpiar, logoDe } from "./pdf-analisis.ts";
-import { imagenDeDatos } from "./pdf-auditoria.ts";
 
 // Prioridad 3 · P3m · Reporte de diferencias del conteo de inventario: por artículo lo que decía el listado del cliente, lo contado y la diferencia en cantidad y, si el listado trae
 // costo, en pesos (diferencia × costo). Los códigos que se contaron y no estaban en el listado salen aparte, sin valorar. Solo de un conteo cerrado (así no se ve la existencia
@@ -192,6 +191,6 @@ export function docInventario(rep: ReporteConteo, p: { empresa: string; rnc: str
 }
 
 export async function pdfInventario(tx: Tx, p: { empresaId: string; empresa: string; rnc: string | null; firma: string; preparadoPor: string; rep: ReporteConteo; todos?: boolean }) {
-  const { nombre, doc } = docInventario(p.rep, { empresa: p.empresa, rnc: p.rnc, firma: p.firma, preparadoPor: p.preparadoPor, logo: imagenDeDatos(await logoDe(tx, p.empresaId)) }, p.todos);
+  const { nombre, doc } = docInventario(p.rep, { empresa: p.empresa, rnc: p.rnc, firma: p.firma, preparadoPor: p.preparadoPor, logo: await logoDe(tx, p.empresaId) }, p.todos);
   return { nombre, datos: new Uint8Array(await armarPdf(doc)) };
 }

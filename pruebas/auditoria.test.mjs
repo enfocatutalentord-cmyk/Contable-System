@@ -8,6 +8,7 @@ import {
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
 import { deflateSync } from "node:zlib";
+import { logoDe } from "../lib/pdf-analisis.ts";
 import { docAuditoria, imagenLegible, MAX_FOTOS_POR_HALLAZGO } from "../lib/pdf-auditoria.ts";
 
 const form = (o) => { const fd = new FormData(); for (const [k, v] of Object.entries(o)) for (const x of [].concat(v)) fd.append(k, x); return fd; };
@@ -262,4 +263,19 @@ test("imagenLegible: acepta PNG y JPG completos; rechaza lo dañado o cortado", 
   assert.equal(imagenLegible("image/jpeg", Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00])), false, "sin marca de tamaño");
   assert.equal(imagenLegible("image/jpeg", Buffer.from([0xff, 0xd8])), false);
   assert.equal(imagenLegible("application/pdf", jpg), false);
+});
+
+// ───── el logo del cliente en cualquier PDF: uno dañado no tumba el informe ─────
+test("logoDe: un logo dañado se ignora (el PDF sale sin logo) y uno bueno se usa", conBase, async () => {
+  const guardar = (nombre, tipo, bytes, sha) => sql`
+    INSERT INTO documentos (empresa_id, entidad, entidad_id, nombre, tipo, tamano, sha256, contenido, descripcion, subido_por)
+    VALUES (${empresa}, 'empresa', ${empresa}, ${nombre}, ${tipo}, ${bytes.length}, ${sha}, ${Buffer.from(bytes)}, 'logo', ${ana})`;
+  assert.equal(await enEmpresa((tx) => logoDe(tx, empresa)), null, "sin logo");
+  const bueno = pngDe(deflateSync(Buffer.from([0, 255, 0, 0])));
+  await guardar("logo-bueno.png", "image/png", bueno, "a".repeat(64));
+  const ok = await enEmpresa((tx) => logoDe(tx, empresa));
+  assert.ok(ok.startsWith("data:image/png;base64,"), "el bueno se usa");
+  await new Promise((r) => setTimeout(r, 15)); // el más reciente manda
+  await guardar("logo-malo.png", "image/png", pngDe(Buffer.from("basura que no es zlib, pero con firma de PNG")), "b".repeat(64));
+  assert.equal(await enEmpresa((tx) => logoDe(tx, empresa)), null, "el logo dañado más reciente se ignora en vez de romper el PDF");
 });
