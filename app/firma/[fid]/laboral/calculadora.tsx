@@ -3,15 +3,17 @@
 import { useActionState, useState } from "react";
 import { alEnviar } from "@/app/enviar";
 import { DECISIONES, FUENTE, REGLAS, TERMINACIONES, type Terminacion } from "@/lib/prestaciones";
-import { calcularPrestaciones, type EstadoPrestaciones } from "../../prestaciones-acciones";
+import type { Estado } from "@/app/acciones-cuenta";
+import { calcularPrestaciones, guardarPrestacionesEnExpediente, type EstadoPrestaciones } from "../../prestaciones-acciones";
 
 export type EmpleadoFicha = { nombre: string; ingreso: string; sueldo: string };
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
 // La calculadora: datos del empleado (de la ficha o a mano), cómo terminó el contrato y lo que cambia el cálculo. Muestra cada concepto con su artículo.
-export function Calculadora({ firmaId, empresaId, empleados }: { firmaId: string; empresaId: string; empleados: EmpleadoFicha[] }) {
+export function Calculadora({ firmaId, empresaId, empleados, puedeGuardar }: { firmaId: string; empresaId: string; empleados: EmpleadoFicha[]; puedeGuardar: boolean }) {
   const [estado, enviar, enviando] = useActionState<EstadoPrestaciones, FormData>(calcularPrestaciones.bind(null, firmaId, empresaId), {});
+  const [guardado, guardar, guardando] = useActionState<Estado, FormData>(guardarPrestacionesEnExpediente.bind(null, firmaId, empresaId), {});
   const [v, setV] = useState({ nombre: "", ingreso: "", termino: hoy(), sueldo: "", promedio: "", terminacion: "desahucio" as Terminacion, preaviso_dado: "", vacaciones_pendientes: "", devengado: "", minimo: "" });
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV({ ...v, [k]: e.target.value });
   const r = estado.resultado;
@@ -64,12 +66,22 @@ export function Calculadora({ firmaId, empresaId, empleados }: { firmaId: string
         <section className="tarjeta" style={{ marginBottom: 16 }}>
           <div className="fila" style={{ alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ margin: 0 }}>Resultado</h2>
-            <form method="post" action={`/firma/${firmaId}/laboral/pdf`} target="_blank">
-              <input type="hidden" name="empresa" value={empresaId} />
-              {Object.entries(v).map(([k, val]) => <input key={k} type="hidden" name={k} value={val} />)}
-              <button className="boton" type="submit">Hoja en PDF</button>
-            </form>
+            <div className="fila" style={{ gap: 8 }}>
+              <form method="post" action={`/firma/${firmaId}/laboral/pdf`} target="_blank">
+                <input type="hidden" name="empresa" value={empresaId} />
+                {Object.entries(v).map(([k, val]) => <input key={k} type="hidden" name={k} value={val} />)}
+                <button className="boton" type="submit">Hoja en PDF</button>
+              </form>
+              {puedeGuardar && (
+                <form onSubmit={alEnviar(guardar)}>
+                  {Object.entries(v).map(([k, val]) => <input key={k} type="hidden" name={k} value={val} />)}
+                  <button className="boton" type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar en el expediente"}</button>
+                </form>
+              )}
+            </div>
           </div>
+          {guardado.ok && <p className="exito" role="status">{guardado.ok}</p>}
+          {guardado.error && <p className="error" role="alert">{guardado.error}</p>}
           <p className="sub">
             Antigüedad: <strong>{r.antiguedad}</strong> · Salario diario: RD${fmt(r.salarioDiario)}
             {r.salarioDiarioPromedio !== r.salarioDiario && <> (con el promedio: RD${fmt(r.salarioDiarioPromedio)})</>}

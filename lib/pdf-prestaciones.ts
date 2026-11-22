@@ -1,4 +1,5 @@
 import { DECISIONES, FUENTE, REGLAS, TERMINACIONES, type Entrada, type Resultado } from "./prestaciones.ts";
+import type { Tx } from "./db";
 import { armarPdf } from "./exportar.ts";
 import { limpiar } from "./pdf-analisis.ts";
 import { deCentavos, verFecha, verMonto } from "./montos.ts";
@@ -68,3 +69,15 @@ export async function pdfPrestaciones(p: Parameters<typeof docPrestaciones>[0]) 
   const { nombre, doc } = docPrestaciones(p);
   return { nombre, datos: new Uint8Array(await armarPdf(doc)) };
 }
+
+// La hoja se guarda en la carpeta 05 (Reportes) del expediente del cliente; cada vez que se guarda queda una copia nueva. Lleva sueldos: por eso guardarla pide también el permiso «empresa».
+export const CARPETA_PRESTACIONES = "05";
+export const descripcionPrestaciones = (nombre: string, terminacion: keyof typeof TERMINACIONES, termino: string) =>
+  `Prestaciones laborales · ${nombre || "Empleado"} · ${TERMINACIONES[terminacion].nombre} · ${verFecha(termino)}`.slice(0, 150);
+
+export type PrestacionesGuardada = { id: string; nombre: string; descripcion: string; subido_en: Date; quien: string };
+export const prestacionesGuardadas = (tx: Tx, empresaId: string) => tx<PrestacionesGuardada[]>`
+  SELECT d.id, d.nombre, d.descripcion, d.subido_en, u.nombre AS quien
+    FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+   WHERE d.empresa_id = ${empresaId} AND d.entidad = 'expediente' AND d.carpeta = ${CARPETA_PRESTACIONES} AND NOT d.eliminado AND d.descripcion LIKE 'Prestaciones laborales · %'
+   ORDER BY d.subido_en DESC`;

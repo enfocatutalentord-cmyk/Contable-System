@@ -8,6 +8,7 @@ import {
 } from "../lib/auditorias.ts";
 import { guardarArchivos } from "../lib/expediente.ts";
 import { deflateSync } from "node:zlib";
+import { CARPETA_PRESTACIONES, descripcionPrestaciones, prestacionesGuardadas } from "../lib/pdf-prestaciones.ts";
 import { analisisGuardados, CARPETA_ANALISIS, descripcionAnalisis, logoDe } from "../lib/pdf-analisis.ts";
 import { docAuditoria, imagenLegible, MAX_FOTOS_POR_HALLAZGO } from "../lib/pdf-auditoria.ts";
 
@@ -316,4 +317,21 @@ test("análisis guardados: carpeta 05, con su período y comparación, sin los r
   assert.match(lista.find((x) => x.id === b).descripcion, /01\/01\/2025 al 31\/12\/2025/);
   await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
   assert.deepEqual((await enEmpresa((tx) => analisisGuardados(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
+});
+
+// ───── la hoja de prestaciones guardada en el expediente ─────
+test("prestaciones guardadas: carpeta 05, con el empleado y cómo terminó, sin los retirados ni otros documentos", conBase, async () => {
+  assert.equal(CARPETA_PRESTACIONES, "05");
+  assert.equal(descripcionPrestaciones("Luis Pérez", "desahucio", "2026-11-30"), "Prestaciones laborales · Luis Pérez · Desahucio por el empleador (sin alegar causa) · 30/11/2026");
+  assert.match(descripcionPrestaciones("", "desahucio", "2026-11-30"), /· Empleado ·/, "sin nombre dice «Empleado»");
+  assert.equal(descripcionPrestaciones("x".repeat(300), "desahucio", "2026-11-30").length, 150);
+  const guardar = (desc) => enEmpresa((tx) => guardarArchivos(tx, { empresaId: empresa, usuarioId: ana, archivos: [{ nombre: "prestaciones.pdf", bytes: new TextEncoder().encode(`%PDF-1.3 ${Math.random()}`) }], carpeta: "05", anio: 2026, descripcion: desc }));
+  const [a] = await guardar(descripcionPrestaciones("Luis Pérez", "desahucio", "2026-11-30"));
+  const [b] = await guardar(descripcionPrestaciones("Ana Gómez", "desahucio", "2026-10-15"));
+  await guardar("Análisis financiero · otra cosa"); // otro documento de la carpeta 05
+  const lista = await enEmpresa((tx) => prestacionesGuardadas(tx, empresa));
+  assert.deepEqual(lista.map((x) => x.id).sort(), [a, b].sort());
+  assert.equal(lista[0].quien, "Ana");
+  await sql`UPDATE documentos SET eliminado = true WHERE id = ${a}`;
+  assert.deepEqual((await enEmpresa((tx) => prestacionesGuardadas(tx, empresa))).map((x) => x.id), [b], "el retirado ya no sale");
 });
